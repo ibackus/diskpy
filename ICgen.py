@@ -10,6 +10,7 @@ SimArray = pynbody.array.SimArray
 import numpy as np
 import os
 import cPickle as pickle
+from warnings import warn
 
 # ICgen modules
 import calc_rho_zr
@@ -204,7 +205,14 @@ def load(filename):
         
         print 'loading snapshot'
         fname = input_dict['snapshotName']
-        ICobj.snapshot = pynbody.load(fname)
+        
+        try:
+        
+            ICobj.snapshot = pynbody.load(fname)
+            
+        except IOError:
+            
+            warn('Could not find snapshot ({})'.format(fname))
         
     if 'snapshot_param' in input_dict:
         
