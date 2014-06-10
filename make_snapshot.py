@@ -128,12 +128,14 @@ def snapshot_gen(ICobj):
     snapshot.gas['eps'] = eps
     snapshot.gas['mu'].derived = False
     snapshot.gas['mu'] = float(m.in_units('m_p'))
+    snapshot.gas['rho'] = 0
     
     snapshot.star['pos'] = SimArray([[ 0.,  0.,  0.]],pos_unit)
     snapshot.star['vel'] = SimArray([[ 0.,  0.,  0.]], v_unit)
     snapshot.star['mass'] = m_star
     snapshot.star['metals'] = SimArray(star_metals)
     snapshot.star['eps'] = SimArray(star_eps, pos_unit)
+    snapshot.star['rho'] = 0
     
     param = isaac.make_param(snapshot, snapshotName)
     
