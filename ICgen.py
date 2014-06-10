@@ -39,10 +39,24 @@ class IC:
     speed up generation of sigma.  To do that:
     
     IC = ICgen.IC(r, sigma, CDF)
+    
+    Or, the input can be a the filename of a pickled dictionary containing
+    'r', 'sigma', and optionally 'CDF'
     """
     
-    def __init__(self, r, sigma, CDF=None):
+    def __init__(self, r, sigma=None, CDF=None):
         
+        if isinstance(r,str):
+            # Load the pickled sigma dictionary
+            sig_dict = pickle.load(open(r,'r'))
+            sigma = sig_dict['sigma']
+            r = sig_dict['r']
+            
+            if 'CDF' in sig_dict:
+                
+                CDF = sig_dict['CDF']
+            
+            
         # Initialize
         # Load up default settings
         self.settings = ICgen_settings.settings()
