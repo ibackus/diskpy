@@ -19,6 +19,7 @@ import pos_class
 import make_snapshot
 import ICgen_settings
 import make_sigma
+import sigma_profile
 
 import isaac
 
