@@ -17,13 +17,33 @@ class T:
     """
     Calculates temperature as a function of radius.  Updating the settings 
     contained in the ICobject will automatically cause T to be calculated
-    accordingly.  ICobject should contain the attribute 'settings'
+    accordingly.  ICobject should contain the attribute 'settings'.  Settings
+    for temperature are contained in settings.physical
     
     USAGE:
     
     T = calc_temp.T(ICobject)       # Generate function to calculate T
     
     T(r)        # Calculate T at r
+    
+    There are multiple kinds of available temperature profiles.  They are set
+    in ICobject.settings.physical.kind.  They are:
+    
+    'powerlaw' : (default)
+        Follows a power law, T = T0 * (r/r0)**Tpower
+        Settings needed:
+            T0
+            r0
+            Tpower
+            Tmin (optional)
+            Tmax (optional)
+            
+    'MQWS'
+        Mimics Mayer, Quinn et. all 2004 ICs.  Settings needed:
+            T0
+            r0 (same as r_in in the paper)
+            Tmin
+            Tmax (optional)
     
     """
     def __init__(self, ICobj):
@@ -50,20 +70,23 @@ class T:
         a = (r/r0)
         a = isaac.match_units(a, '1')[0]
         
+        # Powerlaw temperature (default)
         if kind.lower() == 'powerlaw':
             
             Tpower = params.Tpower
             Tout = T0 * np.power(a, Tpower)
             Tout[Tout < Tmin] = Tmin
             
+        # MQWS temperature profile
         elif kind.lower() == 'mqws':
             
             # NOTE: I'm not sure how exactly they generate the temperature
             # profile.  The quoted equation doesn't match their figures
-            Tout = T0 * np.exp(-a)**1.5 + Tmin
+            Tout = T0 * np.exp(-3*a/2) + Tmin
         
         if hasattr(params, 'Tmax'):
             Tmax = params.Tmax
             Tout[Tout > Tmax] = Tmax
         
-        return Tout
+        return Tout        
+        
