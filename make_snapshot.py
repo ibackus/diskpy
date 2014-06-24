@@ -76,7 +76,7 @@ def snapshot_gen(ICobj):
     v2dens[(np.isnan(v2dens)) | (np.isinf(v2dens))] = 0.0
     # Find contribution from temperature gradient
     dr = (r[[1]] - r[[0]])/10.0
-    dT_dr = (T(r+dr) - T(r-dr))/(2*dr)
+    dT_dr = (ICobj.T(r+dr) - ICobj.T(r-dr))/(2*dr)
     v2temp = r * dT_dr * kB/m
     #v2temp = (kB*T/m)*Tpower
     # Now find velocity from all contributions
