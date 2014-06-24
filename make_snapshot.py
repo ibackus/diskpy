@@ -75,12 +75,16 @@ def snapshot_gen(ICobj):
     #       ignore nans and infs
     v2dens[(np.isnan(v2dens)) | (np.isinf(v2dens))] = 0.0
     # Find contribution from temperature gradient
-    v2temp = (kB*T/m)*Tpower
+    dr = (r[[1]] - r[[0]])/10.0
+    dT_dr = (T(r+dr) - T(r-dr))/(2*dr)
+    v2temp = r * dT_dr * kB/m
+    #v2temp = (kB*T/m)*Tpower
     # Now find velocity from all contributions
     v = np.sqrt(v2grav + v2dens + v2temp)
     # Sometimes, at large r, the velocities due to the pressure and temp
     # Gradients become negative.  If this is the case, set them to 0
-    nanind = np.isnan(v)
+    # Also, the temperature gradient can become infinite at r=0
+    nanind = np.isnan(v) | np.isinf(v)
     v[nanind] = 0.0
     
     # -------------------------------------------------
