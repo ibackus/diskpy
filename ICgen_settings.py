@@ -111,6 +111,7 @@ class physical:
         self.Tpower = -0.59
         self.Tmin = SimArray(0, 'K')    # Minimum temperature cut-off
         self.Tmax = SimArray(np.inf, 'K')
+        self.kind = 'powerlaw' # Type of temperature profile.  See calc_temp.py
         
     def __call__(self):
         

@@ -100,3 +100,46 @@ Mstar=SimArray(1.0/3.0,'Msol'), Qmin=1.5, n_points=1000, m=2.0, T=None):
     Q.convert_units('1')
     
     return R, sigma
+    
+def MQWS(n_points=1000, rin=4.0, rout=20.0, rmax = None, m_disk=0.1):
+    """
+    Generates a surface density profile as the per method used in Mayer, Quinn,
+    Wadsley, and Stadel 2004
+    
+    ** ARGUMENTS **
+    NOTE: if units are not supplied, assumed units are AU, Msol
+    
+    n_points : int
+        Number of radial points to calculate sigma at
+    rin : float or SimArray
+        Interior cutoff radius
+    rout : float or SimArray
+        Exterior cutoff radius
+    rmax : float or SimArray
+        Largest radius to calculate sigma at.  If None, assumed to be 2.5*rout
+    m_disk : float or SimArray
+        Total disk mass
+    """
+    rin = isaac.match_units(pynbody.units.au, rin)[1]
+    rout = isaac.match_units(pynbody.units.au, rout)[1]
+    m_disk = isaac.match_units(pynbody.units.Msol, m_disk)[1]
+    
+    if rmax is None:
+        
+        rmax = 2.5 * rout
+        
+    else:
+        
+        rmax = isaac.match_units(pynbody.units.au, rmax)[1]
+        
+    r = np.linspace(0, rmax, n_points)
+    
+    A = m_disk * np.exp(2 * (rin/rout).in_units('1'))/(rout * np.pi**1.5)
+    
+    a = (rin/r).in_units('1')
+    b = (r/rout).in_units('1')
+    sigma = A * np.exp(-a**2 - b**2)/r
+    # Remove all nans
+    sigma[np.isnan(sigma)] = 0.0
+    
+    return r, sigma

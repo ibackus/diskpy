@@ -25,13 +25,6 @@ class T:
     
     T(r)        # Calculate T at r
     
-    REQUIRED SETTINGS:
-    
-    physical.T0
-    physical.r0
-    physical.Tpower
-    physical.Tmin
-    
     """
     def __init__(self, ICobj):
         
@@ -41,20 +34,36 @@ class T:
         
         # Load settings
         params = self._parent.settings.physical
-        T0 = params.T0
-        Tpower = params.Tpower
-        r0 = params.r0
-        Tmin = params.Tmin
         
-        if hasattr(params, 'Tmax'):
-            Tmax = params.Tmax
+        if not hasattr(params, 'kind'):
+            # Add this check for backwards compatibility.  Previous versions
+            # only had one kind of temperature profile
+            params.kind = 'powerlaw'
+            
+        T0 = params.T0
+        Tmin = params.Tmin
+        r0 = params.r0
+        kind = params.kind
+        
         # Calculate T(r)
         r = isaac.match_units(r, r0)[0]
         a = (r/r0)
         a = isaac.match_units(a, '1')[0]
-        Tout = T0 * np.power(a, Tpower)
-        Tout[Tout < Tmin] = Tmin
+        
+        if kind.lower() == 'powerlaw':
+            
+            Tpower = params.Tpower
+            Tout = T0 * np.power(a, Tpower)
+            Tout[Tout < Tmin] = Tmin
+            
+        elif kind.lower() == 'mqws':
+            
+            # NOTE: I'm not sure how exactly they generate the temperature
+            # profile.  The quoted equation doesn't match their figures
+            Tout = T0 * np.exp(-a)**1.5 + Tmin
+        
         if hasattr(params, 'Tmax'):
+            Tmax = params.Tmax
             Tout[Tout > Tmax] = Tmax
         
         return Tout
