@@ -137,7 +137,11 @@ def snapshot_gen(ICobj):
     snapshot.star['eps'] = SimArray(star_eps, pos_unit)
     snapshot.star['rho'] = 0
     
+    # Make param file
     param = isaac.make_param(snapshot, snapshotName)
+    r_sink = isaac.strip_units(snapshot.g['rxy'].min())
+    param['dSinkBoundOrbitRadius'] = r_sink
+    param['dSinkRadius'] = r_sink
     
     # CALCULATE VELOCITY USING calc_velocity.py
     vel = calc_velocity.v_xy(snapshot, param)
