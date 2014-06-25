@@ -37,7 +37,7 @@ def make_profile(ICobj):
         
     elif (kind == 'mqws') | (kind == 'MQWS'):
         
-        r, sigma = MQWS(ICobj.settings)
+        r, sigma = MQWS(ICobj.settings, ICobj.T)
         
     else:
         
@@ -128,7 +128,7 @@ def powerlaw(settings, T = None):
     return R, sigma
     
 #def MQWS(n_points=1000, rin=4.0, rout=20.0, rmax = None, m_disk=0.1):
-def MQWS(settings):
+def MQWS(settings, T):
     """
     Generates a surface density profile as the per method used in Mayer, Quinn,
     Wadsley, and Stadel 2004
@@ -139,6 +139,9 @@ def MQWS(settings):
     settings : IC settings
         settings like those contained in an IC object (see ICgen_settings.py)
         
+    T : callable
+        A function to calculate temperature as a function of radius
+        
     ** RETURNS **
     
     r : SimArray
@@ -146,16 +149,23 @@ def MQWS(settings):
     sigma : SimArray
         Surface density profile as a function of R
     """
+    # Q calculation parameters:
+    G = SimArray([1.0],'G')
+    kB = SimArray([1.0],'k')
+    
     # Load in settings
     n_points = settings.sigma.n_points
     rin = settings.sigma.rin
     rout = settings.sigma.rout
     rmax = settings.sigma.rmax
-    m_disk = settings.sigma.m_disk
+    Qmin = settings.sigma.Qmin
+    m = settings.physical.m
+    Mstar = settings.physical.M
+    #m_disk = settings.sigma.m_disk
     
     rin = isaac.match_units(pynbody.units.au, rin)[1]
     rout = isaac.match_units(pynbody.units.au, rout)[1]
-    m_disk = isaac.match_units(pynbody.units.Msol, m_disk)[1]
+    #m_disk = isaac.match_units(pynbody.units.Msol, m_disk)[1]
     
     if rmax is None:
         
@@ -167,12 +177,21 @@ def MQWS(settings):
         
     r = np.linspace(0, rmax, n_points)
     
-    A = m_disk * np.exp(2 * (rin/rout).in_units('1'))/(rout * np.pi**1.5)
+    #A = m_disk * np.exp(2 * (rin/rout).in_units('1'))/(rout * np.pi**1.5)
     
     a = (rin/r).in_units('1')
     b = (r/rout).in_units('1')
-    sigma = A * np.exp(-a**2 - b**2)/r
+    #sigma = A * np.exp(-a**2 - b**2)/r
+    sigma = (np.exp(-a**2 - b**2)/r) * Mstar.units/r.units
+    
+    # Calculate Q
+    Q = np.sqrt(Mstar*kB*T(r)/(G*m*r**3))/(np.pi*sigma)
+    Q.convert_units('1')
+
+    sigma *= np.nanmin(Q)/Qmin
+    
     # Remove all nans
     sigma[np.isnan(sigma)] = 0.0
+    
     
     return r, sigma

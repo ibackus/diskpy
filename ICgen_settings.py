@@ -175,6 +175,7 @@ class sigma:
             self.rmax = None
             self.m_disk = SimArray(0.1, 'Msol')
             self.n_points = 1000
+            self.Qmin = 1.5
             
     def __setattr__(self, attr, value):
         """
