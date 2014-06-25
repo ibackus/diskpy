@@ -143,9 +143,6 @@ def snapshot_gen(ICobj):
     
     # Make param file
     param = isaac.make_param(snapshot, snapshotName)
-    r_sink = isaac.strip_units(snapshot.g['rxy'].min())
-    param['dSinkBoundOrbitRadius'] = r_sink
-    param['dSinkRadius'] = r_sink
     
     # CALCULATE VELOCITY USING calc_velocity.py
     vel = calc_velocity.v_xy(snapshot, param)
@@ -154,5 +151,12 @@ def snapshot_gen(ICobj):
     # Now set the star particle's tform to a negative number.  This allows
     # UW ChaNGa treat it as a sink particle.
     snapshot.star['tform'] = -1.0
+    
+    # Update params
+    r_sink = isaac.strip_units(snapshot.g['rxy'].min())
+    param['dSinkBoundOrbitRadius'] = r_sink
+    param['dSinkRadius'] = r_sink
+    param['dSinkMassMin'] = 0.9 * isaac.strip_units(m_star)
+    param['bDoSinks'] = 1
     
     return snapshot, param
