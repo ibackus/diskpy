@@ -10,47 +10,73 @@ import pynbody
 SimArray = pynbody.array.SimArray
 import isaac
 
-def powerlaw(Rd=SimArray(1.0,'au'), rin=0.5, rmax=2.3, cutlength=0.3, \
-Mstar=SimArray(1.0/3.0,'Msol'), Qmin=1.5, n_points=1000, m=2.0, T=None):
+def make_profile(ICobj):
+    """
+    A wrapper for generating surface density profiles according to the IC object.
+    
+    Settings for the profile are defined in ICobj.settings.  Which profile gets
+    used is defined by ICobj.settings.sigma.kind
+    
+    Currently available kinds are:
+    
+    powerlaw
+    MQWS
+    
+    **RETURNS**
+    
+    r : SimArray
+        Radii at which sigma is calculated
+    sigma : SimArray
+        Surface density profile as a function of R
+    """
+    kind = ICobj.settings.sigma.kind
+    
+    if kind == 'powerlaw':
+        
+        r, sigma = powerlaw(ICobj.settings, ICobj.T)
+        
+    elif (kind == 'mqws') | (kind == 'MQWS'):
+        
+        r, sigma = MQWS(ICobj.settings)
+        
+    else:
+        
+        raise TypeError, 'Could not make profile for kind {}'.format(kind)
+    
+    return r, sigma
+    
+
+#def powerlaw(Rd=SimArray(1.0,'au'), rin=0.5, rmax=2.3, cutlength=0.3, \
+#Mstar=SimArray(1.0/3.0,'Msol'), Qmin=1.5, n_points=1000, m=2.0, T=None):
+def powerlaw(settings, T = None):
     """
     Generates a surface density profile according to a powerlaw sigma ~ 1/r
     with a smooth interior cutoff and smooth exterior exponential cutoff.
     
-    ** ARGUMENTS **
+    **ARGUMENTS**
     
-    Rd : float or SimArray
-        Disk radius at which the exponential cutoff begins.  If float, it is
-        assumed to be in units of AU (pynbody.units.au)
-    rin : float
-        Fraction Rd of at which the interior cutoff happens.  i.e., the radius
-        of the interior cutoff in units of Rd
-    rmax : float
-        Largest radius to calculate sigma at in units of Rd.  This is needed 
-        for a smooth exponential cutoff.  Default of 2.3 should work
-    cutlength : float
-        Length scale for the exponential cut off in units of Rd
-    Mstar : float or SimArray
-        Mass of the central star.  If a float, it is assumed to be in units of
-        Msol
-    Qmin : float
-        Minimum Toomre Q for the disk.  The surface density is scaled to match
-        Qmin.
-    n_points : int
-        Number of bins to calculate sigma, R at.
-    m : float or SimArray
-        mean molecular weight.  If float, assumed to be in units of m_p
-    T : callable
-        Temperature as a function of radius.  If None, it is assumed to be
-        a powerlaw T ~ r^-q
+    settings : IC settings
+        settings like those contained in an IC object (see ICgen_settings.py)
+    T : callable function
+        Function that returns temperature of the disk as a function of radius
+        IF none, a powerlaw temperature is assumed
     
-    
-    ** RETURNS **
+    **RETURNS**
     
     R : SimArray
         Radii at which sigma is calculated
     sigma : SimArray
         Surface density profile as a function of R
     """
+    # Parse settings
+    Rd = settings.sigma.Rd
+    rin = settings.sigma.rin
+    rmax = settings.sigma.rmax
+    cutlength = settings.sigma.cutlength
+    Mstar = settings.physical.M
+    Qmin = settings.sigma.Qmin
+    n_points = settings.sigma.n_points
+    m = settings.physical.m
 
     if T is None:
         # If no callable object to calculate Temperature(R) is provided, 
@@ -101,7 +127,8 @@ Mstar=SimArray(1.0/3.0,'Msol'), Qmin=1.5, n_points=1000, m=2.0, T=None):
     
     return R, sigma
     
-def MQWS(n_points=1000, rin=4.0, rout=20.0, rmax = None, m_disk=0.1):
+#def MQWS(n_points=1000, rin=4.0, rout=20.0, rmax = None, m_disk=0.1):
+def MQWS(settings):
     """
     Generates a surface density profile as the per method used in Mayer, Quinn,
     Wadsley, and Stadel 2004
@@ -109,17 +136,23 @@ def MQWS(n_points=1000, rin=4.0, rout=20.0, rmax = None, m_disk=0.1):
     ** ARGUMENTS **
     NOTE: if units are not supplied, assumed units are AU, Msol
     
-    n_points : int
-        Number of radial points to calculate sigma at
-    rin : float or SimArray
-        Interior cutoff radius
-    rout : float or SimArray
-        Exterior cutoff radius
-    rmax : float or SimArray
-        Largest radius to calculate sigma at.  If None, assumed to be 2.5*rout
-    m_disk : float or SimArray
-        Total disk mass
+    settings : IC settings
+        settings like those contained in an IC object (see ICgen_settings.py)
+        
+    ** RETURNS **
+    
+    r : SimArray
+        Radii at which sigma is calculated
+    sigma : SimArray
+        Surface density profile as a function of R
     """
+    # Load in settings
+    n_points = settings.sigma.n_points
+    rin = settings.sigma.rin
+    rout = settings.sigma.rout
+    rmax = settings.sigma.rmax
+    m_disk = settings.sigma.m_disk
+    
     rin = isaac.match_units(pynbody.units.au, rin)[1]
     rout = isaac.match_units(pynbody.units.au, rout)[1]
     m_disk = isaac.match_units(pynbody.units.Msol, m_disk)[1]

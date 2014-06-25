@@ -49,6 +49,7 @@ class T:
     def __init__(self, ICobj):
         
         self._parent = ICobj
+        self.kind = ICobj.settings.physical.kind
         
     def __call__(self, r):
         
@@ -71,22 +72,27 @@ class T:
         a = isaac.match_units(a, '1')[0]
         
         # Powerlaw temperature (default)
-        if kind.lower() == 'powerlaw':
+        if kind == 'powerlaw':
             
             Tpower = params.Tpower
             Tout = T0 * np.power(a, Tpower)
             Tout[Tout < Tmin] = Tmin
             
         # MQWS temperature profile
-        elif kind.lower() == 'mqws':
+        elif (kind == 'mqws') | (kind == 'MQWS'):
             
             # NOTE: I'm not sure how exactly they generate the temperature
             # profile.  The quoted equation doesn't match their figures
             Tout = T0 * np.exp(-3*a/2) + Tmin
+            
+        else:
+            
+            raise TypeError, 'Could not find temperature kind {}'.format(kind)
         
         if hasattr(params, 'Tmax'):
             Tmax = params.Tmax
             Tout[Tout > Tmax] = Tmax
+            
         
         return Tout        
         

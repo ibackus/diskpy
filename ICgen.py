@@ -30,9 +30,18 @@ class IC:
     """
     Defines the IC class.
     
-    GENERATING NEW INITIAL CONDITIONS
+    INITIALIZING NEW INITIAL CONDITIONS
+
+    # Initialize a blank IC object (with no surface density profile yet made)
+
+    IC = ICgen.IC()
     
-    # Generate IC objection from 1-D SimArrays r, sigma (surface density)
+    # Initialize an IC object and surface density profile using default settings
+    
+    IC = ICgen.IC(profile_kind='powerlaw')
+    IC = ICgen.IC(profile_kind='MQWS')
+    
+    # Initialize IC object from 1-D SimArrays r, sigma (surface density)
     
     IC = ICgen.IC(r, sigma)
     
@@ -43,9 +52,17 @@ class IC:
     
     Or, the input can be a the filename of a pickled dictionary containing
     'r', 'sigma', and optionally 'CDF'
+    
+    Settings can also be entered manually if needed
+    
+    settings = pickle.load(open('settings.p','r'))
+    IC = ICgen.IC(settings = settings)
+    
+    GENERATING INITIAL CONDITIONS
+    
     """
     
-    def __init__(self, r, sigma=None, CDF=None):
+    def __init__(self, r=None, sigma=None, CDF=None, profile_kind=None, settings=None):
         
         if isinstance(r,str):
             # Load the pickled sigma dictionary
@@ -59,14 +76,33 @@ class IC:
             
             
         # Initialize
-        # Load up default settings
-        self.settings = ICgen_settings.settings()
+        if settings is None:
+            # Load up default settings
+            self.settings = ICgen_settings.settings(kind=profile_kind)
+            
+        else:
+            
+            self.settings = settings
+        
+        # Try to update profile_kind (might be set in settings, or from defaults)
+        try:
+            
+            profile_kind = self.settings.sigma.kind
+            
+        except:
+            
+            pass
+        
         # Add modules/attributes
         self.T = calc_temp.T(self)
         self.maker = maker(self)
         self.add = add(self)
+        
         # Generate sigma spline interpolation
-        self.maker.sigma_gen(r, sigma, CDF)
+        if (r is not None) or (profile_kind is not None):
+            
+            self.maker.sigma_gen(r, sigma, CDF)
+        
         # Define a saving function        
         def saver(filename = None):
             """
@@ -282,7 +318,7 @@ class maker:
         
         self._parent = ICobj
         
-    def sigma_gen(self, r, sigma, CDF):
+    def sigma_gen(self, r=None, sigma=None, CDF=None):
         """
         A Wrapper for make_sigma.sigma_gen
         See make_sigma.sigma_gen for documentation
@@ -291,12 +327,24 @@ class maker:
         
         USAGE:
         
-        ICobj.maker.sigma_gen(r, sigma)
+        # Generate sigma object from r, sigma arrays
+        sigma = ICobj.maker.sigma_gen(r, sigma)
+        
+        # Use pre-calculated CDF array
+        sigma = ICobj.maker.sigma_gen(r, sigma, CDF)
+        
+        # Generate using a profile defined in sigma_profile.py
+        ICobj.settings.sigma.kind = 'powerlaw'
+        sigma = ICobj.maker.sigma_gen()
         
         r and sigma should be 1-D SimArrays.  sigma is the surface density
         evaluated at r
         """
         # Generate sigma
+        if r is None:
+            
+            r, sigma = sigma_profile.make_profile(self._parent)
+            
         sigma = make_sigma.sigma_gen(r, sigma, CDF)
         # Copy sigma to the parent (IC) object
         self._parent.sigma = sigma

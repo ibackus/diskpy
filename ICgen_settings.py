@@ -98,7 +98,7 @@ class physical:
         physical.settingname
     """
     
-    def __init__(self):
+    def __init__(self, kind=None):
         
         # Molecular mass of the gass.  If m = None, Assumed to be H2, m = 2.00132 m_p
         self.m = SimArray(2.00132,'m_p')
@@ -111,7 +111,12 @@ class physical:
         self.Tpower = -0.59
         self.Tmin = SimArray(0, 'K')    # Minimum temperature cut-off
         self.Tmax = SimArray(np.inf, 'K')
-        self.kind = 'powerlaw' # Type of temperature profile.  See calc_temp.py
+        
+        if kind is None:
+            
+            kind = 'powerlaw'
+            
+        self.kind = kind # Type of temperature profile.  See calc_temp.py
         
     def __call__(self):
         
@@ -125,9 +130,79 @@ class physical:
             else:
                 print '{} : {}'.format(key,val)
         
+class sigma:
+    """
+    Settings for generating a surface density profile
+    
+    To echo:
+        sigma()
+    To access settings:
+        sigma.settingname
+    """
+    def __init__(self, kind='powerlaw'):
+        
+        # Kind of surface density profile to use.  Options:
+        #   'powerlaw'
+        #   'MQWS'
+        # Setting self.kind automatically initializes the default settings
+        # for that kind
+        self.kind = kind
+        
+    def _set_defaults(self):
+        # Set default attributes:
+        # First delete all attributes but kind
+        kind = self.kind
+        for key in self.__dict__.keys():
+            
+            if key != 'kind':
+                
+                self.__dict__.pop(key, None)
+                
+        # Now set attributes
+        if kind == 'powerlaw':
+            
+            self.Rd = SimArray(1.0,'au')
+            self.rin = 0.5
+            self.rmax = 2.3
+            self.cutlength = 0.3
+            self.Qmin = 1.5
+            self.n_points = 1000
+            
+        if (kind == 'mqws') | (kind == 'MQWS'):
+            
+            self.rin = 4.0
+            self.rout = 20.0
+            self.rmax = None
+            self.m_disk = SimArray(0.1, 'Msol')
+            self.n_points = 1000
+            
+    def __setattr__(self, attr, value):
+        """
+        Override the default __setattr__ so that changing self.kind causes
+        the defaults to be set for that kind
+        """
+        self.__dict__[attr] = value
+        
+        if attr == 'kind':
+            
+            self._set_defaults()
+            
+        
+    def __call__(self):
+        
+        print '--------------------'
+        print 'Sigma profile parameters:'
+        print ''
+        for key,val in self.__dict__.iteritems():
+            
+            if pynbody.units.has_units(val):
+                print '{} : {} {}'.format(key,val,val.units)
+            else:
+                print '{} : {}'.format(key,val)
+
 class rho_calc:
     """
-    Settings for calculating rho(z,r) [STEP 1]
+    Settings for calculating rho(z,r)
     
     To echo settings:
         rho_calc()
@@ -203,7 +278,7 @@ class snapshot:
         # a final mass of Mdisc (see above).  Should be between 0 and 1
         # Default: 1.0 (no scaling done).  Final particle masses are scaled
         # by this factor
-        self.mScale = 0.01
+        self.mScale = 1.0
         
         # Other defaults that shouldn't need to be changed
         self.metals = 1.0
@@ -236,6 +311,13 @@ class settings:
     
         import ICgen_settings
         settings = ICgen_settings.settings()
+        
+    Load settings for a given surface density profile
+    
+        import ICgen_settings
+        settings = ICgen_settings.settings('powerlaw')
+        or try:
+        settings = ICgen_settings.settings('MQWS')
     
     AFTER LOADING:    
     Access settings:
@@ -268,15 +350,16 @@ class settings:
     
         settings.load('filename')
     """    
-    def __init__(self, settings_filename=None):
+    def __init__(self, settings_filename=None, kind=None):
         
         if settings_filename is None:
             # Load the defaults
             self.filenames = filenames()
+            self.sigma = sigma(kind)           
             self.rho_calc = rho_calc()
             self.pos_gen = pos_gen()
             self.snapshot = snapshot(self.pos_gen.nParticles)
-            self.physical = physical()
+            self.physical = physical(kind)
             
         else:
             
@@ -286,6 +369,12 @@ class settings:
         
         self.filenames()
         print ''
+        # Check if sigma is a setting (needed for compatibility)
+        if hasattr(self,'sigma'):
+            
+            self.sigma()
+            print ''
+            
         self.rho_calc()
         print ''
         self.pos_gen()
