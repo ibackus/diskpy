@@ -40,6 +40,7 @@ def snapshot_gen(ICobj):
     nParticles = ICobj.pos.nParticles
     # Temperature power law (used for pressure gradient)
     Tpower = ICobj.settings.physical.Tpower
+    dr = (ICobj.sigma.r_bins[[1]] - ICobj.sigma.r_bins[[0]])/10.0
     # molecular mass
     m = ICobj.settings.physical.m
     # star mass
@@ -75,7 +76,7 @@ def snapshot_gen(ICobj):
     #       ignore nans and infs
     v2dens[(np.isnan(v2dens)) | (np.isinf(v2dens))] = 0.0
     # Find contribution from temperature gradient
-    dr = (r[[1]] - r[[0]])/10.0
+    
     dT_dr = (ICobj.T(r+dr) - ICobj.T(r-dr))/(2*dr)
     v2temp = r * dT_dr * kB/m
     #v2temp = (kB*T/m)*Tpower
