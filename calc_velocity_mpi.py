@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Same as calc_velocity.py, but calls mpi with changa to allow many nodes
+NOTE.  mpirrun must be already loaded.  Also, should do export MX_RCACHE=0
+before loading python
 
 Created on Wed Apr  9 15:39:28 2014
 
@@ -51,8 +53,6 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100):
         changbin = os.popen('which ChaNGa_uw_mpi').read().strip()
         
     # Load up mpi
-    os.popen('module load gcc_4.4.7-ompi_1.6.5')
-    os.popen('export MX_RCACHE=0')
     
     # Load stuff from the snapshot
     x = f.g['x']
