@@ -4,6 +4,8 @@ Created on Tue Aug  5 17:37:03 2014
 
 @author: ibackus
 """
+__version__ = "$Revision: 1 $"
+# $Source$
 
 import subprocess
 import multiprocessing
@@ -81,6 +83,7 @@ def changa_command(param_name, preset='local', changa_bin=None, changa_args='', 
     param_name : str
         Filename of the .param file used for ChaNGa
     preset : str
+        if None, the default preset is used
         Default = 'local'
         Defaults to use.  Options are
             'none' (no arguments given)
@@ -100,6 +103,9 @@ def changa_command(param_name, preset='local', changa_bin=None, changa_args='', 
     command : str
         A command line command for running ChaNGa
     """
+    if preset is None:
+        
+        preset = 'local'
         
     if preset == 'none':
         

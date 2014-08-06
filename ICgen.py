@@ -4,6 +4,10 @@ Created on Wed Mar 12 12:48:33 2014
 
 @author: ibackus
 """
+
+__version__ = "$Revision: 1 $"
+# $Source$
+
 # External modules
 import pynbody
 SimArray = pynbody.array.SimArray
@@ -76,6 +80,8 @@ class IC:
             
             
         # Initialize
+        self.__version__ = int(filter(str.isdigit,__version__))
+        
         if settings is None:
             # Load up default settings
             self.settings = ICgen_settings.settings(kind=profile_kind)
@@ -158,6 +164,11 @@ def save(ICobj, filename=None):
         filename = ICobj.settings.filenames.IC_file_name
     
     save_dict = {}
+    
+    if hasattr(ICobj, '__version__'):
+        
+        save_dict['version'] = ICobj.__version__
+        
     # --------------------------------------------------
     # GET SETTINGS
     # --------------------------------------------------
@@ -224,9 +235,20 @@ def load(filename):
     # Load everything available from filename
     input_dict = pickle.load(open(filename,'rb'))
     
+    # Get version
+    if 'version' in input_dict:
+        
+        version = input_dict['version']
+        
+    else:
+        
+        version = 0
+    
+    # Load sigma stuff
     sigma = input_dict['sigma']['sigma']
     r = input_dict['sigma']['r']
     
+    # Initialize ICobj
     if 'CDF' in input_dict:
         
         CDF = input_dict['CDF']
