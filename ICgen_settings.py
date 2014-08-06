@@ -43,6 +43,8 @@ Load (read) settings from disk:
     settings.load('filename')
 """
 
+__version__ = "$Revision: 1 $"
+# $Source$
 
 import pynbody
 SimArray = pynbody.array.SimArray
@@ -296,6 +298,36 @@ class snapshot:
                 print '{} : {} {}'.format(key,val,val.units)
             else:
                 print '{} : {}'.format(key,val)
+                
+class changa_run:
+    """
+    Settings for running ChaNGa (needed when calculating velocities, eps, so on)
+    """
+    
+    def __init__(self, preset = 'local'):
+        
+        # Run configuration to use.  See ICgen_utils.changa_command for options
+        self.preset = preset
+        # Additional arguments for all ChaNGa calls
+        self.changa_args = ''
+        # Additional arguments for all runner (mpirun, charmrun, ...) calls
+        self.runner_args = ''
+        # Display ChaNGa output
+        self.verbose = True
+        # Save to log file
+        self.logfile_name = None
+        
+    def __call__(self):
+        
+        print '--------------------'
+        print 'ChaNGa run options:'
+        print ''
+        for key,val in self.__dict__.iteritems():
+            
+            if pynbody.units.has_units(val):
+                print '{} : {} {}'.format(key,val,val.units)
+            else:
+                print '{} : {}'.format(key,val)
         
 class settings:
     """
@@ -361,6 +393,7 @@ class settings:
             self.pos_gen = pos_gen()
             self.snapshot = snapshot(self.pos_gen.nParticles)
             self.physical = physical(kind)
+            self.changa_run = changa_run()
             
         else:
             
@@ -383,6 +416,8 @@ class settings:
         self.snapshot()
         print ''
         self.physical()
+        print ''
+        self.changa_run()
         
     def save(self,settings_filename = None):
         """
