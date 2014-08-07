@@ -8,6 +8,8 @@ Created on Wed Mar 12 12:48:33 2014
 __version__ = "$Revision: 1 $"
 # $Source$
 
+__iversion__ = int(filter(str.isdigit,__version__))
+
 # External modules
 import pynbody
 SimArray = pynbody.array.SimArray
@@ -80,7 +82,7 @@ class IC:
             
             
         # Initialize
-        self.__version__ = int(filter(str.isdigit,__version__))
+        self.__version__ = __iversion__
         
         if settings is None:
             # Load up default settings
@@ -228,14 +230,14 @@ def save(ICobj, filename=None):
         
     # Save the save dictionary
     pickle.dump(save_dict,open(filename,'wb'))
-    print 'Initial conditions saved to {}'.format(filename)
+    print 'Initial conditions saved to {}'.format(filename)        
     
 def load(filename):
        
     # Load everything available from filename
     input_dict = pickle.load(open(filename,'rb'))
     
-    # Get version
+    # Get version/update IC if necessary
     if 'version' in input_dict:
         
         version = input_dict['version']
@@ -243,6 +245,8 @@ def load(filename):
     else:
         
         version = 0
+    
+    _upgrade_version(input_dict, version)
     
     # Load sigma stuff
     sigma = input_dict['sigma']['sigma']
@@ -294,6 +298,35 @@ def load(filename):
 
     return ICobj
             
+            
+def _upgrade_version(IC_input, version):
+    """
+    Used for backwards compatibility.  If an initial conditions object was
+    generated using an outdated version of ICgen, hopefully when it's being
+    loaded it can be made up-to-date before initializing the ICobj
+    
+    version is the version of the IC_input
+    """
+    if version < 1:
+        
+        # Assume IC_input is a dictionary
+        # Needs the changa_run settings
+            
+        # Initialize empty, up-to-date settings
+        settings = ICgen_settings.settings()
+        
+        if 'settings' in IC_input:
+            
+            # Load old settings, ignoring the snapshot gen settings
+            for key in IC_input['settings'].keys():
+                
+                if key != 'snapshot':
+                    
+                    settings.__dict__[key] = IC_input['settings'][key]
+                    
+        # update the input dictionary
+        IC_input['settings'] = settings
+        
         
 class add:
     """
@@ -421,3 +454,4 @@ class maker:
         # Save to ICobj
         self._parent.snapshot = snapshot
         self._parent.snapshot_param = snapshot_param
+        
