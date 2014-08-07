@@ -9,7 +9,73 @@ __version__ = "$Revision: 1 $"
 
 import subprocess
 import multiprocessing
+import glob
+import numpy as np
+import isaac
+import pynbody
+SimArray = pynbody.array.SimArray
 import os
+
+def est_eps(f, changa_preset=None, verbose=True, logfile_name=None):
+    """
+    Estimates the gravitational softening length as 1/2 the mean SPH smoothing
+    length.  Uses ChaNGa to calculate the smoothing length
+    
+    **ARGUMENTS**
+    
+    f : str -or- tipsy snapshot (see pynbody)
+        IF a string, f is the filename of a .param file for running ChaNGa.
+        IF a snapshot, a temporary file is saved for running ChaNGa
+    changa_preset : string
+        (optional) A configuration preset for running ChaNGa.  See changa_command
+        for possible presets.  If None, the default preset is used
+    verbose : bool
+        (optional) If true, prints the ChaNGa output to stdout
+    logfile_name : str
+        (optional) If set, ChaNGa stdout is saved to logfile_name
+        
+    **RETURNS**
+    
+    eps : SimArray (1 number)
+        Estimate of a reasonable gravitational softening length
+    """
+    if isinstance(f, str):
+        
+        param_name = f
+        param = isaac.configparser(param_name)
+        f_prefix = param['achOutName']
+        
+    else:
+        
+        # Filenames
+        f_prefix = 'temp_snapshot'
+        f_name = f_prefix + '.std'        
+        param_name = f_prefix + '.param'
+        # Save snapshot
+        f.write(filename=f_name, fmt=pynbody.tipsy.TipsySnap)
+        # Save param file
+        param = isaac.make_param(f, filename=f_name)
+        isaac.configsave(param, param_name)
+        
+    command = changa_command(param_name, changa_preset, changa_args='-n 0')
+    p = changa_run(command, verbose=verbose, logfile_name=logfile_name, force_wait=True)
+    
+    # Load smoothing lengths
+    h_name = f_prefix + '.000000.smoothlength'
+    h = np.genfromtxt(h_name, skiprows=1, skip_footer=1)
+    
+    # Estimate gravitational softening as 1/2 the mean smoothing length
+    eps = h.mean()/2
+    
+    # Cleanup
+    for a in glob.glob(f_prefix + '.000000*'):
+        
+        os.remove(a)
+    
+    eps_units = param['dKpcUnit'] * pynbody.units.kpc
+    
+    return SimArray(eps, eps_units)
+    
 
 def changa_run(command, verbose = True, logfile_name=None, force_wait=False):
     """
@@ -103,18 +169,22 @@ def changa_command(param_name, preset='local', changa_bin=None, changa_args='', 
     command : str
         A command line command for running ChaNGa
     """
+    
+    # ******************************
+    # DEFAULT PRESET
+    # ******************************
     if preset is None:
         
         preset = 'local'
         
+    # ******************************
+    # NONE PRESET
+    # ******************************
     if preset == 'none':
         
-        # ------- DEFAULTS ---------------------------------------
         if changa_bin is None:
             # Location of the default changa binary
             changa_bin = os.popen('which ChaNGa').read().strip()
-        
-        # -------------------------------------------------------- 
         
         command = '{} {} {} {}'.format(runner_args, changa_bin, \
         changa_args, param_name)
@@ -122,6 +192,9 @@ def changa_command(param_name, preset='local', changa_bin=None, changa_args='', 
         
         return command
     
+    # ******************************
+    # LOCAL PRESET
+    # ******************************
     elif preset == 'local':
         
         # Number of processes to use
@@ -138,8 +211,11 @@ def changa_command(param_name, preset='local', changa_bin=None, changa_args='', 
             
         default_runner_args = '+p {} ++local'.format(proc)
         default_changa_args = '-D 3 +consph'
-        runner = 'charmrun'
+        runner = 'charmrun_sinks'
         
+    # ******************************
+    # MPI PRESET
+    # ******************************
     elif preset == 'mpi':
         
         if changa_bin is None:
@@ -150,6 +226,7 @@ def changa_command(param_name, preset='local', changa_bin=None, changa_args='', 
         default_changa_args = '-D 3 +consph'
         runner = 'mpirun'
         
+    # ----------------------------------------------------------
     # Add user supplied arguments
     changa_args = ' '.join([default_changa_args, changa_args])
     runner_args = ' '.join([default_runner_args, runner_args])
