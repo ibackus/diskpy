@@ -73,6 +73,7 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None):
     p_temp = param.copy()
     p_temp['achInFile'] = f_name
     p_temp['achOutName'] = f_prefix
+    p_temp['dDelta'] = 1e-10
     if 'dDumpFrameTime' in p_temp: p_temp.pop('dDumpFrameTime')
     if 'dDumpFrameStep' in p_temp: p_temp.pop('dDumpFrameStep')
     

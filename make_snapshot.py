@@ -5,12 +5,16 @@ Created on Fri Mar 21 15:11:31 2014
 @author: ibackus
 """
 
+__version__ = "$Revision: 1 $"
+# $Source$
+
 import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
 
 import isaac
 import calc_velocity
+import ICgen_utils
 
 def snapshot_gen(ICobj):
     """
@@ -28,8 +32,9 @@ def snapshot_gen(ICobj):
     # ------------------------------------
     # Load in things from ICobj
     # ------------------------------------
+    settings = ICobj.settings
     # snapshot file name
-    snapshotName = ICobj.settings.filenames.snapshotName
+    snapshotName = settings.filenames.snapshotName
     # particle positions
     theta = ICobj.pos.theta
     r = ICobj.pos.r
@@ -38,20 +43,18 @@ def snapshot_gen(ICobj):
     z = ICobj.pos.z
     # Number of particles
     nParticles = ICobj.pos.nParticles
-    # Temperature power law (used for pressure gradient)
-    Tpower = ICobj.settings.physical.Tpower
     dr = (ICobj.sigma.r_bins[[1]] - ICobj.sigma.r_bins[[0]])/10.0
     # molecular mass
-    m = ICobj.settings.physical.m
+    m = settings.physical.m
     # star mass
-    m_star = ICobj.settings.physical.M.copy()
+    m_star = settings.physical.M.copy()
     # disk mass
     m_disk = ICobj.sigma.m_disk.copy()
     m_disk = isaac.match_units(m_disk, m_star)[0]
     # mass of the gas particles
     m_particles = np.ones(nParticles) * m_disk / float(nParticles)
     # re-scale the particles (allows making of lo-mass disk)
-    m_particles *= ICobj.settings.snapshot.mScale
+    m_particles *= settings.snapshot.mScale
     
     # ------------------------------------
     # Initial calculations
@@ -116,10 +119,7 @@ def snapshot_gen(ICobj):
     xyz[:,2] = z
     
     # Other settings
-    eps = ICobj.settings.snapshot.eps
-    star_eps = eps
-    eps *= SimArray(np.ones(nParticles), pos_unit)
-    metals = ICobj.settings.snapshot.metals
+    metals = settings.snapshot.metals
     star_metals = metals
     metals *= SimArray(np.ones(nParticles))
     
@@ -130,20 +130,24 @@ def snapshot_gen(ICobj):
     snapshot.gas['temp'] = T
     snapshot.gas['mass'] = m_particles
     snapshot.gas['metals'] = metals
-    snapshot.gas['eps'] = eps
-    snapshot.gas['mu'].derived = False
-    snapshot.gas['mu'] = float(m.in_units('m_p'))
+    # Initial eps...totally arbitrary (it gets estimated below)
+    snapshot.gas['eps'] = 0.01
     snapshot.gas['rho'] = 0
     
     snapshot.star['pos'] = SimArray([[ 0.,  0.,  0.]],pos_unit)
     snapshot.star['vel'] = SimArray([[ 0.,  0.,  0.]], v_unit)
     snapshot.star['mass'] = m_star
     snapshot.star['metals'] = SimArray(star_metals)
-    snapshot.star['eps'] = SimArray(star_eps, pos_unit)
+    # Estimate the star's softening length as the closest particle distance
+    snapshot.star['eps'] = r.min()
     snapshot.star['rho'] = 0
     
     # Make param file
     param = isaac.make_param(snapshot, snapshotName)
+    
+    # Estimate reasonable gravitational softening for the gas
+    preset = settings.snapshot.changa_run.preset
+    snapshot.g['eps'] = ICgen_utils.est_eps(snapshot, preset)
     
     # CALCULATE VELOCITY USING calc_velocity.py
     vel = calc_velocity.v_xy(snapshot, param)

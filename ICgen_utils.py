@@ -18,8 +18,8 @@ import os
 
 def est_eps(f, changa_preset=None, verbose=True, logfile_name=None):
     """
-    Estimates the gravitational softening length as 1/2 the mean SPH smoothing
-    length.  Uses ChaNGa to calculate the smoothing length.
+    Estimates the gravitational softening length for gas particles as 1/2 the 
+    mean SPH smoothing length.  Uses ChaNGa to calculate the smoothing length.
     
     Note: f['eps'] must be defined.  It can be any number > 0
     

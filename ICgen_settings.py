@@ -285,7 +285,6 @@ class snapshot:
         
         # Other defaults that shouldn't need to be changed
         self.metals = 1.0
-        self.eps = 0.01
         
     def __call__(self):
         
