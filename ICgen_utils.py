@@ -19,13 +19,15 @@ import os
 def est_eps(f, changa_preset=None, verbose=True, logfile_name=None):
     """
     Estimates the gravitational softening length as 1/2 the mean SPH smoothing
-    length.  Uses ChaNGa to calculate the smoothing length
+    length.  Uses ChaNGa to calculate the smoothing length.
+    
+    Note: f['eps'] must be defined.  It can be any number > 0
     
     **ARGUMENTS**
     
     f : str -or- tipsy snapshot (see pynbody)
         IF a string, f is the filename of a .param file for running ChaNGa.
-        IF a snapshot, a temporary file is saved for running ChaNGa
+        IF a snapshot, a temporary file is saved for running ChaNGa.
     changa_preset : string
         (optional) A configuration preset for running ChaNGa.  See changa_command
         for possible presets.  If None, the default preset is used
@@ -46,6 +48,11 @@ def est_eps(f, changa_preset=None, verbose=True, logfile_name=None):
         f_prefix = param['achOutName']
         
     else:
+        
+        # Check to see eps has been defined by the user
+        if 'eps' not in f:
+            
+            raise KeyError,"eps must be set in the snapshot"
         
         # Filenames
         f_prefix = 'temp_snapshot'
