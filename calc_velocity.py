@@ -5,11 +5,15 @@ Created on Wed Apr  9 15:39:28 2014
 @author: ibackus
 """
 
+__version__ = "$Revision: 1 $"
+# $Source$
+
 import numpy as np
 import pynbody
 SimArray = pynbody.array.SimArray
 
 import isaac
+import ICgen_utils
 
 import subprocess
 import os
@@ -17,7 +21,7 @@ import glob
 
 import time
 
-def v_xy(f, param, changbin=None, nr=50, min_per_bin=100):
+def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None):
     """
     Attempts to calculate the circular velocities for particles in a thin
     (not flat) keplerian disk.  Requires ChaNGa
@@ -37,16 +41,15 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100):
         The minimum number of particles to be in each bin.  If there are too
         few particles in a bin, it is merged with an adjacent bin.  Thus,
         actual number of radial bins may be less than nr.
+    changa_preset : str
+        Which ChaNGa execution preset to use (ie 'mpi', 'local', ...).  See
+        ICgen_utils.changa_command
         
     **RETURNS**
     
     vel : SimArray
         An N by 3 SimArray of gas particle velocities.
     """
-    
-    if changbin is None:
-        # Try to find the ChaNGa binary full path
-        changbin = os.popen('which ChaNGa').read().strip()
     
     # Load stuff from the snapshot
     x = f.g['x']
@@ -86,14 +89,10 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100):
         isaac.configsave(p_temp, p_name, ftype='param')
         
         # Run ChaNGa, only calculating gravity
-        command = 'charmrun ++local ' + changbin + ' -gas -n 0 ' + p_name
-        
-        p = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
-        
-        while p.poll() is None:
-            
-            time.sleep(0.1)
-            
+        command = ICgen_utils.changa_command(p_name, changa_preset, changbin, '-gas +n 0')
+        print command
+        p = ICgen_utils.changa_run(command)
+        p.wait()            
     
         # Load accelerations
         acc_name = f_prefix + '.000000.acc2'
@@ -160,13 +159,9 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100):
     isaac.configsave(p_temp, p_name, ftype='param')
     
     # Run ChaNGa, including SPH
-    command = 'charmrun ++local ' + changbin + ' +gas -n 0 ' + p_name
-    
-    p = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
-    
-    while p.poll() is None:
-        
-        time.sleep(0.1)
+    command = ICgen_utils.changa_command(p_name, changa_preset, changbin, '+gas -n 0')
+    p = ICgen_utils.changa_run(command)
+    p.wait()
         
     # Load accelerations
     acc_name = f_prefix + '.000000.acc2'
