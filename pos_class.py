@@ -9,6 +9,11 @@ Created on Mon Jan 27 18:48:04 2014
 @author: ibackus
 """
 
+__version__ = "$Revision: 1 $"
+# $Source$
+
+__iversion__ = int(filter(str.isdigit,__version__))
+
 # External packages
 import pynbody
 SimArray = pynbody.array.SimArray
@@ -16,6 +21,7 @@ import numpy as np
 
 # ICgen packages
 import isaac
+import ICgen_utils
 
 class pos:
     """
@@ -27,10 +33,14 @@ class pos:
     
     ICobj should be an initial conditions object (ICgen.IC) with rho already
     calculated.
+
     """
     
-    def __init__(self, ICobj, method = None):
+    def __init__(self, ICobj, method = None, generate=True):
         
+        # Set version
+        self.__version__ = __iversion__
+        # Link to parent initial conditions object
         self._parent = ICobj
         # Check that sigma and rho have been generated
         if not hasattr(ICobj, 'rho'):
@@ -66,11 +76,31 @@ class pos:
         This is required to make the object pickle-able
         """
         
-        # Define a dictionary containing everything needed.  Ignore self.parent
+        # Define a dictionary containing everything needed.  
+        # Ignore self.parent
         state = self.__dict__.copy()
         state.pop('_parent', None)
         
+        # Now handle the possibly large arrays (too large to pickle)
+        for key,val in state.iteritems():
+            
+            if isinstance(val, np.ndarray):
+                
+                state[key] = ICgen_utils.listify(val, 1001)
+                
         return state
+        
+    def __setstate__(self, d):
+        """
+        This is required to make the object un-pickleable
+        """
+        for key, val in d.iteritems():
+            
+            if isinstance(val, ICgen_utils.larray):
+                
+                d[key] = val.delistify()
+                
+        self.__dict__ = d
         
     
     def _generate_r(self):
