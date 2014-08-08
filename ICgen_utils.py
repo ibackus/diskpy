@@ -16,7 +16,64 @@ import pynbody
 SimArray = pynbody.array.SimArray
 import os
 
+class larray(list):
+    """
+    A simple subclass of list for containing listified arrays
+    (see ICgen_utils.listify)
+    Should be instantiated by ICgen_utils.listify
+    
+    USAGE:
+    
+    Creating an larray object:
+    
+        a = larray() # blank larray
+        a = larray(shape) # sets a.shape = shape
+    
+    Then one can append to an larray just as with a list
+    
+        a.append(stuff)
+        
+    To return return a normal array:
+    
+        array = a.delistify()
+    """
+    
+    def __init__(self, shape = None):
+        
+        list.__init__(self)
+        self.shape = shape
+    
+    def delistify(self):
+        """
+        Return an array made from self.  See ICgen_utils.delistify
+        """
+        
+        return delistify(self)
+
 def listify(array, max_element=10**7):
+    """
+    Breaks up an array or SimArray into chunks and saves as an larray object
+    (essentially, a list).  Useful for pickling very large arrays which otherwise
+    may throw an error with pickle
+    
+    Whenever possible the array is NOT copied, rather a view is returned.  This
+    depends on the functionality of array.ravel() (see numpy.ravel)
+    
+    **ARGUMENTS**
+    
+    array : array_like or SimArray
+        Input array to listify
+    max_element : int
+        Maximimum number of elements per chunk (i.e., per list item)
+        
+    **RETURNS**
+    
+    list_array : larray
+        A listified array.  
+        
+    See Also : ICgen_utils.delistify
+    
+    """
     
     # Initialize
     shape = array.shape
@@ -28,8 +85,8 @@ def listify(array, max_element=10**7):
         
     else:
         
-        out_list = ['shape', shape]
-        array = np.ravel(array)
+        out_list = larray(shape)
+        array = array.ravel()
         
         # Number per slice
         N = int(max_element)
@@ -46,14 +103,34 @@ def listify(array, max_element=10**7):
         return out_list
     
 def delistify(in_list):
+    """
+    Reverses listify.
+    Takes an larray object (a listified array) and returns the original array
     
-    if isinstance(in_list, list):
+    **ARGUMENTS**
     
-        shape = in_list[1]
+    in_list : larray
+        Listified array
         
-        array = np.concatenate(in_list[2:])
+    **RETURNS**
+    
+    array : array_like or SimArray
+        array from the original data
         
-        return array.reshape(shape)
+    See Also : ICgen_utils.listify
+    """
+    
+    if isinstance(in_list, larray):
+        
+        if isinstance(in_list[0], SimArray):
+            
+            array = SimArray(np.concatenate(in_list), in_list[0].units)
+            
+        else:
+            
+            array = np.concatenate(in_list)
+        
+        return array.reshape(in_list.shape)
         
     else:
         
