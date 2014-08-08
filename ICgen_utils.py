@@ -16,6 +16,42 @@ import pynbody
 SimArray = pynbody.array.SimArray
 import os
 
+def listify(array, max_element=10**7):
+    
+    # Initialize
+    shape = array.shape
+    n_elements = np.prod(shape)
+    out_list = ['shape', shape]
+    array = np.ravel(array)
+    
+    if n_elements <= max_element:
+        
+        out_list.append(array)
+        
+    else:
+        
+        # Number per slice
+        N = int(max_element)
+        
+        counter = 0
+        i = 0
+        
+        while counter < n_elements:
+            
+            out_list.append(array[counter:counter+N])
+            i += 1
+            counter += N
+        
+    return out_list
+    
+def delistify(in_list):
+    
+    shape = in_list[1]
+    
+    array = np.concatenate(in_list[2:])
+    
+    return array.reshape(shape)    
+
 def est_eps(f, changa_preset=None, verbose=True, logfile_name=None):
     """
     Estimates the gravitational softening length for gas particles as 1/2 the 
