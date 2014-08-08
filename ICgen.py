@@ -239,7 +239,7 @@ def save(ICobj, filename=None):
             ICobj.snapshot.write(fmt = fmt, filename = fname)
         
     # Save the save dictionary
-    pickle.dump(save_dict,open(filename,'wb'))
+    pickle.dump(save_dict,open(filename,'wb'), protocol=2)
     print 'Initial conditions saved to {}'.format(filename)        
     
 def load(filename):
