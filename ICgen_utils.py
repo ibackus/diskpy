@@ -21,14 +21,15 @@ def listify(array, max_element=10**7):
     # Initialize
     shape = array.shape
     n_elements = np.prod(shape)
-    out_list = ['shape', shape]
-    array = np.ravel(array)
     
     if n_elements <= max_element:
         
-        out_list.append(array)
+        return array
         
     else:
+        
+        out_list = ['shape', shape]
+        array = np.ravel(array)
         
         # Number per slice
         N = int(max_element)
@@ -42,15 +43,21 @@ def listify(array, max_element=10**7):
             i += 1
             counter += N
         
-    return out_list
+        return out_list
     
 def delistify(in_list):
     
-    shape = in_list[1]
+    if isinstance(in_list, list):
     
-    array = np.concatenate(in_list[2:])
-    
-    return array.reshape(shape)    
+        shape = in_list[1]
+        
+        array = np.concatenate(in_list[2:])
+        
+        return array.reshape(shape)
+        
+    else:
+        
+        return in_list
 
 def est_eps(f, changa_preset=None, verbose=True, logfile_name=None):
     """
