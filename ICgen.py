@@ -226,7 +226,17 @@ def save(ICobj, filename=None):
         fmt = pynbody.tipsy.TipsySnap
         fname = ICobj.settings.filenames.snapshotName
         save_dict['snapshotName'] = fname
-        ICobj.snapshot.write(fmt = fmt, filename = fname)
+        
+        # Sometimes, saving the snapshot once raises an error.  Saving again
+        # can fix this for some reason
+        
+        try:
+            
+            ICobj.snapshot.write(fmt = fmt, filename = fname)
+            
+        except ValueError:
+            
+            ICobj.snapshot.write(fmt = fmt, filename = fname)
         
     # Save the save dictionary
     pickle.dump(save_dict,open(filename,'wb'))
@@ -309,23 +319,26 @@ def _upgrade_version(IC_input, version):
     """
     if version < 1:
         
+        warn('These ICs seem out of date.  Attempting to upgrade to current version')
+        
         # Assume IC_input is a dictionary
         # Needs the changa_run settings
             
         # Initialize empty, up-to-date settings
-        settings = ICgen_settings.settings()
+        new_settings = ICgen_settings.settings()
+        old_settings = IC_input['settings']
         
         if 'settings' in IC_input:
             
             # Load old settings, ignoring the snapshot gen settings
-            for key in IC_input['settings'].keys():
+            for key in old_settings.__dict__.keys():
                 
                 if key != 'snapshot':
                     
-                    settings.__dict__[key] = IC_input['settings'][key]
+                    new_settings.__dict__[key] = old_settings.__dict__[key]
                     
         # update the input dictionary
-        IC_input['settings'] = settings
+        IC_input['settings'] = new_settings
         
         
 class add:
