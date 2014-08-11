@@ -36,8 +36,9 @@ class pos:
 
     """
     
-    def __init__(self, ICobj, method = None, generate=True):
+    def __init__(self, ICobj, method = None, generate=True, seed=None):
         
+        self._seed = seed
         # Set version
         self.__version__ = __iversion__
         # Link to parent initial conditions object
@@ -123,6 +124,7 @@ class pos:
             
         if self.method == 'random':
             
+            np.random.seed(self._seed)
             m = np.random.rand(self.nParticles)
             r = cdf_inv_r(m)
             self.r = r
@@ -136,6 +138,7 @@ class pos:
         # The inverse CDF over z as a function of r
         cdf_inv_z = self._parent.rho.cdf_inv
         # Random numbers between 0 and 1
+        np.random.seed(self._seed)
         m = np.random.rand(self.nParticles)
         # Calculate z
         z = cdf_inv_z(m, self.r)
@@ -171,6 +174,7 @@ class pos:
             
         if self.method == 'random':
             
+            np.random.seed(self._seed)
             theta = 2*np.pi*np.random.rand(nParticles)
             self.theta = theta
             
