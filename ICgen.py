@@ -26,6 +26,7 @@ import make_snapshot
 import ICgen_settings
 import make_sigma
 import sigma_profile
+from ICglobal_settings import global_settings
 
 import isaac
 
