@@ -15,6 +15,11 @@ Created on Mon Jan 27 15:06:44 2014
 @author: ibackus
 """
 
+__version__ = "$Revision: 1 $"
+# $Source$
+
+__iversion__ = int(filter(str.isdigit,__version__))
+
 # ICgen packages
 import calc_rho
 import isaac
@@ -136,7 +141,7 @@ class rho_from_array:
         return self.rho(z,r)
     
     def _cdf_inv_gen(self, rho, z, r):
-        # Calculate the inverse CDF (kinda works?)
+        
         cdf_inv = []
         # Generate the inverse CDF
         for n in range(len(r)):
@@ -206,15 +211,26 @@ class rho_from_array:
         r_indices = np.digitize(r, self.r_bins)
         # Ignore values outside of the r range
         mask = (r >= self.r_bins.min()) & (r < self.r_bins.max())
-        z_ind = np.arange(n_pts)
+        z = z_out[mask]
+        r = r[mask]
+        r_indices = r_indices[mask]
+        m = m[mask]
         
-        # Now calculate the values of z_out
-        for i,j in zip(z_ind[mask], r_indices[mask]):
+        # Loop through all used radial bins
+        used_indices = set(r_indices)        
+        for i in used_indices:
             
-            z_lo = self._cdf_inv[j-1](m[i])
-            z_hi = self._cdf_inv[j](m[i])
-            z_out[i] = z_lo + ((z_hi-z_lo)/dr)*(r[[i]] - self.r_bins[[j-1]])
+            # Look at all particles in radial bin i
+            mask2 = (r_indices == i)
+            # Calculate z at the bin edges
+            z_lo = self._cdf_inv[i-1](m[mask2])
+            z_hi = self._cdf_inv[i](m[mask2])
+            # Linearly interpolate z from bin edges
+            z[mask2] = z_lo + ((z_hi-z_lo)/dr) * (r[mask2] - self.r_bins[[i-1]])
             
+        # Assign z for all particles within the bin range
+        z_out[mask] = z
+                    
         return z_out
             
 
