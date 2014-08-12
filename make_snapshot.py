@@ -63,37 +63,37 @@ def snapshot_gen(ICobj):
     # ------------------------------------
     print 'Running initial calculations'
     # Find total mass interior to every particle
-    N_interior = np.array(r.argsort().argsort())
-    m_int = m_particles[[0]]*N_interior + m_star
-    # Retrieve rho (density) at each position
-    rho = ICobj.rho(z,r)
-    # Retrieve radial derivative at each position
-    drho_dr = ICobj.rho.drho_dr(z,r)
+#    N_interior = np.array(r.argsort().argsort())
+#    m_int = m_particles[[0]]*N_interior + m_star
+#    # Retrieve rho (density) at each position
+#    rho = ICobj.rho(z,r)
+#    # Retrieve radial derivative at each position
+#    drho_dr = ICobj.rho.drho_dr(z,r)
     # Get temperature at each position
     T = ICobj.T(r)
     
-    # ------------------------------------
-    # Calculate particle velocities
-    # ------------------------------------
-    print 'Calculating initial guess for particle velocities'
-    # Find keperlerian velocity squared due to gravity
-    v2grav = G*m_int/r
-    # Find contribution from density gradient
-    v2dens = (kB*T/m)*(r*drho_dr/rho)
-    #       ignore nans and infs
-    v2dens[(np.isnan(v2dens)) | (np.isinf(v2dens))] = 0.0
-    # Find contribution from temperature gradient
-    
-    dT_dr = (ICobj.T(r+dr) - ICobj.T(r-dr))/(2*dr)
-    v2temp = r * dT_dr * kB/m
-    #v2temp = (kB*T/m)*Tpower
-    # Now find velocity from all contributions
-    v = np.sqrt(v2grav + v2dens + v2temp)
-    # Sometimes, at large r, the velocities due to the pressure and temp
-    # Gradients become negative.  If this is the case, set them to 0
-    # Also, the temperature gradient can become infinite at r=0
-    nanind = np.isnan(v) | np.isinf(v)
-    v[nanind] = 0.0
+#    # ------------------------------------
+#    # Calculate particle velocities
+#    # ------------------------------------
+#    print 'Calculating initial guess for particle velocities'
+#    # Find keperlerian velocity squared due to gravity
+#    v2grav = G*m_int/r
+#    # Find contribution from density gradient
+#    v2dens = (kB*T/m)*(r*drho_dr/rho)
+#    #       ignore nans and infs
+#    v2dens[(np.isnan(v2dens)) | (np.isinf(v2dens))] = 0.0
+#    # Find contribution from temperature gradient
+#    
+#    dT_dr = (ICobj.T(r+dr) - ICobj.T(r-dr))/(2*dr)
+#    v2temp = r * dT_dr * kB/m
+#    #v2temp = (kB*T/m)*Tpower
+#    # Now find velocity from all contributions
+#    v = np.sqrt(v2grav + v2dens + v2temp)
+#    # Sometimes, at large r, the velocities due to the pressure and temp
+#    # Gradients become negative.  If this is the case, set them to 0
+#    # Also, the temperature gradient can become infinite at r=0
+#    nanind = np.isnan(v) | np.isinf(v)
+#    v[nanind] = 0.0
     
     # -------------------------------------------------
     # Assign output
@@ -114,8 +114,8 @@ def snapshot_gen(ICobj):
     
     # 3-D velocity
     vel = SimArray(np.zeros([nParticles,3]),v_unit)
-    vel[:,0] = -np.sin(theta)*v
-    vel[:,1] = np.cos(theta)*v
+#    vel[:,0] = -np.sin(theta)*v
+#    vel[:,1] = np.cos(theta)*v
     
     # Generate positions
     xyz = SimArray(np.zeros([nParticles,3]),pos_unit)
