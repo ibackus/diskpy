@@ -152,12 +152,12 @@ def snapshot_gen(ICobj):
     
     # Estimate reasonable gravitational softening for the gas
     print 'Estimating gas gravitational softening'
-    preset = settings.snapshot.changa_run.preset
+    preset = settings.changa_run.preset
     snapshot.g['eps'] = ICgen_utils.est_eps(snapshot, preset)
     
     # CALCULATE VELOCITY USING calc_velocity.py
     print 'Calculating circular velocity'
-    vel = calc_velocity.v_xy(snapshot, param)
+    vel = calc_velocity.v_xy(snapshot, param, changa_preset=preset)
     snapshot.gas['vel'] = vel
     
     print 'Wrapping up'
