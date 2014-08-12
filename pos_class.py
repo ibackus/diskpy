@@ -68,9 +68,14 @@ class pos:
         
         # Generate positions
         self._generate_r()
+        self.xyz = SimArray(np.zeros([self.nParticles, 3]), self.r.units)
         self._generate_z()
         self._generate_theta()
         self._cartesian_pos()
+        
+        # To save on memory, delete theta.  It can be re-calculated later
+        # if absolutely needed
+        del self.theta
         
     def __getstate__(self):
         """
@@ -145,7 +150,8 @@ class pos:
         # Randomly select sign of z
         z = z * np.random.choice(np.array([-1,1]), self.nParticles)
         # Assign output
-        self.z = z
+        self.xyz[:,2] = z
+        #self.z = self.xyz[:,2]
         
     def _generate_theta(self):
         """
@@ -184,18 +190,6 @@ class pos:
         """
         
         r = self.r
-        z = self.z
         theta = self.theta
-        x = r*np.cos(theta)
-        y = r*np.sin(theta)
-        
-        xyz = np.zeros([self.nParticles, 3])
-        xyz = isaac.match_units(xyz, r)[0]
-        
-        xyz[:,0] = x
-        xyz[:,1] = y
-        xyz[:,2] = isaac.match_units(z, r)[0]
-        
-        self.x = x
-        self.y = y
-        self.xyz = xyz
+        self.xyz[:,0] = r*np.cos(theta)
+        self.xyz[:,1] = r*np.sin(theta)

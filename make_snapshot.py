@@ -29,7 +29,6 @@ def snapshot_gen(ICobj):
     print 'Generating snapshot...'
     # Constants
     G = SimArray(1.0,'G')
-    kB = SimArray(1.0,'k')
     # ------------------------------------
     # Load in things from ICobj
     # ------------------------------------
@@ -38,14 +37,10 @@ def snapshot_gen(ICobj):
     # snapshot file name
     snapshotName = settings.filenames.snapshotName
     # particle positions
-    theta = ICobj.pos.theta
     r = ICobj.pos.r
-    x = ICobj.pos.x
-    y = ICobj.pos.y
-    z = ICobj.pos.z
+    xyz = ICobj.pos.xyz
     # Number of particles
     nParticles = ICobj.pos.nParticles
-    dr = (ICobj.sigma.r_bins[[1]] - ICobj.sigma.r_bins[[0]])/10.0
     # molecular mass
     m = settings.physical.m
     # star mass
@@ -61,39 +56,8 @@ def snapshot_gen(ICobj):
     # ------------------------------------
     # Initial calculations
     # ------------------------------------
-    print 'Running initial calculations'
-    # Find total mass interior to every particle
-#    N_interior = np.array(r.argsort().argsort())
-#    m_int = m_particles[[0]]*N_interior + m_star
-#    # Retrieve rho (density) at each position
-#    rho = ICobj.rho(z,r)
-#    # Retrieve radial derivative at each position
-#    drho_dr = ICobj.rho.drho_dr(z,r)
-    # Get temperature at each position
+    print 'Calculating temperature'
     T = ICobj.T(r)
-    
-#    # ------------------------------------
-#    # Calculate particle velocities
-#    # ------------------------------------
-#    print 'Calculating initial guess for particle velocities'
-#    # Find keperlerian velocity squared due to gravity
-#    v2grav = G*m_int/r
-#    # Find contribution from density gradient
-#    v2dens = (kB*T/m)*(r*drho_dr/rho)
-#    #       ignore nans and infs
-#    v2dens[(np.isnan(v2dens)) | (np.isinf(v2dens))] = 0.0
-#    # Find contribution from temperature gradient
-#    
-#    dT_dr = (ICobj.T(r+dr) - ICobj.T(r-dr))/(2*dr)
-#    v2temp = r * dT_dr * kB/m
-#    #v2temp = (kB*T/m)*Tpower
-#    # Now find velocity from all contributions
-#    v = np.sqrt(v2grav + v2dens + v2temp)
-#    # Sometimes, at large r, the velocities due to the pressure and temp
-#    # Gradients become negative.  If this is the case, set them to 0
-#    # Also, the temperature gradient can become infinite at r=0
-#    nanind = np.isnan(v) | np.isinf(v)
-#    v[nanind] = 0.0
     
     # -------------------------------------------------
     # Assign output
@@ -102,26 +66,20 @@ def snapshot_gen(ICobj):
     # Get units all set up
     m_unit = m_star.units
     pos_unit = r.units
+    
+    if xyz.units != r.units:
+        
+        xyz.convert_units(pos_unit)
+        
     # time units are sqrt(L^3/GM)
     t_unit = np.sqrt((pos_unit**3)*np.power((G*m_unit), -1)).units
     # velocity units are L/t
     v_unit = (pos_unit/t_unit).ratio('km s**-1')
     # Make it a unit
     v_unit = pynbody.units.Unit('{} km s**-1'.format(v_unit))
-    x.convert_units(pos_unit)
-    y.convert_units(pos_unit)
-    z.convert_units(pos_unit)
     
     # 3-D velocity
     vel = SimArray(np.zeros([nParticles,3]),v_unit)
-#    vel[:,0] = -np.sin(theta)*v
-#    vel[:,1] = np.cos(theta)*v
-    
-    # Generate positions
-    xyz = SimArray(np.zeros([nParticles,3]),pos_unit)
-    xyz[:,0] = x
-    xyz[:,1] = y
-    xyz[:,2] = z
     
     # Other settings
     metals = settings.snapshot.metals
@@ -149,6 +107,7 @@ def snapshot_gen(ICobj):
     
     # Make param file
     param = isaac.make_param(snapshot, snapshotName)
+    param['dMeanMolWeight'] = m
     
     # Estimate reasonable gravitational softening for the gas
     print 'Estimating gas gravitational softening'
@@ -157,7 +116,7 @@ def snapshot_gen(ICobj):
     
     # CALCULATE VELOCITY USING calc_velocity.py
     print 'Calculating circular velocity'
-    vel = calc_velocity.v_xy(snapshot, param, changa_preset=preset)
+    vel = calc_velocity.v_xy(snapshot, param, changa_preset=preset,r=r)
     snapshot.gas['vel'] = vel
     
     print 'Wrapping up'

@@ -15,13 +15,10 @@ SimArray = pynbody.array.SimArray
 import isaac
 import ICgen_utils
 
-import subprocess
 import os
 import glob
 
-import time
-
-def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None):
+def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None,r=None):
     """
     Attempts to calculate the circular velocities for particles in a thin
     (not flat) keplerian disk.  Requires ChaNGa
@@ -44,6 +41,9 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None):
     changa_preset : str
         Which ChaNGa execution preset to use (ie 'mpi', 'local', ...).  See
         ICgen_utils.changa_command
+    r : SimArray (optional)
+        To save on memory, if the cylindrical radius r has already been calculated
+        it can be passed to this function
         
     **RETURNS**
     
@@ -52,17 +52,15 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None):
     """
     
     # Load stuff from the snapshot
-    x = f.g['x']
-    y = f.g['y']
+    if r is None:
+        
+        r = f.g['rxy']
+        
+    cosine = (f.g['x']/r).in_units('1')
+    sine = (f.g['y']/r).in_units('1')
     z = f.g['z']
-    r = f.g['rxy']
     vel0 = f.g['vel'].copy()
-    
-    # Remove units from all quantities
-    r = isaac.strip_units(r)
-    x = isaac.strip_units(x)
-    y = isaac.strip_units(y)
-    z = isaac.strip_units(z)
+    vel = f.g['vel'].copy()
     
     # Temporary filenames for running ChaNGa
     f_prefix = str(np.random.randint(0, 2**32))
@@ -102,17 +100,10 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None):
         # Clean-up
         for fname in glob.glob(f_prefix + '*'): os.remove(fname)
         
-        # If a is not a vector, calculate radial acceleration.  Otherwise, assume
-        # a is the radial acceleration                
-        a_r = a[:,0]*x/r + a[:,1]*y/r
-        
-        # Make sure the units are correct then remove them
-        a_r = isaac.match_units(a_r, a)[0]
-        a_r = isaac.strip_units(a_r)
-        
         # Calculate cos(theta) where theta is angle above x-y plane
-        cos = r/np.sqrt(r**2 + z**2)
-        ar2 = a_r*r**2
+        cos = (r/np.sqrt(r**2 + z**2)).in_units('1')
+        # Calculate radial acceleration times r^2
+        ar2 = (a[:,0]*cosine + a[:,1]*sine)*r**2
         
         # Bin the data
         r_edges = np.linspace(r.min(), (1+np.spacing(2))*r.max(), nr + 1)
@@ -139,12 +130,10 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None):
         b_spline = isaac.extrap1d(r_bins, b)
         
         # Calculate circular velocity
-        ar2_calc = m_spline(r)*cos + b_spline(r)
-        v_calc = np.sqrt(abs(ar2_calc)/r)
-        vel = f.g['vel'].copy()
-        v_calc = isaac.match_units(v_calc,vel)[0]
-        vel[:,0] = -v_calc*y/r
-        vel[:,1] = v_calc*x/r
+        ar2 = SimArray(m_spline(r)*cos + b_spline(r), ar2.units)
+        v_calc = (np.sqrt(abs(ar2)/r)).in_units(vel.units)
+        vel[:,0] = -v_calc*sine
+        vel[:,1] = v_calc*cosine
         
         # Assign to f
         f.g['vel'] = vel
@@ -153,7 +142,7 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None):
     # Estimate pressure/gas dynamics accelerations
     # --------------------------------------------
     a_grav = a
-    ar2_calc_grav = ar2_calc
+    ar2_calc_grav = ar2
     
     # Save files
     f.write(filename=f_name, fmt = pynbody.tipsy.TipsySnap)
@@ -173,9 +162,7 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None):
     
     # Estimate the accelerations due to pressure gradients/gas dynamics
     a_gas = a_total - a_grav
-    ar_gas = a_gas[:,0]*x/r + a_gas[:,1]*y/r
-    ar_gas = isaac.strip_units(ar_gas)
-    ar2_gas = ar_gas*r**2
+    ar2_gas = (a_gas[:,0]*cosine + a_gas[:,1]*sine)*r**2
     
     logr_bins, ratio, err = isaac.binned_mean(np.log(r), ar2_gas/ar2_calc_grav, nbins=nr,\
     weighted_bins=True)
@@ -183,13 +170,11 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None):
     ratio_spline = isaac.extrap1d(r_bins, ratio)
     
     ar2_calc = ar2_calc_grav*(1 + ratio_spline(r))
-    a_calc = ar2_calc/r**2
     
-    v = np.sqrt(r*abs(a_calc))
-    v = isaac.match_units(v, vel0.units)[0]
-    vel = vel0.copy()
-    vel[:,0] = -v*y/r
-    vel[:,1] = v*x/r
+    v = (np.sqrt(abs(ar2_calc)/r)).in_units(vel0.units)
+    
+    vel[:,0] = -v*sine
+    vel[:,1] = v*cosine
     
     # more cleanup
     f.g['vel'] = vel0
