@@ -26,12 +26,14 @@ def snapshot_gen(ICobj):
         param: dictionary containing info for a .param file
     """
     
+    print 'Generating snapshot...'
     # Constants
     G = SimArray(1.0,'G')
     kB = SimArray(1.0,'k')
     # ------------------------------------
     # Load in things from ICobj
     # ------------------------------------
+    print 'Accessing data from ICs'
     settings = ICobj.settings
     # snapshot file name
     snapshotName = settings.filenames.snapshotName
@@ -59,6 +61,7 @@ def snapshot_gen(ICobj):
     # ------------------------------------
     # Initial calculations
     # ------------------------------------
+    print 'Running initial calculations'
     # Find total mass interior to every particle
     N_interior = np.array(r.argsort().argsort())
     m_int = m_particles[[0]]*N_interior + m_star
@@ -72,6 +75,7 @@ def snapshot_gen(ICobj):
     # ------------------------------------
     # Calculate particle velocities
     # ------------------------------------
+    print 'Calculating initial guess for particle velocities'
     # Find keperlerian velocity squared due to gravity
     v2grav = G*m_int/r
     # Find contribution from density gradient
@@ -94,6 +98,7 @@ def snapshot_gen(ICobj):
     # -------------------------------------------------
     # Assign output
     # -------------------------------------------------
+    print 'Assigning data to snapshot'
     # Get units all set up
     m_unit = m_star.units
     pos_unit = r.units
@@ -146,13 +151,16 @@ def snapshot_gen(ICobj):
     param = isaac.make_param(snapshot, snapshotName)
     
     # Estimate reasonable gravitational softening for the gas
+    print 'Estimating gas gravitational softening'
     preset = settings.snapshot.changa_run.preset
     snapshot.g['eps'] = ICgen_utils.est_eps(snapshot, preset)
     
     # CALCULATE VELOCITY USING calc_velocity.py
+    print 'Calculating circular velocity'
     vel = calc_velocity.v_xy(snapshot, param)
     snapshot.gas['vel'] = vel
     
+    print 'Wrapping up'
     # Now set the star particle's tform to a negative number.  This allows
     # UW ChaNGa treat it as a sink particle.
     snapshot.star['tform'] = -1.0
