@@ -7,14 +7,18 @@ Created on Tue Aug  5 17:37:03 2014
 __version__ = "$Revision: 1 $"
 # $Source$
 
+# External modules
 import subprocess
 import multiprocessing
 import glob
 import numpy as np
-import isaac
 import pynbody
 SimArray = pynbody.array.SimArray
 import os
+
+# ICgen modules
+import isaac
+from ICglobal_settings import global_settings
 
 class larray(list):
     """
@@ -266,8 +270,8 @@ def changa_run(command, verbose = True, logfile_name=None, force_wait=False):
         p.wait()
         
     return p
-
-def changa_command(param_name, preset='local', changa_bin=None, changa_args='', runner_args=''):
+    
+def changa_command(param_name, preset=None, changa_bin=None, changa_args='', runner_args=''):
     """
     A utility for created command line commands for running ChaNGa
     
@@ -277,13 +281,8 @@ def changa_command(param_name, preset='local', changa_bin=None, changa_args='', 
         Filename of the .param file used for ChaNGa
     preset : str
         if None, the default preset is used
-        Default = 'local'
-        Defaults to use.  Options are
-            'none' (no arguments given)
-            'local'
-            'mpi'
+        Presets are defined in global_settings
     changa_bin : str
-        Default = None
         Path to the ChaNGa binary to use.  If None, defaults are used
         Overrides preset binary
     changa_args : str
@@ -297,70 +296,131 @@ def changa_command(param_name, preset='local', changa_bin=None, changa_args='', 
         A command line command for running ChaNGa
     """
     
-    # ******************************
-    # DEFAULT PRESET
-    # ******************************
+    # Contains all the presets
+    preset_dict = global_settings['changa_presets']
+    
+    # Load the preset    
     if preset is None:
         
-        preset = 'local'
+        preset = preset_dict['default']
         
-    # ******************************
-    # NONE PRESET
-    # ******************************
-    if preset == 'none':
-        
-        if changa_bin is None:
-            # Location of the default changa binary
-            changa_bin = os.popen('which ChaNGa').read().strip()
-        
-        command = '{} {} {} {}'.format(runner_args, changa_bin, \
-        changa_args, param_name)
-        command = ' '.join(command.split())
-        
-        return command
+    preset_list = preset_dict[preset]
     
-    # ******************************
-    # LOCAL PRESET
-    # ******************************
-    elif preset == 'local':
+    # Get full path to ChaNGa binary
+    if changa_bin is None:
         
-        # Number of processes to use
-        proc = multiprocessing.cpu_count() - 1
+        changa_bin = preset_list[2]
+    
+    changa_bin = os.popen('which ' + changa_bin).read().strip()
+    
+    if '' == changa_bin:
         
-        # location of the ChaNGa binary
-        if changa_bin is None:
-            
-            changa_bin = os.popen('which ChaNGa_sinks').read().strip()
-        
-        if proc < 1:
-            
-            proc = 1
-            
-        default_runner_args = '+p {} ++local'.format(proc)
-        default_changa_args = '-D 3 +consph'
-        runner = 'charmrun_sinks'
-        
-    # ******************************
-    # MPI PRESET
-    # ******************************
-    elif preset == 'mpi':
-        
-        if changa_bin is None:
-            
-            changa_bin = os.popen('which ChaNGa_uw_mpi').read().strip()
-        
-        default_runner_args = '--mca mtl mx --mca pml cm'
-        default_changa_args = '-D 3 +consph'
-        runner = 'mpirun'
-        
-    # ----------------------------------------------------------
-    # Add user supplied arguments
-    changa_args = ' '.join([default_changa_args, changa_args])
-    runner_args = ' '.join([default_runner_args, runner_args])
+        raise RuntimeError, 'Could not find ChaNGa.  Try different preset'
+    
+    # Merge user defined extra arguments    
+    runner_args = ' '.join([preset_list[1], runner_args])
+    changa_args = ' '.join([preset_list[3], changa_args])
+    runner = preset_list[0]
+    
     command = ' '.join([runner, runner_args, changa_bin, changa_args, param_name])
-    command = ' '.join(command.split())    
-        
-    return command
+    command = ' '.join(command.split())
+    
+    return command    
+
+#def changa_command(param_name, preset='local', changa_bin=None, changa_args='', runner_args=''):
+#    """
+#    A utility for created command line commands for running ChaNGa
+#    
+#    **ARGUMENTS**
+#    
+#    param_name : str
+#        Filename of the .param file used for ChaNGa
+#    preset : str
+#        if None, the default preset is used
+#        Default = 'local'
+#        Defaults to use.  Options are
+#            'none' (no arguments given)
+#            'local'
+#            'mpi'
+#    changa_bin : str
+#        Default = None
+#        Path to the ChaNGa binary to use.  If None, defaults are used
+#        Overrides preset binary
+#    changa_args : str
+#        Additional user supplied arguments for ChaNGa
+#    runner_args : str
+#        Additional user supplied arguments for the runner (ie charmrun or mpirun)
+#        
+#    **RETURNS**
+#    
+#    command : str
+#        A command line command for running ChaNGa
+#    """
+#    
+#    # ******************************
+#    # DEFAULT PRESET
+#    # ******************************
+#    if preset is None:
+#        
+#        preset = 'local'
+#        
+#    # ******************************
+#    # NONE PRESET
+#    # ******************************
+#    if preset == 'none':
+#        
+#        if changa_bin is None:
+#            # Location of the default changa binary
+#            changa_bin = os.popen('which ChaNGa').read().strip()
+#        
+#        command = '{} {} {} {}'.format(runner_args, changa_bin, \
+#        changa_args, param_name)
+#        command = ' '.join(command.split())
+#        
+#        return command
+#    
+#    # ******************************
+#    # LOCAL PRESET
+#    # ******************************
+#    elif preset == 'local':
+#        
+#        # Number of processes to use
+#        proc = multiprocessing.cpu_count() - 1
+#        
+#        # location of the ChaNGa binary
+#        if changa_bin is None:
+#            
+#            changa_bin = os.popen('which ChaNGa_sinks').read().strip()
+#        
+#        if proc < 1:
+#            
+#            proc = 1
+#            
+#        default_runner_args = '+p {} ++local'.format(proc)
+#        default_changa_args = '-D 3 +consph'
+#        runner = 'charmrun_sinks'
+#        
+#    # ******************************
+#    # MPI PRESET
+#    # ******************************
+#    elif preset == 'mpi':
+#        
+#        if changa_bin is None:
+#            
+#            changa_bin = os.popen('which ChaNGa_uw_mpi').read().strip()
+#        
+#        default_runner_args = '--mca mtl mx --mca pml cm'
+#        default_changa_args = '-D 3 +consph'
+#        runner = 'mpirun'
+#        
+#    # ----------------------------------------------------------
+#    # Add user supplied arguments
+#    changa_args = ' '.join([default_changa_args, changa_args])
+#    runner_args = ' '.join([default_runner_args, runner_args])
+#    command = ' '.join([runner, runner_args, changa_bin, changa_args, param_name])
+#    command = ' '.join(command.split())    
+#        
+#    return command
             
             
             

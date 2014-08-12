@@ -1,5 +1,18 @@
 # -*- coding: utf-8 -*-
 """
+This is the global settings module for ICgen.  To access the global settings,
+simply import them:
+
+    from ICglobal_settings import global_settings
+
+Changing/accessing settings is the same as for a dict, ie:
+    global_settings[key] = val
+    
+Settings can be saved via global_settings.save()
+
+Defaults can be restored by global_settings.restore_defaults()
+
+
 Created on Mon Aug 11 14:38:17 2014
 
 @author: ibackus
@@ -23,13 +36,8 @@ defaults = {}
 changa_presets = {}
 changa_presets['local'] = ['charmrun_sinks', '++local', 'ChaNGa_sinks', '-D 3 +consph']
 changa_presets['mpi'] = ['mpirun', '--mca mtl mx --mca pml cm', 'ChaNGa_uw_mpi', '-D 3 +consph']
+changa_presets['default'] = 'local'
 defaults['changa_presets'] = changa_presets
-
-# --------------------------------------------------------------
-# Now generate/load the global settings
-# --------------------------------------------------------------
-
-global_settings = settings()
 
 
 
@@ -120,3 +128,9 @@ class settings(dict):
     def save(self):
         
         pickle.dump(self, open(self.filename, 'wb'), 2)
+        
+# --------------------------------------------------------------
+# Now generate/load the global settings
+# --------------------------------------------------------------
+
+global_settings = settings()
