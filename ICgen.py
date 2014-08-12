@@ -287,6 +287,7 @@ def load(filename):
         
         print 'loading pos'
         ICobj.pos = input_dict['pos']
+        ICobj.pos._parent = ICobj
         
     if 'snapshotName' in input_dict:
         
