@@ -139,9 +139,45 @@ def delistify(in_list):
     else:
         
         return in_list
-
-def est_eps(f, changa_preset=None, verbose=True, logfile_name=None):
+        
+def est_eps(smoothlength_file):
     """
+    Estimate gravitational softening length (eps) from a ChaNGa output .smoothlength
+    file.  eps is estimated as 1/2 the mean smoothing length
+    
+    **ARGUENTS**
+    
+    smoothlength_file : str
+        Filename of the .smoothlength file
+        
+    **RETURNS**
+    
+    eps : float
+        Estimate of the gravitational softening length in simulation units
+    """
+    # Open ChaNGa output file containing smoothing lengths for all particles
+    f = open(smoothlength_file, 'r')
+    # Total number of particles (incl. star)
+    nParticles = int(f.readline().strip())
+    # Allocate smoothing length array    
+    smoothlength = np.zeros(nParticles, dtype=np.float32)
+    # Read smoothing lengths
+    for i, line in enumerate(f):
+        
+        smoothlength[i] = float(line.strip())
+        
+    # Calculate eps, ignoring star particle
+    mean_smooth = (smoothlength.sum() - smoothlength[-1])/(nParticles-1)
+    eps = mean_smooth/2
+    
+    return eps
+        
+    
+
+def est_eps_changa(f, changa_preset=None, verbose=True, logfile_name=None):
+    """
+    DEPRECATED
+    
     Estimates the gravitational softening length for gas particles as 1/2 the 
     mean SPH smoothing length.  Uses ChaNGa to calculate the smoothing length.
     

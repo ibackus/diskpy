@@ -18,10 +18,13 @@ import ICgen_utils
 import os
 import glob
 
-def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None,r=None):
+def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None,\
+r=None, calc_eps=False):
     """
     Attempts to calculate the circular velocities for particles in a thin
     (not flat) keplerian disk.  Requires ChaNGa
+    
+    Note that this will change the velocities IN f
     
     **ARGUMENTS**
     
@@ -44,11 +47,13 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None,r=N
     r : SimArray (optional)
         To save on memory, if the cylindrical radius r has already been calculated
         it can be passed to this function
+    calc_eps : bool (optional)
+        Specifies whether to also estimate the gravitational softening length
+        Default is False
         
     **RETURNS**
     
-    vel : SimArray
-        An N by 3 SimArray of gas particle velocities.
+    Nothing.  Velocities are updated within f
     """
     
     # Load stuff from the snapshot
@@ -59,8 +64,7 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None,r=N
     cosine = (f.g['x']/r).in_units('1')
     sine = (f.g['y']/r).in_units('1')
     z = f.g['z']
-    vel0 = f.g['vel'].copy()
-    vel = f.g['vel'].copy()
+    vel = f.g['vel']
     
     # Temporary filenames for running ChaNGa
     f_prefix = str(np.random.randint(0, 2**32))
@@ -78,20 +82,27 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None,r=N
     # --------------------------------------------
     # Estimate velocity from gravity only
     # --------------------------------------------
-    # Note, accelerations due to gravity are calculated twice to be extra careful
-    # This is so that any velocity dependent effects are properly accounted for
-    # (although, ideally, there should be none)
-    # The second calculation uses the updated velocities from the first
     for iGrav in range(2):
         # Save files
         f.write(filename=f_name, fmt = pynbody.tipsy.TipsySnap)
         isaac.configsave(p_temp, p_name, ftype='param')
         
-        # Run ChaNGa, only calculating gravity
-        command = ICgen_utils.changa_command(p_name, changa_preset, changbin, '-gas +n 0')
+        if iGrav == 0:
+            # Run ChaNGa calculating all forces (for initial run)
+            command = ICgen_utils.changa_command(p_name, changa_preset, changbin, '+gas +n 0')
+        else:
+            # Run ChaNGa, only calculating gravity (on second run)
+            command = ICgen_utils.changa_command(p_name, changa_preset, changbin, '-gas +n 0')
+            
         print command
         p = ICgen_utils.changa_run(command)
-        p.wait()            
+        p.wait()
+        
+        if (iGrav == 0) & (calc_eps):
+            # Estimate the gravitational softening length
+            smoothlength_file = f_prefix + '.000000.smoothlength'
+            eps = ICgen_utils.est_eps(smoothlength_file)
+            f.g['eps'] = eps
     
         # Load accelerations
         acc_name = f_prefix + '.000000.acc2'
@@ -171,12 +182,9 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None,r=N
     
     ar2_calc = ar2_calc_grav*(1 + ratio_spline(r))
     
-    v = (np.sqrt(abs(ar2_calc)/r)).in_units(vel0.units)
+    v = (np.sqrt(abs(ar2_calc)/r)).in_units(f.g['vel'].units)
     
     vel[:,0] = -v*sine
     vel[:,1] = v*cosine
     
-    # more cleanup
-    f.g['vel'] = vel0
-    
-    return vel
+    return
