@@ -40,8 +40,9 @@ changa_presets['default'] = 'local'
 defaults['changa_presets'] = changa_presets
 
 
-
+# --------------------------------------------------------------
 # Settings class
+# --------------------------------------------------------------
 
 class settings(dict):
     """
