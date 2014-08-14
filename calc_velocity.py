@@ -17,6 +17,7 @@ import ICgen_utils
 
 import os
 import glob
+import gc
 
 def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None,\
 r=None, calc_eps=False):
@@ -107,6 +108,7 @@ r=None, calc_eps=False):
         # Load accelerations
         acc_name = f_prefix + '.000000.acc2'
         a = isaac.load_acc(acc_name)
+        gc.collect()
         
         # Clean-up
         for fname in glob.glob(f_prefix + '*'): os.remove(fname)
