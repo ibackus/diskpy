@@ -155,7 +155,7 @@ class settings(dict):
             
             if 'PBS_NODEFILE' not in os.environ:
                 
-                nodelist = [node_info['HOSTNAME']]
+                nodelist = [node_info['hostname']]
                 
             else:
                 
@@ -170,7 +170,7 @@ class settings(dict):
             
         else:
             # Assume there's no scheduler
-            return [node_info['HOSTNAME']]
+            return [node_info['hostname']]
         
         node_info['nodelist'] = nodelist
         secondary_nodes = set(node_info['nodelist'])
