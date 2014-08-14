@@ -11,6 +11,7 @@ __version__ = "$Revision: 1 $"
 import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
+import gc
 
 import isaac
 import calc_velocity
@@ -49,15 +50,15 @@ def snapshot_gen(ICobj):
     m_disk = ICobj.sigma.m_disk.copy()
     m_disk = isaac.match_units(m_disk, m_star)[0]
     # mass of the gas particles
-    m_particles = np.ones(nParticles) * m_disk / float(nParticles)
+    m_particles = m_disk / float(nParticles)
     # re-scale the particles (allows making of lo-mass disk)
     m_particles *= settings.snapshot.mScale
     
-    # ------------------------------------
-    # Initial calculations
-    # ------------------------------------
-    print 'Calculating temperature'
-    T = ICobj.T(r)
+#    # ------------------------------------
+#    # Initial calculations
+#    # ------------------------------------
+#    print 'Calculating temperature'
+#    T = ICobj.T(r)
     
     # -------------------------------------------------
     # Assign output
@@ -78,24 +79,29 @@ def snapshot_gen(ICobj):
     # Make it a unit
     v_unit = pynbody.units.Unit('{} km s**-1'.format(v_unit))
     
-    # 3-D velocity
-    vel = SimArray(np.zeros([nParticles,3]),v_unit)
+#    # 3-D velocity
+#    vel = SimArray(np.zeros([nParticles,3]),v_unit)
     
     # Other settings
     metals = settings.snapshot.metals
     star_metals = metals
-    metals *= SimArray(np.ones(nParticles))
     
     # Generate snapshot
+    # Note that empty pos, vel, and mass arrays are created in the snapshot
     snapshot = pynbody.new(star=1,gas=nParticles)
-    snapshot.gas['vel'] = vel
+    snapshot['vel'].units = v_unit
+    snapshot['eps'] = 0.01*SimArray(np.ones(nParticles+1, dtype=np.float32), pos_unit)
+    snapshot['metals'] = SimArray(np.zeros(nParticles+1, dtype=np.float32))
+    snapshot['rho'] = SimArray(np.zeros(nParticles+1, dtype=np.float32))
+    
+#    snapshot.gas['vel'] = vel
     snapshot.gas['pos'] = xyz
-    snapshot.gas['temp'] = T
+    snapshot.gas['temp'] = ICobj.T(r)
     snapshot.gas['mass'] = m_particles
     snapshot.gas['metals'] = metals
     # Initial eps...totally arbitrary (it gets estimated below)
-    snapshot.gas['eps'] = 0.01
-    snapshot.gas['rho'] = 0
+    #snapshot.gas['eps'] = 0.01
+    #snapshot.gas['rho'] = 0
     
     snapshot.star['pos'] = SimArray([[ 0.,  0.,  0.]],pos_unit)
     snapshot.star['vel'] = SimArray([[ 0.,  0.,  0.]], v_unit)
@@ -103,7 +109,7 @@ def snapshot_gen(ICobj):
     snapshot.star['metals'] = SimArray(star_metals)
     # Estimate the star's softening length as the closest particle distance
     snapshot.star['eps'] = r.min()
-    snapshot.star['rho'] = 0
+    #snapshot.star['rho'] = 0
     
     # Make param file
     param = isaac.make_param(snapshot, snapshotName)
@@ -112,9 +118,13 @@ def snapshot_gen(ICobj):
     # Estimate reasonable gravitational softening for the gas
     preset = settings.changa_run.preset
     
+    gc.collect()
+    
     # CALCULATE VELOCITY USING calc_velocity.py
     print 'Calculating circular velocity'
     calc_velocity.v_xy(snapshot, param, changa_preset=preset,r=r,calc_eps=True)
+    
+    gc.collect()
     
     print 'Wrapping up'
     # Now set the star particle's tform to a negative number.  This allows
@@ -122,7 +132,7 @@ def snapshot_gen(ICobj):
     snapshot.star['tform'] = -1.0
     
     # Update params
-    r_sink = isaac.strip_units(snapshot.g['rxy'].min())
+    r_sink = isaac.strip_units(r.min())
     param['dSinkBoundOrbitRadius'] = r_sink
     param['dSinkRadius'] = r_sink
     param['dSinkMassMin'] = 0.9 * isaac.strip_units(m_star)

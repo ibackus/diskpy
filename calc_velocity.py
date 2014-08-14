@@ -60,12 +60,13 @@ r=None, calc_eps=False):
     # Load stuff from the snapshot
     if r is None:
         
-        r = f.g['rxy']
+        r = f.g['rxy'].astype(np.float32)
         
-    cosine = (f.g['x']/r).in_units('1')
-    sine = (f.g['y']/r).in_units('1')
+    cosine = (f.g['x']/r).in_units('1').astype(np.float32)
+    sine = (f.g['y']/r).in_units('1').astype(np.float32)
     z = f.g['z']
     vel = f.g['vel']
+    a = None # arbitrary initialization
     
     # Temporary filenames for running ChaNGa
     f_prefix = str(np.random.randint(0, 2**32))
@@ -107,14 +108,16 @@ r=None, calc_eps=False):
     
         # Load accelerations
         acc_name = f_prefix + '.000000.acc2'
-        a = isaac.load_acc(acc_name)
+        del a
+        gc.collect()
+        a = isaac.load_acc(acc_name, low_mem=True)
         gc.collect()
         
         # Clean-up
         for fname in glob.glob(f_prefix + '*'): os.remove(fname)
         
         # Calculate cos(theta) where theta is angle above x-y plane
-        cos = (r/np.sqrt(r**2 + z**2)).in_units('1')
+        cos = (r/np.sqrt(r**2 + z**2)).in_units('1').astype(np.float32)
         # Calculate radial acceleration times r^2
         ar2 = (a[:,0]*cosine + a[:,1]*sine)*r**2
         
@@ -126,6 +129,8 @@ r=None, calc_eps=False):
         
         r_bins, ar2_mean, err = isaac.binned_mean(r, ar2, binedges=r_edges, \
         weighted_bins=True)
+        
+        gc.collect()
         
         # Fit lines to ar2 vs cos for each radial bin
         m = np.zeros(nr)
@@ -144,18 +149,17 @@ r=None, calc_eps=False):
         
         # Calculate circular velocity
         ar2 = SimArray(m_spline(r)*cos + b_spline(r), ar2.units)
+        gc.collect()
         v_calc = (np.sqrt(abs(ar2)/r)).in_units(vel.units)
+        gc.collect()
         vel[:,0] = -v_calc*sine
         vel[:,1] = v_calc*cosine
-        
-        # Assign to f
-        f.g['vel'] = vel
+        del v_calc
+        gc.collect()
         
     # --------------------------------------------
     # Estimate pressure/gas dynamics accelerations
     # --------------------------------------------
-    a_grav = a
-    ar2_calc_grav = ar2
     
     # Save files
     f.write(filename=f_name, fmt = pynbody.tipsy.TipsySnap)
@@ -168,23 +172,34 @@ r=None, calc_eps=False):
         
     # Load accelerations
     acc_name = f_prefix + '.000000.acc2'
-    a_total = isaac.load_acc(acc_name)
+    a_total = isaac.load_acc(acc_name, low_mem=True)
+    gc.collect()
     
     # Clean-up
     for fname in glob.glob(f_prefix + '*'): os.remove(fname)
     
     # Estimate the accelerations due to pressure gradients/gas dynamics
-    a_gas = a_total - a_grav
+    a_gas = a_total - a
+    del a_total, a
+    gc.collect()
     ar2_gas = (a_gas[:,0]*cosine + a_gas[:,1]*sine)*r**2
+    del a_gas
+    gc.collect()
     
-    logr_bins, ratio, err = isaac.binned_mean(np.log(r), ar2_gas/ar2_calc_grav, nbins=nr,\
+    logr_bins, ratio, err = isaac.binned_mean(np.log(r), ar2_gas/ar2, nbins=nr,\
     weighted_bins=True)
     r_bins = np.exp(logr_bins)
+    del ar2_gas
+    gc.collect()
     ratio_spline = isaac.extrap1d(r_bins, ratio)
     
-    ar2_calc = ar2_calc_grav*(1 + ratio_spline(r))
+    ar2_calc = ar2*(1 + ratio_spline(r))
+    del ar2
+    gc.collect()
     
     v = (np.sqrt(abs(ar2_calc)/r)).in_units(f.g['vel'].units)
+    del ar2_calc
+    gc.collect()
     
     vel[:,0] = -v*sine
     vel[:,1] = v*cosine
