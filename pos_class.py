@@ -68,7 +68,7 @@ class pos:
         
         # Generate positions
         self._generate_r()
-        self.xyz = SimArray(np.zeros([self.nParticles, 3]), self.r.units)
+        self.xyz = SimArray(np.zeros([self.nParticles, 3], dtype=np.float32), self.r.units)
         self._generate_z()
         self._generate_theta()
         self._cartesian_pos()
@@ -123,7 +123,7 @@ class pos:
             # necessary to avoid boundary issues
             m = np.linspace(0,1,self.nParticles + 2)
             # Calculate r from inverse CDF
-            r = cdf_inv_r(m[1:-1])
+            r = cdf_inv_r(m[1:-1]).astype(np.float32)
             # Assign output
             self.r = r
             
@@ -131,7 +131,7 @@ class pos:
             
             np.random.seed(self._seed)
             m = np.random.rand(self.nParticles)
-            r = cdf_inv_r(m)
+            r = cdf_inv_r(m).astype(np.float32)
             self.r = r
             
     def _generate_z(self):
@@ -151,7 +151,6 @@ class pos:
         z = z * np.random.choice(np.array([-1,1]), self.nParticles)
         # Assign output
         self.xyz[:,2] = z
-        #self.z = self.xyz[:,2]
         
     def _generate_theta(self):
         """
