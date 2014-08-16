@@ -172,9 +172,11 @@ def save(ICobj, filename=None):
         save_dict['version'] = ICobj.__version__
         
     # --------------------------------------------------
-    # GET SETTINGS
+    # GET SETTINGS/save a copy
     # --------------------------------------------------
     save_dict['settings'] = ICobj.settings
+    settings_name = os.path.splitext(filename)[0] + '_settings.p'
+    ICobj.settings.save(settings_name)
     
     # --------------------------------------------------
     # Prepare rho, if available
