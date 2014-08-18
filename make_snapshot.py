@@ -12,6 +12,7 @@ import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
 import gc
+import os
 
 import isaac
 import calc_velocity
@@ -139,3 +140,37 @@ def snapshot_gen(ICobj):
     param['bDoSinks'] = 1
     
     return snapshot, param
+    
+def make_director(ICobj, res=1200):
+    
+    director = {}
+    director['render'] = 'tsc'
+    director['FOV'] = 45.0
+    director['clip'] = [0.0001, 500]
+    director['up'] = [1, 0, 0]
+    director['project'] = 'ortho'
+    director['softgassph'] = 'softgassph'
+    director['physical'] = 'physical'
+    director['size'] = [res, res]
+    
+    sig_set = ICobj.settings.sigma
+    mScale = ICobj.settings.snapshot.mScale
+    snapshot_name = ICobj.settings.filenames.snapshotName
+    f_prefix = os.path.splitext(os.path.basename(snapshot_name))[0]
+    
+    director['file'] = f_prefix
+    
+    
+    if sig_set.kind == 'MQWS':
+        
+        rmax = sig_set.rout + 3*sig_set.rin
+        zmax = float(rmax)
+        director['eye'] = [0, 0, zmax]
+        vmin = float(ICobj.rho(0, rmax))
+        vmax = float(ICobj.rho.rho_binned[0,:].max())
+        vmax *= mScale
+        director['logscale'] = [vmin, 10*vmax]
+        director['colgas'] = [1, 1, 1]
+        
+    return director
+        
