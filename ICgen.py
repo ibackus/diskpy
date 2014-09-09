@@ -131,13 +131,20 @@ class IC:
             # Find the last completed step
             if hasattr(self, 'pos'): initial_step = 3
             elif hasattr(self, 'rho'): initial_step = 2
-            else: initial_step = 1
+            elif hasattr(self, 'sigma'): initial_step = 1
+            else: initial_step = 0
         
         else:
             
-            initial_step = 1
+            initial_step = 0
         
         self.save()
+        
+        if initial_step <= 0:
+            
+            # Generate sigma
+            self.maker.sigma_gen()
+            self.save()
         
         if initial_step <= 1:
             
