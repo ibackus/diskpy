@@ -69,6 +69,19 @@ def rho_zr(ICobj):
     nz = settings.rho_calc.nz
     rmin = ICobj.sigma.r_bins.min()
     rmax = ICobj.sigma.r_bins.max()
+    
+    if settings.rho_calc.zmax is None:
+        
+        G = SimArray(1.0,'G')
+        kB = SimArray(1.0, 'k')
+        T = ICobj.T(rmax)
+        M = settings.physical.M
+        m = settings.physical.m
+        
+        zmax = 2 * np.sqrt(kB*T*np.power(rmax,3)/(G*M*m))
+        zmax.convert_units(rmax.units)
+        settings.rho_calc.zmax = zmax
+        
     # Initialize r,z, and rho
     r = np.linspace(rmin,rmax,nr)
     rho = SimArray(np.zeros([nz,nr]), 'Msol au**-3')
