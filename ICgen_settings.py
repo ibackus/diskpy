@@ -221,8 +221,8 @@ class rho_calc:
         # The number of vertical points to calculate rho(z,r) at
         self.nz = 1000
         # The maximum z (assumed to be au) to calculate rho(z,r) at.  Outside zmax,
-        # rho = 0
-        self.zmax = SimArray(1.0, 'au')
+        # rho = 0.  If None, zmax is twice the scale height at rmax
+        None
         # Numerical parameter.  During the calculation of rho(z) for a given r.  See
         # the doc-string for calc_rho.py
         self.rho_tol = 1.001
