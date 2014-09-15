@@ -267,21 +267,28 @@ def load(filename):
     
     _upgrade_version(input_dict, version)
     
-    # Load sigma stuff
-    sigma = input_dict['sigma']['sigma']
-    r = input_dict['sigma']['r']
-    
-    # Initialize ICobj
-    if 'CDF' in input_dict:
-        
-        CDF = input_dict['CDF']
-        ICobj = IC(r, sigma, CDF)
-        
-    else:
-    
-        ICobj = IC(r, sigma)
-    
     # Parse the input dictionary
+    
+    if 'sigma' in input_dict:
+        
+        # Load sigma stuff
+        sigma = input_dict['sigma']['sigma']
+        r = input_dict['sigma']['r']
+        
+        # Initialize ICobj
+        if 'CDF' in input_dict:
+            
+            CDF = input_dict['CDF']
+            ICobj = IC(r, sigma, CDF)
+            
+        else:
+        
+            ICobj = IC(r, sigma)
+            
+    else:
+        # Initialize blank IC object, sigma has not been generated yet
+        ICobj = IC()        
+    
     if 'settings' in input_dict:
 
         print 'loading settings'        
