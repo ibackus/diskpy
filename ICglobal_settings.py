@@ -31,6 +31,12 @@ _filename = os.path.join(_dir, 'global_settings.p')
 # --------------------------------------------------------------
 defaults = {}
 
+# ***** Misc *****
+misc = {}
+# Maximum number of particles used in calculating velocities
+misc['max_particles'] = int(1e7)
+defaults['misc'] = misc
+
 # ***** Cluster presets *****
 node_info = {}
 node_info['scheduler'] = 'PBS'

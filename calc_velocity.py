@@ -19,11 +19,13 @@ import os
 import glob
 import gc
 
-def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None,\
-r=None, calc_eps=False):
+def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None, max_particles=None):
     """
     Attempts to calculate the circular velocities for particles in a thin
-    (not flat) keplerian disk.  Requires ChaNGa
+    (not flat) keplerian disk.  Also estimates gravitational softening (eps)
+    for the gas particles.
+    
+    Requires ChaNGa
     
     Note that this will change the velocities IN f
     
@@ -45,22 +47,38 @@ r=None, calc_eps=False):
     changa_preset : str
         Which ChaNGa execution preset to use (ie 'mpi', 'local', ...).  See
         ICgen_utils.changa_command
-    r : SimArray (optional)
-        To save on memory, if the cylindrical radius r has already been calculated
-        it can be passed to this function
-    calc_eps : bool (optional)
-        Specifies whether to also estimate the gravitational softening length
-        Default is False
+    max_particles : int or None
+        Specifies the maximum number of particles to use for calculating
+        accelerations and velocities.  Setting a smaller number can speed up
+        computation and save on memory but can yield noisier results.
+        If None, max is unlimited.
         
     **RETURNS**
     
-    Nothing.  Velocities are updated within f
+    Nothing.  Velocities are updated within f as is eps
     """
-    
-    # Load stuff from the snapshot
-    if r is None:
+    # If the snapshot has too many particles, randomly select gas particles
+    # To use for calculating velocity and make a view of the snapshot
+    n_gas = len(f) - 1
+    subview = (n_gas > max_particles) and (max_particles is not None)
+    if subview:
         
-        r = f.g['rxy'].astype(np.float32)
+        max_particles = int(max_particles)
+        mask = np.zeros(n_gas + 1, dtype=bool)
+        mask[-1] = True # Use the star particle always
+        # randomly select particles to use
+        m = np.random.rand(n_gas)
+        ind = m.argsort()[0:max_particles]
+        mask[ind] = True
+        # Make a subview and create a reference to the complete snapshot
+        complete_snapshot = f
+        f = complete_snapshot[mask]
+        # Scale gas mass
+        m_scale = float(n_gas)/float(max_particles)
+        f.g['mass'] *= m_scale
+        
+    # Load stuff from the snapshot
+    r = f.g['rxy'].astype(np.float32)
         
     cosine = (f.g['x']/r).in_units('1').astype(np.float32)
     sine = (f.g['y']/r).in_units('1').astype(np.float32)
@@ -100,8 +118,8 @@ r=None, calc_eps=False):
         p = ICgen_utils.changa_run(command)
         p.wait()
         
-        if (iGrav == 0) & (calc_eps):
-            # Estimate the gravitational softening length
+        if iGrav == 0:
+            # Estimate the gravitational softening length on the first iteration
             smoothlength_file = f_prefix + '.000000.smoothlength'
             eps = ICgen_utils.est_eps(smoothlength_file)
             f.g['eps'] = eps
@@ -193,10 +211,33 @@ r=None, calc_eps=False):
     gc.collect()
     ratio_spline = isaac.extrap1d(r_bins, ratio)
     
+    # If not all the particles were used for calculating velocity,
+    # Make sure to use them now
+    if subview:
+        
+        # Re-scale mass back to normal
+        f.g['mass'] /= m_scale
+        # Scale eps appropriately
+        f.g['eps'] /= m_scale**(1.0/3)
+        complete_snapshot.g['eps'] = f.g['eps'][[0]]
+        
+        # Rename complete snapshot
+        f = complete_snapshot
+        # Calculate stuff for all particles
+        r = f.g['rxy']
+        z = f.g['z']
+        cos = (r/np.sqrt(r**2 + z**2)).in_units('1').astype(np.float32)
+        ar2 = SimArray(m_spline(r)*cos + b_spline(r), ar2.units)
+        cosine = (f.g['x']/r).in_units('1').astype(np.float32)
+        sine = (f.g['y']/r).in_units('1').astype(np.float32)
+        vel = f.g['vel']
+        
+    
     ar2_calc = ar2*(1 + ratio_spline(r))
     del ar2
     gc.collect()
     
+    # Calculate velocity
     v = (np.sqrt(abs(ar2_calc)/r)).in_units(f.g['vel'].units)
     del ar2_calc
     gc.collect()

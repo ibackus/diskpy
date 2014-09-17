@@ -17,6 +17,8 @@ import os
 import isaac
 import calc_velocity
 import ICgen_utils
+import ICglobal_settings
+global_settings = ICglobal_settings.global_settings
 
 def snapshot_gen(ICobj):
     """
@@ -55,12 +57,6 @@ def snapshot_gen(ICobj):
     # re-scale the particles (allows making of lo-mass disk)
     m_particles *= settings.snapshot.mScale
     
-#    # ------------------------------------
-#    # Initial calculations
-#    # ------------------------------------
-#    print 'Calculating temperature'
-#    T = ICobj.T(r)
-    
     # -------------------------------------------------
     # Assign output
     # -------------------------------------------------
@@ -80,9 +76,6 @@ def snapshot_gen(ICobj):
     # Make it a unit
     v_unit = pynbody.units.Unit('{} km s**-1'.format(v_unit))
     
-#    # 3-D velocity
-#    vel = SimArray(np.zeros([nParticles,3]),v_unit)
-    
     # Other settings
     metals = settings.snapshot.metals
     star_metals = metals
@@ -95,14 +88,10 @@ def snapshot_gen(ICobj):
     snapshot['metals'] = SimArray(np.zeros(nParticles+1, dtype=np.float32))
     snapshot['rho'] = SimArray(np.zeros(nParticles+1, dtype=np.float32))
     
-#    snapshot.gas['vel'] = vel
     snapshot.gas['pos'] = xyz
     snapshot.gas['temp'] = ICobj.T(r)
     snapshot.gas['mass'] = m_particles
     snapshot.gas['metals'] = metals
-    # Initial eps...totally arbitrary (it gets estimated below)
-    #snapshot.gas['eps'] = 0.01
-    #snapshot.gas['rho'] = 0
     
     snapshot.star['pos'] = SimArray([[ 0.,  0.,  0.]],pos_unit)
     snapshot.star['vel'] = SimArray([[ 0.,  0.,  0.]], v_unit)
@@ -110,20 +99,19 @@ def snapshot_gen(ICobj):
     snapshot.star['metals'] = SimArray(star_metals)
     # Estimate the star's softening length as the closest particle distance
     snapshot.star['eps'] = r.min()
-    #snapshot.star['rho'] = 0
     
     # Make param file
     param = isaac.make_param(snapshot, snapshotName)
     param['dMeanMolWeight'] = m
-    
-    # Estimate reasonable gravitational softening for the gas
-    preset = settings.changa_run.preset
-    
+       
     gc.collect()
     
-    # CALCULATE VELOCITY USING calc_velocity.py
+    # CALCULATE VELOCITY USING calc_velocity.py.  This also estimates the 
+    # gravitational softening length eps
     print 'Calculating circular velocity'
-    calc_velocity.v_xy(snapshot, param, changa_preset=preset,r=r,calc_eps=True)
+    preset = settings.changa_run.preset
+    max_particles = global_settings['misc']['max_particles']
+    calc_velocity.v_xy(snapshot, param, changa_preset=preset, max_particles=max_particles)
     
     gc.collect()
     
