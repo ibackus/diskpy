@@ -292,7 +292,7 @@ def rho_z(sigma, T, r, settings):
         
     if n >= maxiter:
         
-        print 'Warning: solution to rho did not converge for r = {}'.format(r)
+        print 'Warning: solution to rho did not converge for r = {0}'.format(r)
     
     # Re-introduce units
     rho0 = isaac.set_units(rho0, mass_unit/length_unit**3)

@@ -117,7 +117,7 @@ class settings(dict):
                 if isinstance(val, dict):
                     
                     print ''
-                    print wrapper.fill('{}'.format(key))
+                    print wrapper.fill('{0}'.format(key))
                     #print n_tabs*'  ', key, ':'
                     print_dict(val, n_tabs+1)
                     print ''
@@ -125,7 +125,7 @@ class settings(dict):
                 else:
                     
                     #print n_tabs*'  ',key,val
-                    print wrapper.fill('{} : {}'.format(key,val))
+                    print wrapper.fill('{0} : {1}'.format(key,val))
                     
         print '**** GLOBAL SETTINGS ****'
         print_dict(self)

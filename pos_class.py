@@ -63,7 +63,7 @@ class pos:
             ICobj.settings.pos_gen.method = method
             
         self.nParticles = ICobj.settings.pos_gen.nParticles
-        print 'Generating {} particle positions using method: {}'.format(\
+        print 'Generating {0} particle positions using method: {1}'.format(\
         self.nParticles, self.method)
         
         # Generate positions

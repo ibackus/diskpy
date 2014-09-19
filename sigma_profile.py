@@ -41,7 +41,7 @@ def make_profile(ICobj):
         
     else:
         
-        raise TypeError, 'Could not make profile for kind {}'.format(kind)
+        raise TypeError, 'Could not make profile for kind {0}'.format(kind)
     
     return r, sigma
     

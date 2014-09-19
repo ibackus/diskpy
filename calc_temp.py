@@ -87,7 +87,7 @@ class T:
             
         else:
             
-            raise TypeError, 'Could not find temperature kind {}'.format(kind)
+            raise TypeError, 'Could not find temperature kind {0}'.format(kind)
         
         if hasattr(params, 'Tmax'):
             Tmax = params.Tmax

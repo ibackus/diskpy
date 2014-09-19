@@ -86,9 +86,9 @@ class filenames:
         for key,val in self.__dict__.iteritems():
             
             if pynbody.units.has_units(val):
-                print '{} : {} {}'.format(key,val,val.units)
+                print '{0} : {1} {2}'.format(key,val,val.units)
             else:
-                print '{} : {}'.format(key,val)
+                print '{0} : {1}'.format(key,val)
             
 class physical:
     """
@@ -128,9 +128,9 @@ class physical:
         for key,val in self.__dict__.iteritems():
             
             if pynbody.units.has_units(val):
-                print '{} : {} {}'.format(key,val,val.units)
+                print '{0} : {1} {2}'.format(key,val,val.units)
             else:
-                print '{} : {}'.format(key,val)
+                print '{0} : {1}'.format(key,val)
         
 class sigma:
     """
@@ -199,9 +199,9 @@ class sigma:
         for key,val in self.__dict__.iteritems():
             
             if pynbody.units.has_units(val):
-                print '{} : {} {}'.format(key,val,val.units)
+                print '{0} : {1} {2}'.format(key,val,val.units)
             else:
-                print '{} : {}'.format(key,val)
+                print '{0} : {1}'.format(key,val)
 
 class rho_calc:
     """
@@ -236,9 +236,9 @@ class rho_calc:
         for key,val in self.__dict__.iteritems():
             
             if pynbody.units.has_units(val):
-                print '{} : {} {}'.format(key,val,val.units)
+                print '{0} : {1} {2}'.format(key,val,val.units)
             else:
-                print '{} : {}'.format(key,val)
+                print '{0} : {1}'.format(key,val)
         
 class pos_gen:
     """
@@ -265,9 +265,9 @@ class pos_gen:
         for key,val in self.__dict__.iteritems():
             
             if pynbody.units.has_units(val):
-                print '{} : {} {}'.format(key,val,val.units)
+                print '{0} : {1} {2}'.format(key,val,val.units)
             else:
-                print '{} : {}'.format(key,val)
+                print '{0} : {1}'.format(key,val)
         
 class snapshot:
     """
@@ -294,9 +294,9 @@ class snapshot:
         for key,val in self.__dict__.iteritems():
             
             if pynbody.units.has_units(val):
-                print '{} : {} {}'.format(key,val,val.units)
+                print '{0} : {1} {2}'.format(key,val,val.units)
             else:
-                print '{} : {}'.format(key,val)
+                print '{0} : {1}'.format(key,val)
                 
 class changa_run:
     """
@@ -324,9 +324,9 @@ class changa_run:
         for key,val in self.__dict__.iteritems():
             
             if pynbody.units.has_units(val):
-                print '{} : {} {}'.format(key,val,val.units)
+                print '{0} : {1} {2}'.format(key,val,val.units)
             else:
-                print '{} : {}'.format(key,val)
+                print '{0} : {1}'.format(key,val)
         
 class settings:
     """
@@ -438,7 +438,7 @@ class settings:
         f = open(settings_filename,'wb')
         pickle.dump(self.__dict__,f,2)
         f.close()
-        print 'Settings saved to {}'.format(settings_filename)
+        print 'Settings saved to {0}'.format(settings_filename)
         # Update the settings_filename
         self.settings_filename = settings_filename
         

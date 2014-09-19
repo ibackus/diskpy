@@ -74,7 +74,7 @@ def snapshot_gen(ICobj):
     # velocity units are L/t
     v_unit = (pos_unit/t_unit).ratio('km s**-1')
     # Make it a unit
-    v_unit = pynbody.units.Unit('{} km s**-1'.format(v_unit))
+    v_unit = pynbody.units.Unit('{0} km s**-1'.format(v_unit))
     
     # Other settings
     metals = settings.snapshot.metals
