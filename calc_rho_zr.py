@@ -83,7 +83,7 @@ def rho_zr(ICobj):
         settings.rho_calc.zmax = zmax
         
     # Initialize r,z, and rho
-    r = np.linspace(rmin,rmax,nr)
+    r = SimArray(np.linspace(rmin,rmax,nr), 'au')
     rho = SimArray(np.zeros([nz,nr]), 'Msol au**-3')
 
     # Set up arguments for multiprocessing
