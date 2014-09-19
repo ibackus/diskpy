@@ -348,7 +348,7 @@ class rho_from_array:
         'r': self.r_bins}
         
         pickle.dump(save_dict,open(filename,'wb'))
-        print 'rho(z,r) saved to {}'.format(filename)
+        print 'rho(z,r) saved to {0}'.format(filename)
         
         # Update parent filename
         self._parent.settings.filenames.rhoFileName = filename

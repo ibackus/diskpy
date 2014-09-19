@@ -224,7 +224,7 @@ def save(ICobj, filename=None):
         save_dict['snapshot_param'] = ICobj.snapshot_param
         param_name = ICobj.settings.filenames.paramName
         isaac.configsave(ICobj.snapshot_param, param_name)
-        print 'param file saved to {}'.format(param_name)
+        print 'param file saved to {0}'.format(param_name)
         
     # --------------------------------------------------
     # SAVE
@@ -249,7 +249,7 @@ def save(ICobj, filename=None):
         
     # Save the save dictionary
     pickle.dump(save_dict,open(filename,'wb'), protocol=2)
-    print 'Initial conditions saved to {}'.format(filename)        
+    print 'Initial conditions saved to {0}'.format(filename)        
     
 def load(filename):
        
@@ -316,7 +316,7 @@ def load(filename):
             
         except IOError:
             
-            warn('Could not find snapshot ({})'.format(fname))
+            warn('Could not find snapshot ({0})'.format(fname))
         
     if 'snapshot_param' in input_dict:
         
