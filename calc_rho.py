@@ -17,6 +17,7 @@ import scipy
 import scipy.integrate as nInt
 import scipy.optimize as opt
 from scipy.interpolate import interp1d
+from scipy.optimize.nonlin import NoConvergence
 import pynbody
 from pynbody.array import SimArray
 from warnings import warn
@@ -256,7 +257,7 @@ def rho_z(sigma, T, r, settings):
         
         Isol = opt.newton_krylov(Ires,guess,maxiter=maxiter,f_tol=f_tol)
         
-    except :
+    except NoConvergence:
         # Assume it didn't converge because f_tol was too strict
         # Read exception
         xepshun = sys.exc_info()
