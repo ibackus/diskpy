@@ -17,6 +17,45 @@ import os
 # ICgen modules
 from ICglobal_settings import global_settings
 
+import isaac
+
+def Qeff(ICobj, bins=None):
+    
+    if bins is None:
+        
+        bins = ICobj.sigma.r_bins
+        
+    # Constants
+    G = SimArray([1.0],'G')
+    kB = SimArray([1.0], 'k')
+    
+    if not hasattr(ICobj, 'snapshot'):
+        
+        raise ValueError('Could not find snapshot.  Must generate ICs first')
+        
+    snap = ICobj.snapshot
+    
+    T = snap.g['temp']
+    r = snap.g['rxy']
+    M = snap.s['mass']
+    m = ICobj.settings.physical.m
+    
+    cs = np.sqrt(kB*T/m)
+    omega = snap.g['vt']/r
+    sigma = ICobj.sigma(r)
+    
+    r_edges, h_binned = isaac.height(snap, bins=bins)
+    r_cent = (r_edges[1:] + r_edges[0:-1])/2
+    h_spl = isaac.extrap1d(r_cent, h_binned)
+    h = SimArray(h_spl(r), h_binned.units)
+    
+    Q = (cs*omega/(np.pi*G*sigma)).in_units('1')
+    Q1 = Q * ((h/r).in_units('1'))**0.192
+    
+    dummy, Q1_binned, dummy2 = isaac.binned_mean(r, Q1, bins=r_edges)
+    
+    return r_edges, Q1_binned
+
 class larray(list):
     """
     A simple subclass of list for containing listified arrays
