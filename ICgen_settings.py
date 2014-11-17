@@ -179,6 +179,15 @@ class sigma:
             self.n_points = 1000
             self.Qmin = 1.5
             
+        if kind == 'viscous':
+            
+            self.Rd = SimArray(1.0, 'au')
+            self.rin = 0
+            self.rmax = 2.5
+            self.m_disk = SimArray(0.1, 'Msol')
+            self.n_points = 1000
+            self.gamma = 1.0
+            
     def __setattr__(self, attr, value):
         """
         Override the default __setattr__ so that changing self.kind causes

@@ -19,6 +19,7 @@ def make_profile(ICobj):
     
     Currently available kinds are:
     
+    viscous
     powerlaw
     MQWS
     
@@ -39,13 +40,53 @@ def make_profile(ICobj):
         
         r, sigma = MQWS(ICobj.settings, ICobj.T)
         
+    elif (kind == 'viscous'):
+        
+        r, sigma = viscous(ICobj.settings)
+        
     else:
         
         raise TypeError, 'Could not make profile for kind {0}'.format(kind)
     
     return r, sigma
     
-
+def viscous(settings):
+    """
+    Generates a surface density profile derived from a self-similarity solution
+    for a viscous disk, according to:
+    
+        sigma ~ r^-gamma exp(-r^(2-gamma))
+        
+    Where r = R/Rdisk is a dimensionless radius and gamma is a constant less
+    than 2.
+    
+    **ARGUMENTS**
+    
+    settings : IC settings
+        settings like those contained in an IC object (see ICgen_settings.py)
+        
+    **RETURNS**
+    
+    R : SimArray
+        Radii at which sigma is calculated
+    sigma : SimArray
+        Surface density profile as a function of R
+    """
+    Rd = settings.sigma.Rd
+    #rin = settings.sigma.rin
+    rmax = settings.sigma.rmax
+    #Mstar = settings.physical.M
+    n_points = settings.sigma.n_points
+    gamma = settings.sigma.gamma
+    m_disk = settings.sigma.m_disk
+    
+    Rmax = rmax * Rd
+    
+    R = np.linspace(0, Rmax, n_points)
+    r = np.linspace(0, rmax, n_points)
+    sigma = (r**-gamma) * np.exp(-r**(2-gamma)) * (m_disk/(2*np.pi*Rd*Rd)) * (2-gamma)   
+    return R, sigma
+    
 #def powerlaw(Rd=SimArray(1.0,'au'), rin=0.5, rmax=2.3, cutlength=0.3, \
 #Mstar=SimArray(1.0/3.0,'Msol'), Qmin=1.5, n_points=1000, m=2.0, T=None):
 def powerlaw(settings, T = None):
