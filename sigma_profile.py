@@ -73,7 +73,7 @@ def viscous(settings):
         Surface density profile as a function of R
     """
     Rd = settings.sigma.Rd
-    #rin = settings.sigma.rin
+    rin = settings.sigma.rin
     rmax = settings.sigma.rmax
     #Mstar = settings.physical.M
     n_points = settings.sigma.n_points
@@ -85,6 +85,11 @@ def viscous(settings):
     R = np.linspace(0, Rmax, n_points)
     r = np.linspace(0, rmax, n_points)
     sigma = (r**-gamma) * np.exp(-r**(2-gamma)) * (m_disk/(2*np.pi*Rd*Rd)) * (2-gamma)   
+    
+    # Apply interior cutoff
+    sigma[r<rin] *= isaac.smoothstep(r[r<rin],degree=21,rescale=True)
+    
+    
     return R, sigma
     
 #def powerlaw(Rd=SimArray(1.0,'au'), rin=0.5, rmax=2.3, cutlength=0.3, \
