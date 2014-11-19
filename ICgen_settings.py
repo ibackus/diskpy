@@ -77,6 +77,8 @@ class filenames:
         # Filename to save ChaNGa .param file to.  If None, no file saved
         # To edit settings, you can change default.param or the output .param file
         self.paramName = 'snapshot.param'
+        # Default .director filename
+        self.directorName = 'snapshot.director'
         
     def __call__(self):
         

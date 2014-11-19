@@ -38,9 +38,19 @@ def snapshot_gen(ICobj):
     # ------------------------------------
     print 'Accessing data from ICs'
     settings = ICobj.settings
-    # snapshot file name
+    # filenames
     snapshotName = settings.filenames.snapshotName
     paramName = settings.filenames.paramName
+    # Test for director name (needed for backwards compatibility)
+    if hasattr(settings.filenames, 'directorName'):
+        
+        directorName = settings.filenames.directorName
+        
+    else:
+        
+        directorName = os.path.splitext(paramName)[0] + '.director'
+        settings.filenames.directorName = directorName
+        
     # particle positions
     r = ICobj.pos.r
     xyz = ICobj.pos.xyz
@@ -131,6 +141,23 @@ def snapshot_gen(ICobj):
     dDelta = ICgen_utils.est_time_step(paramName, preset)
     param['dDelta'] = dDelta
     
+    # -------------------------------------------------
+    # Create director file
+    # -------------------------------------------------
+    # largest radius to plot
+    r_director = float(0.9 * r.max())
+    # Maximum surface density
+    sigma_min = float(ICobj.sigma(r_director))
+    # surface density at largest radius
+    sigma_max = float(ICobj.sigma.input_dict['sigma'].max())
+    # Create director dict
+    director = isaac.make_director(sigma_min, sigma_max, r_director, filename=param['achOutName'])
+    # Save .director file
+    isaac.configsave(director, directorName, 'director')
+    
+    # -------------------------------------------------
+    # Wrap up
+    # -------------------------------------------------
     print 'Wrapping up'
     # Now set the star particle's tform to a negative number.  This allows
     # UW ChaNGa treat it as a sink particle.
