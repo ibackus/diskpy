@@ -40,6 +40,7 @@ def snapshot_gen(ICobj):
     settings = ICobj.settings
     # snapshot file name
     snapshotName = settings.filenames.snapshotName
+    paramName = settings.filenames.paramName
     # particle positions
     r = ICobj.pos.r
     xyz = ICobj.pos.xyz
@@ -80,7 +81,9 @@ def snapshot_gen(ICobj):
     metals = settings.snapshot.metals
     star_metals = metals
     
+    # -------------------------------------------------
     # Generate snapshot
+    # -------------------------------------------------
     # Note that empty pos, vel, and mass arrays are created in the snapshot
     snapshot = pynbody.new(star=1,gas=nParticles)
     snapshot['vel'].units = v_unit
@@ -106,14 +109,27 @@ def snapshot_gen(ICobj):
        
     gc.collect()
     
+    # -------------------------------------------------
     # CALCULATE VELOCITY USING calc_velocity.py.  This also estimates the 
     # gravitational softening length eps
+    # -------------------------------------------------
     print 'Calculating circular velocity'
     preset = settings.changa_run.preset
     max_particles = global_settings['misc']['max_particles']
     calc_velocity.v_xy(snapshot, param, changa_preset=preset, max_particles=max_particles)
     
     gc.collect()
+    
+    # -------------------------------------------------
+    # Estimate time step for changa to use
+    # -------------------------------------------------
+    # Save param file
+    isaac.configsave(param, paramName, 'param')
+    # Save snapshot
+    snapshot.write(filename=snapshotName, fmt=pynbody.tipsy.TipsySnap)
+    # est dDelta
+    dDelta = ICgen_utils.est_time_step(paramName, preset)
+    param['dDelta'] = dDelta
     
     print 'Wrapping up'
     # Now set the star particle's tform to a negative number.  This allows
