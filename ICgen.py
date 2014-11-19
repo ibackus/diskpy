@@ -5,7 +5,7 @@ Created on Wed Mar 12 12:48:33 2014
 @author: ibackus
 """
 
-__version__ = "$Revision: 1 $"
+__version__ = "$Revision: 2 $"
 # $Source$
 
 __iversion__ = int(filter(str.isdigit,__version__))
@@ -217,7 +217,7 @@ def save(ICobj, filename=None):
         save_dict['pos'] = ICobj.pos
         
     # --------------------------------------------------
-    # Prepare param if possible
+    # Prepare param/dict if possible
     # --------------------------------------------------
     if hasattr(ICobj, 'snapshot_param'):
         
@@ -225,6 +225,13 @@ def save(ICobj, filename=None):
         param_name = ICobj.settings.filenames.paramName
         isaac.configsave(ICobj.snapshot_param, param_name)
         print 'param file saved to {0}'.format(param_name)
+        
+    if hasattr(ICobj, 'snapshot_director'):
+        
+        save_dict['snapshot_director'] = ICobj.snapshot_director
+        director_name = ICobj.settings.filenames.directorName
+        isaac.configsave(ICobj.snapshot_director, director_name)
+        print 'director file saved to {0}'.format(director_name)
         
     # --------------------------------------------------
     # SAVE
@@ -322,6 +329,11 @@ def load(filename):
         
         print 'loading param'
         ICobj.snapshot_param = input_dict['snapshot_param']
+        
+    if 'snapshot_director' in input_dict:
+        
+        print 'loading director'
+        ICobj.snapshot_director = input_dict['snapshot_director']
 
     return ICobj
             
@@ -335,8 +347,6 @@ def _upgrade_version(IC_input, version):
     version is the version of the IC_input
     """
     if version < 1:
-        
-        warn('These ICs seem out of date.  Attempting to upgrade to current version')
         
         # Assume IC_input is a dictionary
         # Needs the changa_run settings
@@ -356,6 +366,18 @@ def _upgrade_version(IC_input, version):
                     
         # update the input dictionary
         IC_input['settings'] = new_settings
+        
+    if version < 2:
+        
+        # Add a .director file name to settings.
+        
+        warn('These ICs seem out of date.  Attempting to upgrade to current version')
+        
+        if not hasattr(IC_input['settings'].filenames, 'directorName'):
+            
+            paramName = IC_input['settings'].filenames.paramName
+            directorName = os.path.splitext(paramName)[0] + '.director'
+            IC_input['settings'].filenames.directorName = directorName
         
         
 class add:
@@ -480,8 +502,9 @@ class maker:
         """
         
         # Generate snapshot
-        snapshot, snapshot_param = make_snapshot.snapshot_gen(self._parent)
+        snapshot, snapshot_param, snapshot_director = make_snapshot.snapshot_gen(self._parent)
         # Save to ICobj
         self._parent.snapshot = snapshot
         self._parent.snapshot_param = snapshot_param
+        self._parent.snapshot_director = snapshot_director
         
