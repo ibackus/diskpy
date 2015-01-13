@@ -177,7 +177,7 @@ def delistify(in_list):
         
         return in_list
         
-def est_eps(smoothlength_file):
+def est_eps(smoothlength_file, nstar=1):
     """
     Estimate gravitational softening length (eps) from a ChaNGa output .smoothlength
     file.  eps is estimated as 1/2 the mean smoothing length
@@ -186,6 +186,8 @@ def est_eps(smoothlength_file):
     
     smoothlength_file : str
         Filename of the .smoothlength file
+    nstar : int
+        Number of star particles present
         
     **RETURNS**
     
@@ -204,7 +206,7 @@ def est_eps(smoothlength_file):
         smoothlength[i] = float(line.strip())
         
     # Calculate eps, ignoring star particle
-    mean_smooth = (smoothlength.sum() - smoothlength[-1])/(nParticles-1)
+    mean_smooth = (smoothlength.sum() - smoothlength[-nstar])/(nParticles-nstar)
     eps = mean_smooth/2
     
     return eps

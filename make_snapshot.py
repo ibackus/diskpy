@@ -83,7 +83,7 @@ def snapshot_gen(ICobj):
     star_metals = metals
     
     # -------------------------------------------------
-    # Generate snapshot
+    # Initialize snapshot
     # -------------------------------------------------
     # Note that empty pos, vel, and mass arrays are created in the snapshot
     snapshot = pynbody.new(star=1,gas=nParticles)
