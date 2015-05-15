@@ -85,6 +85,8 @@ def viscous(settings):
     R = np.linspace(0, Rmax, n_points)
     r = np.linspace(0, rmax, n_points)
     sigma = (r**-gamma) * np.exp(-r**(2-gamma)) * (m_disk/(2*np.pi*Rd*Rd)) * (2-gamma)   
+    # Deal with infinities at the origin with a hard cut off
+    sigma[0] = sigma[1]
     
     # Apply interior cutoff
     cut_mask = r < rin
@@ -95,8 +97,6 @@ def viscous(settings):
     
     return R, sigma
     
-#def powerlaw(Rd=SimArray(1.0,'au'), rin=0.5, rmax=2.3, cutlength=0.3, \
-#Mstar=SimArray(1.0/3.0,'Msol'), Qmin=1.5, n_points=1000, m=2.0, T=None):
 def powerlaw(settings, T = None):
     """
     Generates a surface density profile according to a powerlaw sigma ~ 1/r
