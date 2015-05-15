@@ -87,7 +87,10 @@ def viscous(settings):
     sigma = (r**-gamma) * np.exp(-r**(2-gamma)) * (m_disk/(2*np.pi*Rd*Rd)) * (2-gamma)   
     
     # Apply interior cutoff
-    sigma[r<rin] *= isaac.smoothstep(r[r<rin],degree=21,rescale=True)
+    cut_mask = r < rin
+    if np.any(cut_mask):
+        
+        sigma[r<rin] *= isaac.smoothstep(r[r<rin],degree=21,rescale=True)
     
     
     return R, sigma
