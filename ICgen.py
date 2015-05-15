@@ -5,7 +5,7 @@ Created on Wed Mar 12 12:48:33 2014
 @author: ibackus
 """
 
-__version__ = "$Revision: 2 $"
+__version__ = "$Revision: 3 $"
 # $Source$
 
 __iversion__ = int(filter(str.isdigit,__version__))
@@ -120,6 +120,13 @@ class IC:
             
         self.save = saver
         
+    def Qest(self, r=None):
+        """
+        Estimate Toomre Q at r (optional) for ICs, assuming omega=epicyclic
+        frequency.  Ignores disk self-gravity
+        """
+        return Qest(self, r)
+        
     def generate(self, restart=False):
         """
         Runs through all the steps to generate a set of initial conditions
@@ -164,6 +171,33 @@ class IC:
             self.maker.snapshot_gen()
             self.save()
             
+def Qest(ICobj, r=None):
+    """
+    Estimate Toomre Q at r (optional) for ICs, assuming omega=epicyclic
+    frequency.  Ignores disk self-gravity
+    """
+    if not hasattr(ICobj, 'sigma'):
+        
+        raise ValueError, 'Could not find surface density profile (sigma)'
+        
+    G = SimArray(1.0, 'G')
+    kB = SimArray(1.0, 'k')
+    
+    if r is None:
+        
+        r = ICobj.sigma.r_bins
+        
+    sigma = ICobj.sigma(r)
+    T = ICobj.T(r)
+    M = ICobj.settings.physical.M
+    m = ICobj.settings.physical.m
+    M = isaac.match_units(M, 'Msol')[0]
+    m = isaac.match_units(m, 'm_p')[0]
+    
+    Q = np.sqrt(M*kB*T/(G*m*r**3))/(np.pi*sigma)
+    Q.convert_units('1')
+    
+    return Q
         
         
 def save(ICobj, filename=None):
