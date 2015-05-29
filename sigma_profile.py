@@ -57,8 +57,8 @@ def viscous(settings):
     
         sigma ~ r^-gamma exp(-r^(2-gamma))
         
-    Where r = R/Rdisk is a dimensionless radius and gamma is a constant less
-    than 2.
+    Where r is a dimensionless radius and gamma is a constant less than 2.
+    Rd (disk radius) is defined as the radius containing 95% of the disk mass
     
     **ARGUMENTS**
     
@@ -75,24 +75,28 @@ def viscous(settings):
     Rd = settings.sigma.Rd
     rin = settings.sigma.rin
     rmax = settings.sigma.rmax
-    #Mstar = settings.physical.M
     n_points = settings.sigma.n_points
     gamma = settings.sigma.gamma
     m_disk = settings.sigma.m_disk
     
+    # Define the fraction of mass contained within Rd
+    A = 0.95
+    # Normalization for r
+    R1 = Rd / (np.log(1/(1-A))**(1/(2-gamma)))
     Rmax = rmax * Rd
+    Rin = rin * Rd
     
     R = np.linspace(0, Rmax, n_points)
-    r = np.linspace(0, rmax, n_points)
-    sigma = (r**-gamma) * np.exp(-r**(2-gamma)) * (m_disk/(2*np.pi*Rd*Rd)) * (2-gamma)   
+    r = (R/R1).in_units('1')
+    sigma = (r**-gamma) * np.exp(-r**(2-gamma)) * (m_disk/(2*np.pi*R1*R1)) * (2-gamma)   
     # Deal with infinities at the origin with a hard cut off
     sigma[0] = sigma[1]
     
     # Apply interior cutoff
-    cut_mask = r < rin
+    cut_mask = R < Rin
     if np.any(cut_mask):
         
-        sigma[r<rin] *= isaac.smoothstep(r[r<rin],degree=21,rescale=True)
+        sigma[cut_mask] *= isaac.smoothstep(r[cut_mask],degree=21,rescale=True)
     
     
     return R, sigma
