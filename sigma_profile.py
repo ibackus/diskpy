@@ -47,8 +47,46 @@ def make_profile(ICobj):
     else:
         
         raise TypeError, 'Could not make profile for kind {0}'.format(kind)
+        
+    if hasattr(ICobj.settings.sigma, 'innercut'):
+        
+        sigma = _applycut(r, sigma, ICobj.settings.sigma.innercut, False)
+        
+    if hasattr(ICobj.settings.sigma, 'outercut'):
+        
+        sigma = _applycut(r, sigma, ICobj.settings.sigma.outercut, True)
     
     return r, sigma
+    
+def _applycut(r, sigma, rcut, outer=True):
+    """
+    Applies a hard cut to a surface density profile (sigma).  If outer=True,
+    sigma = 0 at r > rcut.  Otherwise, sigma = 0 at r < rcut.  If rcut is
+    None, inf, or nan no cut is performed.
+    """
+    
+    if rcut is None:
+        
+        return sigma
+        
+    elif np.isnan(rcut) or np.isinf(rcut):
+        
+        return sigma
+        
+    if outer:
+        
+        mask = r > rcut
+        
+    else:
+        
+        mask = r < rcut
+    
+    if np.any(mask):
+        
+        sigma[mask] = 0
+        
+    return sigma
+    
     
 def viscous(settings):
     """
