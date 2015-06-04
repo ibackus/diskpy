@@ -190,6 +190,12 @@ class sigma:
             self.n_points = 1000
             self.gamma = 1.0
             
+        # innercut and outercut determine where to apply a hard cut to the
+        # surface density (if anywhere).  for example, to set sigma=0 for
+        # R > 2 au, do: outercut = SimArray(2,'au')
+        self.innercut = None
+        self.outercut = None
+            
     def __setattr__(self, attr, value):
         """
         Override the default __setattr__ so that changing self.kind causes
