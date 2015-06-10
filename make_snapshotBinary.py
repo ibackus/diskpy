@@ -48,7 +48,8 @@ def snapshot_gen(ICobj):
     
     # snapshot file name
     snapshotName = settings.filenames.snapshotName
-    
+    paramName = settings.filenames.paramName   
+ 
     # particle positions
     r = ICobj.pos.r
     xyz = ICobj.pos.xyz
@@ -130,7 +131,32 @@ def snapshot_gen(ICobj):
     calc_velocity.v_xy(snapshot, param, changa_preset=preset, max_particles=max_particles)
     
     gc.collect()
-   
+  
+	# -------------------------------------------------
+    # Estimate time step for changa to use
+    # -------------------------------------------------
+    # Save param file
+    isaac.configsave(param, paramName, 'param')
+    # Save snapshot
+    snapshot.write(filename=snapshotName, fmt=pynbody.tipsy.TipsySnap)
+    # est dDelta
+    dDelta = ICgen_utils.est_time_step(paramName, preset)
+    param['dDelta'] = dDelta
+ 
+	# -------------------------------------------------
+    # Create director file
+    # -------------------------------------------------
+    # largest radius to plot
+    r_director = float(0.9 * r.max())
+    # Maximum surface density
+    sigma_min = float(ICobj.sigma(r_director))
+    # surface density at largest radius
+    sigma_max = float(ICobj.sigma.input_dict['sigma'].max())
+    # Create director dict
+    director = isaac.make_director(sigma_min, sigma_max, r_director, filename=param['achOutName'])
+    ## Save .director file
+    #isaac.configsave(director, directorName, 'director')
+
     #Now that velocities are all initialized for gas particles, create new snapshot to return in which
     #single star particle is replaced by 2, same units as above
     snapshotBinary = pynbody.new(star=2,gas=nParticles)
@@ -222,7 +248,7 @@ def snapshot_gen(ICobj):
     param['dSinkMassMin'] = 0.9 * isaac.strip_units(secMass)
     param['bDoSinks'] = 1
     
-    return snapshotBinary, param
+    return snapshotBinary, param, director
     
 def make_director(ICobj, res=1200):
     

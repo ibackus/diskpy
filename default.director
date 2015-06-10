@@ -1,0 +1,13 @@
+#sigma_max 0.0002670971
+logscale 0.0239 1.0
+FOV 45.0
+eye 0 0 32.0
+render tsc
+clip 0.0001 500
+up 1 0 0
+project ortho
+softgassph
+file snapshot
+colgas 1 1 1 6.0e-6
+size 600 600
+physical
