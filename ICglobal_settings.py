@@ -45,8 +45,17 @@ defaults['node_info'] = node_info
 # ***** ChaNGa presets *****
 
 # Format : [runner, runner args, ChaNGa, ChaNGa args]
+"""
 changa_presets = {}
 changa_presets['local'] = ['charmrun_sinks', '++local', 'ChaNGa_sinks', '-D 3 +consph']
+changa_presets['mpi'] = ['mpirun', '--mca mtl mx --mca pml cm', 'ChaNGa_uw_mpi', '-D 3 +consph']
+changa_presets['default'] = 'local'
+defaults['changa_presets'] = changa_presets
+"""
+#dflemin3 edited 06/10/2015 to run on my computer
+#dflemin3 removed _sinks, added +p4 to changa_presets
+changa_presets = {}
+changa_presets['local'] = ['charmrun', '+p4 ++local', 'ChaNGa', '-D 3 +consph']
 changa_presets['mpi'] = ['mpirun', '--mca mtl mx --mca pml cm', 'ChaNGa_uw_mpi', '-D 3 +consph']
 changa_presets['default'] = 'local'
 defaults['changa_presets'] = changa_presets

@@ -17,6 +17,7 @@ import numpy as np
 import os
 import cPickle as pickle
 from warnings import warn
+import make_snapshotBinary
 
 # ICgen modules
 import calc_rho_zr
@@ -536,7 +537,9 @@ class maker:
         """
         
         # Generate snapshot
-        snapshot, snapshot_param, snapshot_director = make_snapshot.snapshot_gen(self._parent)
+        #edited by dflemin3 06/10/2015 for use w/ binary stars
+        #snapshot, snapshot_param, snapshot_director = make_snapshot.snapshot_gen(self._parent)
+        snapshot, snapshot_param, snapshot_director = make_snapshotBinary.snapshot_gen(self._parent)
         # Save to ICobj
         self._parent.snapshot = snapshot
         self._parent.snapshot_param = snapshot_param

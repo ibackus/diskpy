@@ -168,6 +168,7 @@ def powerlaw(settings, T = None):
     Qmin = settings.sigma.Qmin
     n_points = settings.sigma.n_points
     m = settings.physical.m
+    power = settings.sigma.power    
 
     if T is None:
         # If no callable object to calculate Temperature(R) is provided, 
@@ -198,7 +199,9 @@ def powerlaw(settings, T = None):
     
     # Calculate sigma
     # Powerlaw
-    sigma = A/r
+    #sigma = A/r
+    #dflemin3 edit 06/10/2015: Try powerlaw of the form sigma ~ r^power
+    sigma = A*np.power(r,power)
     sigma[0] = 0.0
     # Interior cutoff
     sigma[r>1] *= np.exp(-(r[r>1] - 1)**2 / (2*cutlength**2))

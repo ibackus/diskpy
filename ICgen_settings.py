@@ -102,8 +102,10 @@ class physical:
         physical.settingname
     """
     
-    def __init__(self, kind=None):
-        
+    #def __init__(self, kind=None):
+    def __init__(self, kind=None, ecc=0, period = 5, inc = 0, Omega = 0, w = 0, MA = 0, priMassPerc = 1):
+        #editted by dflemin3 06/10/2015
+        """        
         # Molecular mass of the gass.  If m = None, Assumed to be H2, m = 2.00132 m_p
         self.m = SimArray(2.00132,'m_p')
         # Mass of the star.  If M = None, Assumed to be 0.33 Msol
@@ -115,7 +117,28 @@ class physical:
         self.Tpower = -0.59
         self.Tmin = SimArray(0, 'K')    # Minimum temperature cut-off
         self.Tmax = SimArray(np.inf, 'K')
-        
+        """
+        # Molecular mass of the gass.  If m = None, Assumed to be H2, m = 2.00132 m_p
+        self.m = SimArray(2.00132,'m_p')
+        # Mass of the star.  If M = None, Assumed to be 0.33 Msol
+        self.M = SimArray(0.33 , 'Msol')
+        # CONSTANTS FOR CALCULATING TEMPERATURE.  T(r) = T0(r/r0)^Tpower.
+        # See calc_temp.py.  If None, defaults to settings in calc_temp.py
+        self.T0 = SimArray(332.406,'K')
+        self.r0 = SimArray(0.5,'au')
+        self.Tpower = -0.59
+        self.Tmin = SimArray(0, 'K')    # Minimum temperature cut-off
+        self.Tmax = SimArray(np.inf, 'K')
+
+        #Binary Orbital Parameters
+        self.ecc = ecc #Binary Eccentricity
+        self.period = period #Binary Period
+        self.inc = inc #Binary inclination
+        self.Omega = Omega #Binary Longitude of Ascending Node
+        self.w = w #Binary Argument of Pericenter
+        self.MA = MA #Binary Mean Anomaly
+        self.priMassPerc = priMassPerc
+
         if kind is None:
             
             kind = 'powerlaw'
@@ -171,12 +194,15 @@ class sigma:
             self.cutlength = 0.3
             self.Qmin = 1.5
             self.n_points = 1000
-            
+            self.power = -1 #Power on powerlaw of form sigma ~ r^(power)
+       
+     
         if (kind == 'mqws') | (kind == 'MQWS'):
             
             self.rin = 4.0
             self.rout = 20.0
             self.rmax = None
+            self.power = -1
             self.m_disk = SimArray(0.1, 'Msol')
             self.n_points = 1000
             self.Qmin = 1.5
@@ -186,6 +212,7 @@ class sigma:
             self.Rd = SimArray(1.0, 'au')
             self.rin = 0.1
             self.rmax = 2.0
+            self.power = -1
             self.m_disk = SimArray(0.1, 'Msol')
             self.n_points = 1500
             self.gamma = 0.9
