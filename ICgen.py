@@ -537,9 +537,7 @@ class maker:
         """
         
         # Generate snapshot
-        #edited by dflemin3 06/10/2015 for use w/ binary stars
-        #snapshot, snapshot_param, snapshot_director = make_snapshot.snapshot_gen(self._parent)
-        snapshot, snapshot_param, snapshot_director = make_snapshotBinary.snapshot_gen(self._parent)
+        snapshot, snapshot_param, snapshot_director = make_snapshot.snapshot_gen(self._parent)
         # Save to ICobj
         self._parent.snapshot = snapshot
         self._parent.snapshot_param = snapshot_param
