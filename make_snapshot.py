@@ -38,8 +38,10 @@ def snapshot_gen(ICobj):
     # ------------------------------------
     print 'Accessing data from ICs'
     settings = ICobj.settings
-    # snapshot file name
+    # filenames
     snapshotName = settings.filenames.snapshotName
+    paramName = settings.filenames.paramName
+        
     # particle positions
     r = ICobj.pos.r
     xyz = ICobj.pos.xyz
@@ -80,7 +82,9 @@ def snapshot_gen(ICobj):
     metals = settings.snapshot.metals
     star_metals = metals
     
-    # Generate snapshot
+    # -------------------------------------------------
+    # Initialize snapshot
+    # -------------------------------------------------
     # Note that empty pos, vel, and mass arrays are created in the snapshot
     snapshot = pynbody.new(star=1,gas=nParticles)
     snapshot['vel'].units = v_unit
@@ -106,8 +110,10 @@ def snapshot_gen(ICobj):
        
     gc.collect()
     
+    # -------------------------------------------------
     # CALCULATE VELOCITY USING calc_velocity.py.  This also estimates the 
     # gravitational softening length eps
+    # -------------------------------------------------
     print 'Calculating circular velocity'
     preset = settings.changa_run.preset
     max_particles = global_settings['misc']['max_particles']
@@ -115,6 +121,34 @@ def snapshot_gen(ICobj):
     
     gc.collect()
     
+    # -------------------------------------------------
+    # Estimate time step for changa to use
+    # -------------------------------------------------
+    # Save param file
+    isaac.configsave(param, paramName, 'param')
+    # Save snapshot
+    snapshot.write(filename=snapshotName, fmt=pynbody.tipsy.TipsySnap)
+    # est dDelta
+    dDelta = ICgen_utils.est_time_step(paramName, preset)
+    param['dDelta'] = dDelta
+    
+    # -------------------------------------------------
+    # Create director file
+    # -------------------------------------------------
+    # largest radius to plot
+    r_director = float(0.9 * r.max())
+    # Maximum surface density
+    sigma_min = float(ICobj.sigma(r_director))
+    # surface density at largest radius
+    sigma_max = float(ICobj.sigma.input_dict['sigma'].max())
+    # Create director dict
+    director = isaac.make_director(sigma_min, sigma_max, r_director, filename=param['achOutName'])
+    ## Save .director file
+    #isaac.configsave(director, directorName, 'director')
+    
+    # -------------------------------------------------
+    # Wrap up
+    # -------------------------------------------------
     print 'Wrapping up'
     # Now set the star particle's tform to a negative number.  This allows
     # UW ChaNGa treat it as a sink particle.
@@ -127,38 +161,4 @@ def snapshot_gen(ICobj):
     param['dSinkMassMin'] = 0.9 * isaac.strip_units(m_star)
     param['bDoSinks'] = 1
     
-    return snapshot, param
-    
-def make_director(ICobj, res=1200):
-    
-    director = {}
-    director['render'] = 'tsc'
-    director['FOV'] = 45.0
-    director['clip'] = [0.0001, 500]
-    director['up'] = [1, 0, 0]
-    director['project'] = 'ortho'
-    director['softgassph'] = 'softgassph'
-    director['physical'] = 'physical'
-    director['size'] = [res, res]
-    
-    sig_set = ICobj.settings.sigma
-    mScale = ICobj.settings.snapshot.mScale
-    snapshot_name = ICobj.settings.filenames.snapshotName
-    f_prefix = os.path.splitext(os.path.basename(snapshot_name))[0]
-    
-    director['file'] = f_prefix
-    
-    
-    if sig_set.kind == 'MQWS':
-        
-        rmax = sig_set.rout + 3*sig_set.rin
-        zmax = float(rmax)
-        director['eye'] = [0, 0, zmax]
-        vmin = float(ICobj.rho(0, rmax))
-        vmax = float(ICobj.rho.rho_binned[0,:].max())
-        vmax *= mScale
-        director['logscale'] = [vmin, 10*vmax]
-        director['colgas'] = [1, 1, 1]
-        
-    return director
-        
+    return snapshot, param, director

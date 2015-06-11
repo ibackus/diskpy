@@ -19,6 +19,7 @@ def make_profile(ICobj):
     
     Currently available kinds are:
     
+    viscous
     powerlaw
     MQWS
     
@@ -39,15 +40,105 @@ def make_profile(ICobj):
         
         r, sigma = MQWS(ICobj.settings, ICobj.T)
         
+    elif (kind == 'viscous'):
+        
+        r, sigma = viscous(ICobj.settings)
+        
     else:
         
         raise TypeError, 'Could not make profile for kind {0}'.format(kind)
+        
+    if hasattr(ICobj.settings.sigma, 'innercut'):
+        
+        sigma = _applycut(r, sigma, ICobj.settings.sigma.innercut, False)
+        
+    if hasattr(ICobj.settings.sigma, 'outercut'):
+        
+        sigma = _applycut(r, sigma, ICobj.settings.sigma.outercut, True)
     
     return r, sigma
     
-
-#def powerlaw(Rd=SimArray(1.0,'au'), rin=0.5, rmax=2.3, cutlength=0.3, \
-#Mstar=SimArray(1.0/3.0,'Msol'), Qmin=1.5, n_points=1000, m=2.0, T=None):
+def _applycut(r, sigma, rcut, outer=True):
+    """
+    Applies a hard cut to a surface density profile (sigma).  If outer=True,
+    sigma = 0 at r > rcut.  Otherwise, sigma = 0 at r < rcut.  If rcut is
+    None, inf, or nan no cut is performed.
+    """
+    
+    if rcut is None:
+        
+        return sigma
+        
+    elif np.isnan(rcut) or np.isinf(rcut):
+        
+        return sigma
+        
+    if outer:
+        
+        mask = r > rcut
+        
+    else:
+        
+        mask = r < rcut
+    
+    if np.any(mask):
+        
+        sigma[mask] = 0
+        
+    return sigma
+    
+    
+def viscous(settings):
+    """
+    Generates a surface density profile derived from a self-similarity solution
+    for a viscous disk, according to:
+    
+        sigma ~ r^-gamma exp(-r^(2-gamma))
+        
+    Where r is a dimensionless radius and gamma is a constant less than 2.
+    Rd (disk radius) is defined as the radius containing 95% of the disk mass
+    
+    **ARGUMENTS**
+    
+    settings : IC settings
+        settings like those contained in an IC object (see ICgen_settings.py)
+        
+    **RETURNS**
+    
+    R : SimArray
+        Radii at which sigma is calculated
+    sigma : SimArray
+        Surface density profile as a function of R
+    """
+    Rd = settings.sigma.Rd
+    rin = settings.sigma.rin
+    rmax = settings.sigma.rmax
+    n_points = settings.sigma.n_points
+    gamma = settings.sigma.gamma
+    m_disk = settings.sigma.m_disk
+    
+    # Define the fraction of mass contained within Rd
+    A = 0.95
+    # Normalization for r
+    R1 = Rd / (np.log(1/(1-A))**(1/(2-gamma)))
+    Rmax = rmax * Rd
+    Rin = rin * Rd
+    
+    R = np.linspace(0, Rmax, n_points)
+    r = (R/R1).in_units('1')
+    sigma = (r**-gamma) * np.exp(-r**(2-gamma)) * (m_disk/(2*np.pi*R1*R1)) * (2-gamma)   
+    # Deal with infinities at the origin with a hard cut off
+    sigma[0] = sigma[1]
+    
+    # Apply interior cutoff
+    cut_mask = R < Rin
+    if np.any(cut_mask):
+        
+        sigma[cut_mask] *= isaac.smoothstep(r[cut_mask],degree=21,rescale=True)
+    
+    
+    return R, sigma
+    
 def powerlaw(settings, T = None):
     """
     Generates a surface density profile according to a powerlaw sigma ~ 1/r

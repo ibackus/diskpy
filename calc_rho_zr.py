@@ -95,6 +95,7 @@ def rho_zr(ICobj):
     # Calculate rho using multiprocessing
     pool = Pool(n_proc)
     results = pool.map(multirun_rho, arg_list)
+    pool.close()
     
     # Extract results
     for i in range(nr):

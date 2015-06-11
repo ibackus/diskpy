@@ -9,16 +9,53 @@ __version__ = "$Revision: 1 $"
 
 # External modules
 import subprocess
-import multiprocessing
-import glob
 import numpy as np
 import pynbody
 SimArray = pynbody.array.SimArray
 import os
+import re
 
 # ICgen modules
-import isaac
 from ICglobal_settings import global_settings
+
+import isaac
+
+def Qeff(ICobj, bins=None):
+    
+    if bins is None:
+        
+        bins = ICobj.sigma.r_bins
+        
+    # Constants
+    G = SimArray([1.0],'G')
+    kB = SimArray([1.0], 'k')
+    
+    if not hasattr(ICobj, 'snapshot'):
+        
+        raise ValueError('Could not find snapshot.  Must generate ICs first')
+        
+    snap = ICobj.snapshot
+    
+    T = snap.g['temp']
+    r = snap.g['rxy']
+    M = snap.s['mass']
+    m = ICobj.settings.physical.m
+    
+    cs = np.sqrt(kB*T/m)
+    omega = snap.g['vt']/r
+    sigma = ICobj.sigma(r)
+    
+    r_edges, h_binned = isaac.height(snap, bins=bins)
+    r_cent = (r_edges[1:] + r_edges[0:-1])/2
+    h_spl = isaac.extrap1d(r_cent, h_binned)
+    h = SimArray(h_spl(r), h_binned.units)
+    
+    Q = (cs*omega/(np.pi*G*sigma)).in_units('1')
+    Q1 = Q * ((h/r).in_units('1'))**0.192
+    
+    dummy, Q1_binned, dummy2 = isaac.binned_mean(r, Q1, bins=r_edges)
+    
+    return r_edges, Q1_binned
 
 class larray(list):
     """
@@ -140,7 +177,7 @@ def delistify(in_list):
         
         return in_list
         
-def est_eps(smoothlength_file):
+def est_eps(smoothlength_file, nstar=1):
     """
     Estimate gravitational softening length (eps) from a ChaNGa output .smoothlength
     file.  eps is estimated as 1/2 the mean smoothing length
@@ -149,6 +186,8 @@ def est_eps(smoothlength_file):
     
     smoothlength_file : str
         Filename of the .smoothlength file
+    nstar : int
+        Number of star particles present
         
     **RETURNS**
     
@@ -167,82 +206,105 @@ def est_eps(smoothlength_file):
         smoothlength[i] = float(line.strip())
         
     # Calculate eps, ignoring star particle
-    mean_smooth = (smoothlength.sum() - smoothlength[-1])/(nParticles-1)
+    mean_smooth = (smoothlength.sum() - smoothlength[-nstar])/(nParticles-nstar)
     eps = mean_smooth/2
     
     return eps
-        
     
-
-def est_eps_changa(f, changa_preset=None, verbose=True, logfile_name=None):
+def est_time_step(param_name, preset='default', dDelta0=100, changa_args='', runner_args=''):
     """
-    DEPRECATED
+    A routine to automatically estimate a reasonable time-step size for ChaNGa.
+    The idea is to have about half the particles fall into the lowest rung (ie 
+    the big time step).  This is done by calculating the rung distribution for 
+    a large time step by running ChaNGa and killing ChaNGa once it has output 
+    rung distribution.
     
-    Estimates the gravitational softening length for gas particles as 1/2 the 
-    mean SPH smoothing length.  Uses ChaNGa to calculate the smoothing length.
-    
-    Note: f['eps'] must be defined.  It can be any number > 0
+    NOTE: this is still fairly alpha.  A better version would probably not
+    just run ChaNGa and then try to kill it.  To be safe, a local ChaNGa preset
+    should probably be used.
     
     **ARGUMENTS**
     
-    f : str -or- tipsy snapshot (see pynbody)
-        IF a string, f is the filename of a .param file for running ChaNGa.
-        IF a snapshot, a temporary file is saved for running ChaNGa.
-    changa_preset : string
-        (optional) A configuration preset for running ChaNGa.  See changa_command
-        for possible presets.  If None, the default preset is used
-    verbose : bool
-        (optional) If true, prints the ChaNGa output to stdout
-    logfile_name : str
-        (optional) If set, ChaNGa stdout is saved to logfile_name
+    param_name : str
+        Filename for a ChaNGa .param file which defines parameters for the
+        snapshot.  The snapshot must already be saved to disk
+    preset : str
+        changa_runner preset to use.  See ICglobal_settings.global_settings
+    dDelta0 : int or float
+        Some large time step that should place all the particles at higher
+        rungs.
+    changa_args : str
+        Additional command line arguments to pass to changa.  CANNOT include
+        -n (number of time steps) or -dt (timestep size)
+    runner_args : str
+        Additional command line arguments to pass to the runner, ie to 
+        charmrun or mpirun
         
     **RETURNS**
     
-    eps : SimArray (1 number)
-        Estimate of a reasonable gravitational softening length
+    dDelta : float
+        Estimated reasonable time step that places half the particles on the
+        lowest rung (ie the big time step)
     """
-    if isinstance(f, str):
+    
+    settings = global_settings['changa_presets'][preset]
+    changa_name = settings[2]
+    runner_name = settings[0]
+    
+    changa_args += ' -n 1 -dt {0}'.format(dDelta0)
+    command = changa_command(param_name, preset, changa_args=changa_args, runner_args=runner_args)
+    
+    rung_line = ''
+    p = changa_run(command, verbose=False)
+    
+    for line in iter(p.stdout.readline, ''):
         
-        param_name = f
-        param = isaac.configparser(param_name)
-        f_prefix = param['achOutName']
-        
-    else:
-        
-        # Check to see eps has been defined by the user
-        if 'eps' not in f:
+        if 'rung distribution' in line.lower():
             
-            raise KeyError,"eps must be set in the snapshot"
+            # Kill the runner
+            kill_command = 'pkill -9 ' + runner_name
+            pkill = subprocess.Popen(kill_command.split(), \
+            stdout=subprocess.PIPE)
+            pkill.wait()
+            
+            # Kill ChaNGa
+            kill_command = 'pkill -9 ' + changa_name
+            pkill = subprocess.Popen(kill_command.split(), \
+            stdout=subprocess.PIPE)
+            pkill.wait()
+            
+            rung_line = line.strip()
+            break
         
-        # Filenames
-        f_prefix = 'temp_snapshot'
-        f_name = f_prefix + '.std'        
-        param_name = f_prefix + '.param'
-        # Save snapshot
-        f.write(filename=f_name, fmt=pynbody.tipsy.TipsySnap)
-        # Save param file
-        param = isaac.make_param(f, filename=f_name)
-        isaac.configsave(param, param_name)
+    if rung_line == '':
         
-    command = changa_command(param_name, changa_preset, changa_args='-n 0')
-    p = changa_run(command, verbose=verbose, logfile_name=logfile_name, force_wait=True)
-    
-    # Load smoothing lengths
-    h_name = f_prefix + '.000000.smoothlength'
-    h = np.genfromtxt(h_name, skiprows=1, skip_footer=1)
-    
-    # Estimate gravitational softening as 1/2 the mean smoothing length
-    eps = h.mean()/2
-    
-    # Cleanup
-    for a in glob.glob(f_prefix + '.000000*'):
+        raise RuntimeError('ChaNGa failed to output rung distribution')
         
-        os.remove(a)
+    rung_list = re.findall('\d+', rung_line)
+    rung_hist = np.array(rung_list).astype(float)
+    rung_edges = np.arange(len(rung_hist) + 1, dtype=float)
     
-    eps_units = param['dKpcUnit'] * pynbody.units.kpc
+    s = np.cumsum(rung_hist)
+    Ntot = s[-1]
     
-    return SimArray(eps, eps_units)
+    # Find first bin which gives us more than half the total number
+    for i, n in enumerate(s):
+        
+        if n >= 0.5*Ntot:
+            
+            ind = i
+            break
     
+    # Calculate the median rung    
+    rung_med = rung_edges[ind] + (0.5*Ntot - s[ind-1])/rung_hist[ind]
+    
+    # Now estimate a time step that will fit about half the particles on the
+    # lowest rung (ie the big time step)
+    
+    dDelta = dDelta0 * 2.0**(-rung_med+1)
+    
+    return dDelta
+            
 
 def changa_run(command, verbose = True, logfile_name=None, force_wait=False):
     """
@@ -361,104 +423,7 @@ def changa_command(param_name, preset=None, changa_bin=None, changa_args='', run
     command = ' '.join([runner, runner_args, changa_bin, changa_args, param_name])
     command = ' '.join(command.split())
     
-    return command    
-
-#def changa_command(param_name, preset='local', changa_bin=None, changa_args='', runner_args=''):
-#    """
-#    A utility for created command line commands for running ChaNGa
-#    
-#    **ARGUMENTS**
-#    
-#    param_name : str
-#        Filename of the .param file used for ChaNGa
-#    preset : str
-#        if None, the default preset is used
-#        Default = 'local'
-#        Defaults to use.  Options are
-#            'none' (no arguments given)
-#            'local'
-#            'mpi'
-#    changa_bin : str
-#        Default = None
-#        Path to the ChaNGa binary to use.  If None, defaults are used
-#        Overrides preset binary
-#    changa_args : str
-#        Additional user supplied arguments for ChaNGa
-#    runner_args : str
-#        Additional user supplied arguments for the runner (ie charmrun or mpirun)
-#        
-#    **RETURNS**
-#    
-#    command : str
-#        A command line command for running ChaNGa
-#    """
-#    
-#    # ******************************
-#    # DEFAULT PRESET
-#    # ******************************
-#    if preset is None:
-#        
-#        preset = 'local'
-#        
-#    # ******************************
-#    # NONE PRESET
-#    # ******************************
-#    if preset == 'none':
-#        
-#        if changa_bin is None:
-#            # Location of the default changa binary
-#            changa_bin = os.popen('which ChaNGa').read().strip()
-#        
-#        command = '{} {} {} {}'.format(runner_args, changa_bin, \
-#        changa_args, param_name)
-#        command = ' '.join(command.split())
-#        
-#        return command
-#    
-#    # ******************************
-#    # LOCAL PRESET
-#    # ******************************
-#    elif preset == 'local':
-#        
-#        # Number of processes to use
-#        proc = multiprocessing.cpu_count() - 1
-#        
-#        # location of the ChaNGa binary
-#        if changa_bin is None:
-#            
-#            changa_bin = os.popen('which ChaNGa_sinks').read().strip()
-#        
-#        if proc < 1:
-#            
-#            proc = 1
-#            
-#        default_runner_args = '+p {} ++local'.format(proc)
-#        default_changa_args = '-D 3 +consph'
-#        runner = 'charmrun_sinks'
-#        
-#    # ******************************
-#    # MPI PRESET
-#    # ******************************
-#    elif preset == 'mpi':
-#        
-#        if changa_bin is None:
-#            
-#            changa_bin = os.popen('which ChaNGa_uw_mpi').read().strip()
-#        
-#        default_runner_args = '--mca mtl mx --mca pml cm'
-#        default_changa_args = '-D 3 +consph'
-#        runner = 'mpirun'
-#        
-#    # ----------------------------------------------------------
-#    # Add user supplied arguments
-#    changa_args = ' '.join([default_changa_args, changa_args])
-#    runner_args = ' '.join([default_runner_args, runner_args])
-#    command = ' '.join([runner, runner_args, changa_bin, changa_args, param_name])
-#    command = ' '.join(command.split())    
-#        
-#    return command
-            
-            
+    return command            
             
 def arg_cat(arg_list):
     """

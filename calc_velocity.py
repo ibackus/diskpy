@@ -19,11 +19,12 @@ import os
 import glob
 import gc
 
-def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None, max_particles=None):
+def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None, \
+max_particles=None, est_eps=True):
     """
     Attempts to calculate the circular velocities for particles in a thin
     (not flat) keplerian disk.  Also estimates gravitational softening (eps)
-    for the gas particles.
+    for the gas particles
     
     Requires ChaNGa
     
@@ -52,6 +53,9 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None, ma
         accelerations and velocities.  Setting a smaller number can speed up
         computation and save on memory but can yield noisier results.
         If None, max is unlimited.
+    est_eps : bool
+        Estimate eps (gravitational softening length).  Default is True.
+        If False, it is assumed eps has already been estimated
         
     **RETURNS**
     
@@ -76,6 +80,10 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None, ma
         # Scale gas mass
         m_scale = float(n_gas)/float(max_particles)
         f.g['mass'] *= m_scale
+        
+        if not est_eps:
+            
+            f.g['eps'] *= m_scale**(1.0/3)
         
     # Load stuff from the snapshot
     r = f.g['rxy'].astype(np.float32)
@@ -118,7 +126,7 @@ def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None, ma
         p = ICgen_utils.changa_run(command)
         p.wait()
         
-        if iGrav == 0:
+        if (iGrav == 0) and est_eps:
             # Estimate the gravitational softening length on the first iteration
             smoothlength_file = f_prefix + '.000000.smoothlength'
             eps = ICgen_utils.est_eps(smoothlength_file)

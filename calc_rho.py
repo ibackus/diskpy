@@ -17,6 +17,7 @@ import scipy
 import scipy.integrate as nInt
 import scipy.optimize as opt
 from scipy.interpolate import interp1d
+from scipy.optimize.nonlin import NoConvergence
 import pynbody
 from pynbody.array import SimArray
 from warnings import warn
@@ -256,7 +257,7 @@ def rho_z(sigma, T, r, settings):
         
         Isol = opt.newton_krylov(Ires,guess,maxiter=maxiter,f_tol=f_tol)
         
-    except :
+    except NoConvergence:
         # Assume it didn't converge because f_tol was too strict
         # Read exception
         xepshun = sys.exc_info()
@@ -300,6 +301,7 @@ def rho_z(sigma, T, r, settings):
     
     return SimArray(rho0,'Msol au**-3'), SimArray(z,'au')
     
+
 def cdfinv_z(z,rho):
     """
     Calculates the inverse of the cumulative distribution function for
@@ -358,60 +360,3 @@ def cdfinv_z(z,rho):
         
     return finv
 
-#def cdfinv_z(z,rho):
-#    """
-#    Calculates the inverse of the cumulative distribution function for
-#    probability as a function of z for a given r
-#    
-#    *** Arguments ***
-#    
-#    * z *   z positions to calculate over.  1D array
-#            
-#    * rho *     Density as a function of z.  Treated as an un-normalized
-#    probability.  1D array
-#    
-#    IF Z doesn't have units, units of 'au' are assumed
-#    
-#    *** Returns ***
-#        
-#    Returns the inverse normalized CDF as 1D spline interpolation
-#    """
-#    # Check for units
-#    if pynbody.units.has_units(z):
-#        
-#        zunit = z.units
-#        
-#    else:
-#        
-#        zunit = pynbody.units.au
-#        
-#    # Calculate the CDF from prob
-#    nz = len(z)
-#    f = np.zeros(nz)
-#    f[1:] = nInt.cumtrapz(rho,z)
-#    if f.max() <= 0.0:
-#        # The density (rho) is zero here for all z or neg or something.
-#        # Make all particles go to z = 0.0
-#        def finv(m_in):
-#            return m_in*0.0
-#        return finv
-#    f /= f.max()
-#    # Calculate the inverse CDF.
-#    # Assume CDF is approximately monotonic and sort to force it to be
-#    ind = f.argsort()
-#    f = f[ind]
-#    z = z[ind]
-#    # Drop values where CDF is constant (ie, prob = 0)
-#    mask = np.ones(nz,dtype='bool')
-#    for n in range(1,nz):
-#        if f[n] == f[n-1]:
-#            mask[n] = False
-#    f = f[mask]
-#    z = z[mask]
-#    finv_spline = interp1d(f,z,kind='linear')
-#    
-#    def finv(m):
-#        
-#        return SimArray(finv_spline(m), zunit)
-#        
-#    return finv

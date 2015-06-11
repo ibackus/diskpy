@@ -77,6 +77,8 @@ class filenames:
         # Filename to save ChaNGa .param file to.  If None, no file saved
         # To edit settings, you can change default.param or the output .param file
         self.paramName = 'snapshot.param'
+        # Default .director filename
+        self.directorName = 'snapshot.director'
         
     def __call__(self):
         
@@ -178,6 +180,21 @@ class sigma:
             self.m_disk = SimArray(0.1, 'Msol')
             self.n_points = 1000
             self.Qmin = 1.5
+            
+        if kind == 'viscous':
+            
+            self.Rd = SimArray(1.0, 'au')
+            self.rin = 0.1
+            self.rmax = 2.0
+            self.m_disk = SimArray(0.1, 'Msol')
+            self.n_points = 1500
+            self.gamma = 0.9
+            
+        # innercut and outercut determine where to apply a hard cut to the
+        # surface density (if anywhere).  for example, to set sigma=0 for
+        # R > 2 au, do: outercut = SimArray(2,'au')
+        self.innercut = None
+        self.outercut = None
             
     def __setattr__(self, attr, value):
         """
