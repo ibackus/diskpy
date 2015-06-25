@@ -25,7 +25,6 @@ Also has additional functions to initialize and analyze binary system
 """
 #Constants and includes
 import numpy as np
-import pynbody
 import math
 from scipy import optimize
 import sys
@@ -348,11 +347,9 @@ def calcInc(x1 = 1, x2 = 0, v1 = 1, v2 = 0, flag=True):
 
 	#Relative position vector in cgs
 	r = (x1 - x2)
-	magR = np.linalg.norm(r,axis=ax)
 
 	#Compute relative velocity vector in cgs with appropriate scale
 	v = (v1 - v2)
-	magV =  np.linalg.norm(v,axis=ax)
 
 	#Compute specific angular momentum vector
 	h = np.cross(r,v,axis=ax)

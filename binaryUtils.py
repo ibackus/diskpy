@@ -5,7 +5,6 @@ Utilities to process/interact with binary star system in ChaNGa sims
 
 #Imports
 import numpy as np
-import string
 import re
 import AddBinary
 import isaac
