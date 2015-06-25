@@ -567,7 +567,7 @@ def calcEccVsRadius(s,r,rBinEdges):
 
 #end function
 
-def calcCoMVsRadius(s,r,rBinEdges):
+def calcCoMVsRadius(s,r,rBinEdges,starFlag=False):
 	"""
 	Calculates the system's center of mass as a function of radius.  At a given radius r, use the total enclosed
 	mass of the star(s) and gas to compute the center of mass (CoM).  Ideally, I'd like to see the CoM be at
@@ -577,6 +577,7 @@ def calcCoMVsRadius(s,r,rBinEdges):
 	s: Tipsy-format snapshot readable by pynbody
 	r: numpy array of radial points to calculate on
 	rBinEdges: edges of the array of radii    
+	starFlag: bool for whether or not to consider stars in center of mass calculation
 
 	Output:
 	Numpy array of len(r) * 3 containing location of CoM in Cartesian coordinates.
@@ -588,33 +589,16 @@ def calcCoMVsRadius(s,r,rBinEdges):
 	#Make sure I don't screw up lengths and get an off by one error
 	assert(len(r) == len(rBinEdges)-1)	
 	
-	#Loop through radial points, select gas within that r, calc CoM
-	for i in range(0,len(rBinEdges)-1):
-		rMask = s.gas['r'] < rBinEdges[i]    
-		com[i,:] = computeSystemCOM(stars,gas[rMask])
+	if starFlag: #Include stars in center of mass calculation
+		#Loop through radial points, select gas within that r, calc CoM
+		for i in range(0,len(rBinEdges)-1):
+			rMask = s.gas['r'] < rBinEdges[i]    
+			com[i,:] = computeSystemCOM(stars,gas[rMask])
+	else: #Gas disk only
+		for i in range(0,len(rBinEdges)-1):
+			rMask = s.gas['r'] < rBinEdges[i]    
+			com[i,:] = np.sum(gas['pos'][rMask]*isaac.strip_units(np.mean(gas['mass'][rMask])))/np.sum(gas['mass'][rMask])
 		
 	return com
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
+#end function
