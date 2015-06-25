@@ -422,7 +422,7 @@ def estimateCBResonances(s,r_max,m_max=5,l_max=5,bins=2500):
 	Orbital frequency for corotation and inner/outer resonances as float and 2 arrays
 	"""
 	stars = s.stars
-	gas = s.gas
+	#gas = s.gas
 
 	#Compute binary angular frequency
 	#Strip units from all inputs
@@ -433,7 +433,7 @@ def estimateCBResonances(s,r_max,m_max=5,l_max=5,bins=2500):
 	m1 = np.asarray(isaac.strip_units(stars[0]['mass']))
 	m2 = np.asarray(isaac.strip_units(stars[1]['mass']))
 	a = AddBinary.calcSemi(x1, x2, v1, v2, m1, m2)
-	omega_b = 2.0*np.pi/AddBinary.aToP(a,m1+m2)
+	#omega_b = 2.0*np.pi/AddBinary.aToP(a,m1+m2)
 
 	#Find corotation resonance where omega_d ~ omega_b
 	r_c = a #m=1 case
@@ -481,7 +481,7 @@ def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
 	Orbital frequency for corotation and inner/outer resonances and radii as float and numpy arrays
 	"""
 	stars = s.stars
-	gas = s.gas
+	#gas = s.gas
 	m_min = 1 #m >=1 for LRs, CRs
 	l_min = 1 #l >=1 for LRs, CRs
 
@@ -566,3 +566,55 @@ def calcEccVsRadius(s,r,rBinEdges):
 	return ecc
 
 #end function
+
+def calcCoMVsRadius(s,r,rBinEdges):
+	"""
+	Calculates the system's center of mass as a function of radius.  At a given radius r, use the total enclosed
+	mass of the star(s) and gas to compute the center of mass (CoM).  Ideally, I'd like to see the CoM be at
+	[0,0,0] every time (or within a really small number of that).
+	
+	Inputs: 
+	s: Tipsy-format snapshot readable by pynbody
+	r: numpy array of radial points to calculate on
+	rBinEdges: edges of the array of radii    
+
+	Output:
+	Numpy array of len(r) * 3 containing location of CoM in Cartesian coordinates.
+	"""
+	stars = s.stars
+	gas = s.gas
+	com = np.zeros((len(r),3))
+	
+	#Make sure I don't screw up lengths and get an off by one error
+	assert(len(r) == len(rBinEdges)-1)	
+	
+	#Loop through radial points, select gas within that r, calc CoM
+	for i in range(0,len(rBinEdges)-1):
+		rMask = s.gas['r'] < rBinEdges[i]    
+		com[i,:] = computeSystemCOM(stars,gas[rMask])
+		
+	return com
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
