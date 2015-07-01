@@ -37,24 +37,23 @@ IC.settings.physical.priMassPerc = 0.792154 #%of system mass in primary.  I.e. i
 #	power: sigma ~ r^(power)
 IC.settings.sigma.kind = 'powerlaw'
 IC.settings.sigma.power = -0.5
-IC.settings.sigma.Qmin = 0.2 #1.5
-IC.settings.sigma.n_points = 100 #10000
+IC.settings.sigma.Qmin = 1.5
+IC.settings.sigma.n_points = 500 #10000
 IC.settings.sigma.Rd = SimArray(2.0,'au') #Outer edge of powerlaw part of disk
 IC.settings.sigma.rmax = 2.0 #Set rmax 
 IC.settings.sigma.rin = 0.25 #Set inner disk radius
 IC.settings.cutlength = 0.01 #Set exp cutoff length scale
-IC.settings.sigma.innercut = SimArray(0.25,'au')
 
 #This will save the ICs to
 # IC.p in the current directory
 IC.save()
 
 # Change the settings used for numerically calculating the gas density
-IC.settings.rho_calc.nr = 100 #5000 # Number of radial points to calculate on
+IC.settings.rho_calc.nr = 500 #5000 # Number of radial points to calculate on
 IC.settings.rho_calc.nz = 100 #1000 # Number of vertical points to calculate on
 
 # Set the number of gas particles
-IC.settings.pos_gen.nParticles = 10000 #1000000
+IC.settings.pos_gen.nParticles = 100000 #1000000
 
 # Set up the temperature profile to use.  Available kinds are 'powerlaw'
 # and 'MQWS'

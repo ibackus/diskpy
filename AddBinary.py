@@ -38,11 +38,11 @@ YEARSEC = 3.15569e7 #seconds per year
 DAYSEC = 86400 #seconds per day
 AUCM = 1.49597571e13 #cm/au
 RAD2DEG = 180.0/np.pi
-SMALL = 0.000001 #less than this is zero-enough
+SMALL = 0.000001 #less than this is zero enough
 
 #ICgen-Specific constants
 VEL_UNIT = 29.785598165 #29.785598165 km/s 
-POS_UNIT = 4.84813680873e-9 #in kpc == 1 au, same as eps_unit
+POS_UNIT = 4.84813680873e-9 #in kpc == 1 au
 
 #Function prototypes
 
