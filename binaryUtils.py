@@ -224,7 +224,9 @@ def computeSystemCOM(stars,gas):
 
 def calcDiskRadialBins(s,r_in=0,r_out=0,bins=50):
 	"""
-	Cleanly partitions disk into radial bins and returns the bin edges and central bin values.
+	Cleanly partitions disk into radial bins and returns the bin edges and central bin values.  Note, default
+	ndim = 2 so all bins are in 2D plane (i.e. radius r is polar/cylindrical radius in xy plane which makes 
+	sense for thin disks)
 
 	Inputs:
 	s: Pynbody snapshot
@@ -252,8 +254,8 @@ def calcDiskRadialBins(s,r_in=0,r_out=0,bins=50):
 
 	#Bin gas particles by radius
 	pg = pynbody.analysis.profile.Profile(s.gas,max=r_out,nbins=bins)
-	r = isaac.strip_units(pg['rbins'])
-	mask = (r > r.min()) & (r < r_out) #Ensure you're not right on binary or too far out
+	r = isaac.strip_units(pg['rbins']) #Radius from origin in xy plane
+	mask = (r > r.min()) & (r < r_out) #Ensure you're not right on binary or too far out.  Redundant, but whatever
 	r = r[mask]
 
 	#Make nice, evenly spaced radial bins vector
@@ -350,7 +352,7 @@ def torqueVsRadius(s,r,rBinEdges):
 
 	#For a given radius, put gas particles in bins where s.gas['r'] is in au and pynbody units are stripped
 	for i in range(0,len(rBinEdges)-1):
-		rMask = np.logical_and(isaac.strip_units(s.gas['r']) > rBinEdges[i], isaac.strip_units(s.gas['r']) < rBinEdges[i+1])
+		rMask = np.logical_and(isaac.strip_units(s.gas['rxy']) > rBinEdges[i], isaac.strip_units(s.gas['rxy']) < rBinEdges[i+1])
 		tau[i] = np.asarray(calcNetTorque(s.stars,s.gas[rMask])) 
         
 	return tau
@@ -540,7 +542,7 @@ def calcEccVsRadius(s,r,rBinEdges):
 	ecc = np.zeros(len(r))
 
 	for i in range(0,len(rBinEdges)-1):
-		rMask = np.logical_and(isaac.strip_units(s.gas['r']) > rBinEdges[i], isaac.strip_units(s.gas['r']) < rBinEdges[i+1])
+		rMask = np.logical_and(isaac.strip_units(s.gas['rxy']) > rBinEdges[i], isaac.strip_units(s.gas['rxy']) < rBinEdges[i+1])
 		
 		#For non-zero bins
 		if(np.sum(rMask) != 0):
@@ -574,7 +576,7 @@ def calcCoMVsRadius(s,r,rBinEdges,starFlag=False):
 	
 	Inputs: 
 	s: Tipsy-format snapshot readable by pynbody
-	r: numpy array of radial points to calculate on
+	r: numpy array of radial points to calculate on (in xy plane)
 	rBinEdges: edges of the array of radii    
 	starFlag: bool for whether or not to consider stars in center of mass calculation
 
@@ -591,11 +593,11 @@ def calcCoMVsRadius(s,r,rBinEdges,starFlag=False):
 	if starFlag: #Include stars in center of mass calculation
 		#Loop through radial points, select gas within that r, calc CoM
 		for i in range(0,len(rBinEdges)-1):
-			rMask = s.gas['r'] < rBinEdges[i]    
+			rMask = s.gas['rxy'] < rBinEdges[i]    
 			com[i,:] = computeSystemCOM(stars,gas[rMask])
 	else: #Gas disk only
 		for i in range(0,len(rBinEdges)-1):
-			rMask = s.gas['r'] < rBinEdges[i]    
+			rMask = s.gas['rxy'] < rBinEdges[i]    
 			com[i,:] = np.sum(gas['pos'][rMask]*isaac.strip_units(np.mean(gas['mass'][rMask])))/np.sum(gas['mass'][rMask])
 		
 	return com

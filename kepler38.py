@@ -43,6 +43,7 @@ IC.settings.sigma.Rd = SimArray(2.0,'au') #Outer edge of powerlaw part of disk
 IC.settings.sigma.rmax = 2.0 #Set rmax 
 IC.settings.sigma.rin = 0.25 #Set inner disk radius
 IC.settings.cutlength = 0.01 #Set exp cutoff length scale
+IC.settings.sigma.innercut = SimArray(0.25,'au')
 
 #This will save the ICs to
 # IC.p in the current directory

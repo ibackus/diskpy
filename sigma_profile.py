@@ -83,7 +83,7 @@ def _applycut(r, sigma, rcut, outer=True):
     
     if np.any(mask):
         
-        sigma[mask] = 0
+        sigma[mask] *= 0
         
     return sigma
     
@@ -203,9 +203,9 @@ def powerlaw(settings, T = None):
     #dflemin3 edit 06/10/2015: Try powerlaw of the form sigma ~ r^power
     sigma = A*np.power(r,power)
     sigma[0] = 0.0
-    # Interior cutoff
-    sigma[r>1] *= np.exp(-(r[r>1] - 1)**2 / (2*cutlength**2))
     # Exterior cutoff
+    sigma[r>1] *= np.exp(-(r[r>1] - 1)**2 / (2*cutlength**2))
+    # Interior cutoff
     sigma[r<rin] *= isaac.smoothstep(r[r<rin],degree=21,rescale=True)
     
     # Calculate Q
@@ -218,7 +218,6 @@ def powerlaw(settings, T = None):
     # Calculate Q
     Q = np.sqrt(Mstar*kB*T(R)/(G*m*R**3))/(np.pi*sigma)
     Q.convert_units('1')
-    
     return R, sigma
     
 #def MQWS(n_points=1000, rin=4.0, rout=20.0, rmax = None, m_disk=0.1):
