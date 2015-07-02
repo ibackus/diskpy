@@ -197,28 +197,39 @@ def find_crit_radius(r,array,toFind,num=1000):
 
 #end function
 
-def computeSystemCOM(stars,gas):
+def computeCOM(stars,gas,cutoff=None,starFlag=True):
 	"""
-	Given pynbody star and gas arrays, compute the center of mass for the entire system.
+	Given pynbody star and gas arrays, compute the center of mass for the entire specified system.
 
 	Inputs: (pynbody objects!)
 	stars: s.stars pynbody object
 	gas: s.gas pynbody object
+	cutoff: radius at which you only consider objects interior to it
+	starFlag: whether or not to consider stars
 
 	Output:
 	Center of mass (in AU for each x,y,z component) as numpy array
-	
-	Added support to work on my laptop (No idea why it wouldn't before?) 3/11/2015 dflemin3
+
+	Note: a lot of "strip_units" commands included to prevent throwing weird value errors.  As long as all masses
+	are in solar masses and positions in AU before this is run, you won't have any problems.	
 	"""
-	#Ensure system in binary
-	assert len(stars) == 2
+	#If there's a cutoff, select gas particles with cylindrical radius less than the cutoff
+	if cutoff != None:
+		mask = gas['rxy'] < cutoff
+		gas = gas[mask]
 	
-	#Compute stellar mass, mass-weighted position
-	starMass = np.sum(stars['mass'])
-	starPos = (stars[0]['pos']*isaac.strip_units(stars[0]['mass']) + stars[1]['pos']*isaac.strip_units(stars[1]['mass']))
+	if starFlag: #Include stars
+		#Ensure binary
+		assert len(stars) == 2
 	
-	#Compute, return total center of mass
-	return np.asarray((starPos + np.sum(gas['pos']*isaac.strip_units(np.mean(gas['mass']))))/np.sum(starMass+np.sum(gas['mass'])))
+		#Compute stellar mass, mass-weighted position
+		starMass = np.sum(stars['mass'])
+		starPos = (stars[0]['pos']*isaac.strip_units(stars[0]['mass']) + stars[1]['pos']*isaac.strip_units(stars[1]['mass']))
+	
+		#Compute, return total center of mass
+		return np.asarray((starPos + np.sum(gas['pos']*isaac.strip_units(np.mean(gas['mass']))))/np.sum(starMass+np.sum(gas['mass'])))
+	else: #No stars, just gas
+		return np.sum(gas['pos']*isaac.strip_units(np.mean(gas['mass'])))/np.sum(gas['mass'])
 
 #end function
 
@@ -286,7 +297,7 @@ def calcNetTorque(stars,gas):
 	assert len(stars) == 2
 
 	#Compute center of mass of entire binary-disk system
-	com = computeSystemCOM(stars,gas)
+	com = computeCOM(stars,gas)
 
 	#Compute net force on primary star (index = 0)
 
@@ -568,7 +579,7 @@ def calcEccVsRadius(s,r,rBinEdges):
 
 #end function
 
-def calcCoMVsRadius(s,r,rBinEdges,starFlag=False):
+def calcCoMVsRadius(s,rBinEdges,starFlag=False):
 	"""
 	Calculates the system's center of mass as a function of radius.  At a given radius r, use the total enclosed
 	mass of the star(s) and gas to compute the center of mass (CoM).  Ideally, I'd like to see the CoM be at
@@ -576,8 +587,7 @@ def calcCoMVsRadius(s,r,rBinEdges,starFlag=False):
 	
 	Inputs: 
 	s: Tipsy-format snapshot readable by pynbody
-	r: numpy array of radial points to calculate on (in xy plane)
-	rBinEdges: edges of the array of radii    
+	rBinEdges: edges of the array of radii in xy plane
 	starFlag: bool for whether or not to consider stars in center of mass calculation
 
 	Output:
@@ -585,21 +595,15 @@ def calcCoMVsRadius(s,r,rBinEdges,starFlag=False):
 	"""
 	stars = s.stars
 	gas = s.gas
-	com = np.zeros((len(r),3))
-	
-	#Make sure I don't screw up lengths and get an off by one error
-	assert(len(r) == len(rBinEdges)-1)	
+	com = np.zeros((len(rBinEdges)-1,3))
 	
 	if starFlag: #Include stars in center of mass calculation
 		#Loop through radial points, select gas within that r, calc CoM
 		for i in range(0,len(rBinEdges)-1):
-			rMask = s.gas['rxy'] < rBinEdges[i]    
-			com[i,:] = computeSystemCOM(stars,gas[rMask])
+			com[i,:] = computeCOM(stars,gas,cutoff=rBinEdges[i],starFlag=starFlag)
 	else: #Gas disk only
 		for i in range(0,len(rBinEdges)-1):
-			rMask = s.gas['rxy'] < rBinEdges[i]    
-			com[i,:] = np.sum(gas['pos'][rMask]*isaac.strip_units(np.mean(gas['mass'][rMask])))/np.sum(gas['mass'][rMask])
-		
+			com[i,:] = computeCOM(stars,gas,cutoff=rBinEdges[i],starFlag=starFlag)
 	return com
 
 #end function
