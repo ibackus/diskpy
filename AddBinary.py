@@ -38,7 +38,7 @@ YEARSEC = 3.15569e7 #seconds per year
 DAYSEC = 86400 #seconds per day
 AUCM = 1.49597571e13 #cm/au
 RAD2DEG = 180.0/np.pi
-SMALL = 0.000001 #less than this is zero enough
+SMALL = 1.0e-12 #less than this is zero enough
 
 #ICgen-Specific constants
 VEL_UNIT = 29.785598165 #29.785598165 km/s 
@@ -357,9 +357,9 @@ def calcInc(x1 = 1, x2 = 0, v1 = 1, v2 = 0, flag=True):
 
 	if(length > 1):
 		h_z = h[:,2]
-	else: #only 1 value
+	else:
 		h_z = h[0,2]
-
+	
 	#Orbit is CCW (h_z < 0) so take fabs to have i >= 0 
 	h_z = np.fabs(h_z)
 
@@ -398,6 +398,7 @@ def calcLongOfAscNode(x1 = 1, x2 = 0, v1 = 1, v2 = 0,flag=True):
 	#Define unit vectors pointing along z, x and y axes respectively
 	#Also ensure function can handle any number of values
 	length, ax = computeLenAx(x1)
+		
 	k = np.zeros((length,3))
 	i = np.zeros((length,3))
 	j = np.zeros((length,3))
@@ -424,6 +425,10 @@ def calcLongOfAscNode(x1 = 1, x2 = 0, v1 = 1, v2 = 0,flag=True):
 	#Compute vector pointing to ascending node
 	n = np.cross(k,h,axis=ax)
 	magN = np.linalg.norm(n,axis=ax)
+	
+	#Ensure no divide by zero errors?
+	if np.fabs(magN) < SMALL:
+		magN = 1.0
 
 	#Compute LoAN
 	inc = calcInc(x1,x2,v1,v2)
@@ -436,7 +441,7 @@ def calcLongOfAscNode(x1 = 1, x2 = 0, v1 = 1, v2 = 0,flag=True):
 	Omega[dotProduct(n,j) < 0] = 2.0*np.pi - Omega
 	
 	#Convert to degrees, return
-	return np.asarray(Omega * RAD2DEG)
+	return Omega * RAD2DEG
 
 #end function
 
@@ -482,7 +487,7 @@ def calcEccVector(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
 	h = np.cross(r,v,axis=ax)
 
 	#Compute, return eccentricity vector
-	return np.asarray((np.cross(v,h,axis=ax)/mu) - (r/magR))
+	return (np.cross(v,h,axis=ax)/mu) - (r/magR)
 
 #end function
 
@@ -537,6 +542,10 @@ def calcArgPeri(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
 	#Compute vector pointing to ascending node
 	n = np.cross(k,h,axis=ax)
 	magN = np.linalg.norm(n,axis=ax)
+	
+	#Ensure no divide by zero errors?
+	if np.fabs(magN) < SMALL:
+		magN = 1.0
 
 	#Compute argument of periapsis
 	inc = calcInc(x1,x2,v1,v2)
@@ -545,7 +554,7 @@ def calcArgPeri(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
 	w[inc < SMALL] = 0.0 #For orbit in a plane
 
 	#Return in degrees	
-	return np.asarray(w * RAD2DEG)
+	return w * RAD2DEG
 
 #end function
 
@@ -586,12 +595,16 @@ def calcTrueAnomaly(x1 = 1, x2 = 0, v1 = 1, v2 = 0, m1 = 1, m2 = 1,flag=True):
 	v = (v1 - v2)
 	magR = np.linalg.norm(r,axis=ax)
 
-	#Compute true anomaly
+	#Compute true anomaly making sure I can handle single numbers or arrays
 	nu = np.arccos(dotProduct(e,r)/(magE*magR))
-	nu[dotProduct(r,v) < 0] = 2.0*np.pi - nu
+	if type(nu) == np.float64:
+		if dotProduct(r,v) < 0.0:
+			nu = 2.0*np.pi - nu
+	else:
+		nu[dotProduct(r,v) < 0.0] = 2.0*np.pi - nu
 
 	#Convert to degrees, return
-	return np.asarray(nu * RAD2DEG)
+	return nu * RAD2DEG
 
 #end function
 
@@ -628,10 +641,16 @@ def calcEccentricAnomaly(x1 = 1, x2 = 0, v1 = 1, v2 = 0, m1 = 1, m2 = 1,flag=Tru
 	#Calc E
 	nu = nu*(np.pi/180.0) #convert to radians for numpy functions
 	E = np.arccos( (e+np.cos(nu)) / (1.0 + e*np.cos(nu)) )
-	E[np.logical_and(nu > np.pi, nu < 2.0*np.pi)] = 2.0*np.pi - E
+	
+	#Make sure this can handle single numbers or arrays
+	if type(E) == np.float64:
+		if nu > np.pi and nu < 2.0*np.pi:
+			E = 2.0*np.pi - E
+	else:
+		E[np.logical_and(nu > np.pi, nu < 2.0*np.pi)] = 2.0*np.pi - E
 
 	#Return E in degrees
-	return np.asarray(E * RAD2DEG)
+	return E * RAD2DEG
 
 def calcMeanAnomaly(x1 = 1, x2 = 0, v1 = 1, v2 = 0, m1 = 1, m2 = 1,flag=True):
 	"""
@@ -665,12 +684,38 @@ def calcMeanAnomaly(x1 = 1, x2 = 0, v1 = 1, v2 = 0, m1 = 1, m2 = 1,flag=True):
 
 	#Calculate Mean Anomaly
 	E = E*(np.pi/180.0) #Conver E to radians for numpy
-	M = E - e*np.sin(E);
+	M = E - e*np.sin(E)
 
 	#Return M in degrees
-	return (M * RAD2DEG);
+	return (M * RAD2DEG)
 
 #end function
+
+def trueToMean(nu,e):
+	"""
+	Given the true anomaly nu in degrees and the eccentricity e, compute the mean anomaly M in degrees.
+	
+	Input:
+	nu: True anomaly (degrees)
+	e: eccentricity
+	
+	Output:
+	M: mean anomaly (degrees)
+	"""
+	#Compute eccentric anomaly E
+	nu = nu*(np.pi/180.0) #convert to radians for numpy functions
+	E = np.arccos( (e+np.cos(nu)) / (1.0 + e*np.cos(nu)) )
+	
+	#Make sure this can handle single numbers or arrays
+	if type(E) == np.float64:
+		if nu > np.pi and nu < 2.0*np.pi:
+			E = 2.0*np.pi - E
+	else:
+		E[np.logical_and(nu > np.pi, nu < 2.0*np.pi)] = 2.0*np.pi - E	
+	
+	#Compute, return M
+	M = E - e*np.sin(E)
+	return (M * RAD2DEG)
 
 #################################################################################################
 #                                                                                               #
@@ -682,6 +727,9 @@ def keplerToCartesian(a,e,i,Omega,w,M,m1,m2,angleFlag=True,scaleFlag=True):
 	"""
 	Given the Keplerian orbital elements, compute the cartesian coordinates of the object orbiting
 	in the reduced mass frame.  Note: Requires all angles in degrees unless noted.
+	
+	Note: A little redudant that I compute M when I typically already know the true anomaly nu, but most 
+	other schemes know M initially instead of nu so I'll keep it for compatibility's sake.
 
 	Input:
 	a: Semimajor axis (AU)
@@ -708,23 +756,24 @@ def keplerToCartesian(a,e,i,Omega,w,M,m1,m2,angleFlag=True,scaleFlag=True):
 		M /= RAD2DEG
 
 	#Step 1: Convert M->E by solving M = E-esinE for E
-	#Rearrange to E - esinE - M = 0 to solve with nonlinear eq solver
-	def F(E,m=M,ecc=e):
+	#Rearrange to E - esinE - M = 0 to solve for root
+	def F(E,m,ecc):
 		return E - ecc*np.sin(E) - m
 	
 	#Compute eccentric anomaly in radians			
-	E = optimize.newton_krylov(F,M)	
-
+	E = optimize.newton(F,M,args=(M,e))	
+	
+	"""
 	#Compute unit vectors P, Q along axes of PQW frame
 	P = np.zeros((length,3))
 	Q = np.zeros((length,3))
 	if(length > 1):
-		P[:,0] = np.cos(w)*np.cos(Omega) - np.sin(w)*np.cos(i)*np.sin(Omega)
-		P[:,1] = np.cos(w)*np.sin(Omega) + np.sin(w)*np.cos(i)*np.cos(Omega)
-		P[:,2] = np.sin(w)*np.sin(i)
-		Q[:,0] = -np.sin(w)*np.cos(Omega) - np.cos(w)*np.cos(i)*np.sin(Omega)
-		Q[:,1] = -np.sin(w)*np.sin(Omega) + np.cos(w)*np.cos(i)*np.cos(Omega)
-		Q[:,2] = np.sin(i)*np.cos(w)
+		P[:,0] = np.cos(w[:])*np.cos(Omega[:]) - np.sin(w[:])*np.cos(i[:])*np.sin(Omega[:])
+		P[:,1] = np.cos(w[:])*np.sin(Omega[:]) + np.sin(w[:])*np.cos(i[:])*np.cos(Omega[:])
+		P[:,2] = np.sin(w[:])*np.sin(i[:])
+		Q[:,0] = -np.sin(w[:])*np.cos(Omega[:]) - np.cos(w[:])*np.cos(i[:])*np.sin(Omega[:])
+		Q[:,1] = -np.sin(w[:])*np.sin(Omega[:]) + np.cos(w[:])*np.cos(i[:])*np.cos(Omega[:])
+		Q[:,2] = np.sin(i[:])*np.cos(w[:])
 	else:
 		P[0,0] = np.cos(w)*np.cos(Omega) - np.sin(w)*np.cos(i)*np.sin(Omega)
 		P[0,1] = np.cos(w)*np.sin(Omega) + np.sin(w)*np.cos(i)*np.cos(Omega)
@@ -737,15 +786,28 @@ def keplerToCartesian(a,e,i,Omega,w,M,m1,m2,angleFlag=True,scaleFlag=True):
 	mu = BigG*(m1+m2)*Msol 
 
 	#Compute radius vector in AU...assumes a already in AU!
-	r = (a*(np.cos(E) - e)*P + a*np.sqrt(1-e*e)*np.sin(E)*Q)
+	r = a*(np.cos(E) - e)*P + a*np.sqrt(1.0-e*e)*np.sin(E)*Q
 	
 	#Compute velocity vector
 	tmp = np.sqrt(mu)/(np.power(a,1.5)*(1.0 - e*np.cos(E)))
 	v = -a*e*np.sin(E)*tmp*P 
 	v += a*np.sqrt(1.0-e*e)*np.cos(E)*tmp*Q
+	"""
+	#Compute True Anomaly nu
+	nu = 2.0*np.arctan2(np.sqrt(1.0+e)*np.sin(E/2.0),np.sqrt(1.0-e)*np.cos(E/2.0))
+	
+	#Compute standard gravitational parameter in cgs assuming masses in Msol
+	mu = BigG*(m1+m2)*Msol
+	
+	#Compute correct radius and velocity of object in reduced mass frame
+	r = np.asarray(a*(1.0-e*np.cos(E))*np.array([np.cos(nu),np.sin(nu),0.0])) #Note: set r_z == 0 because we're in a plane
+	v = np.sqrt(mu*a)*np.asarray([-np.sin(E),np.sqrt(1.0-e*e)*np.cos(E),0.0])
+	
+	#Handle v/0 errors
+	v = v/r[np.fabs(r) > SMALL]	
 
 	#Convert v to km/s and in sim units if flag says yes
-	conv = 1.0/(np.sqrt(AUCM)*100.*1000.)
+	conv = 1.0/(np.sqrt(AUCM)*100.0*1000.0)
 	if scaleFlag:
 		v *= conv/VEL_UNIT
 	else:
@@ -846,7 +908,7 @@ def calcCircularFrequency(x1,x2,v1,v2,m1,m2,flag=True):
 
 	#Calculate angular momentum assuming all arrays are nx3
 	r = x1 - x2
-	rMag = np.linalg.norm(r,axis=ax)
+	rMag = np.sqrt(dotProduct(r,r))
 	e = calcEcc(x1,x2,v1,v2,m1,m2,flag=False)
 	a = calcSemi(x1,x2,v1,v2,m1,m2,flag=False)*AUCM
 	L = np.sqrt(BigG*(m1+m2)*a*(1-e*e))	
@@ -910,12 +972,16 @@ def dotProduct(a,b):
 	Output:
 	dot product: numpy array with n rows containing dot products
 	"""
-	#Don't trust user, make sure a, b are numpy arrays
+	#Don't trust user, make sure a, b are numpy arrays of same shape
 	a = np.asarray(a)
 	b = np.asarray(b)
+	assert(a.shape == b.shape), "Input arrays must be same shape."
+
+	#Determine correct axis to perform operation on
+	l, ax = computeLenAx(a)
 	
 	#Numpy multiplies element wise!	
-	return np.sum(a*b,axis=1)
+	return np.sum(a*b,axis=ax)
 
 #end function
 
@@ -923,9 +989,12 @@ def computeLenAx(a):
 	"""
 	Given an numpy array, check to see if it's length is 1 (aka it's a float, or int or whatever) or otherwise and return
 	it's length and the axis over which calculations like normalization and cross product is to be taken.  This function 
-	is useful when you expect data arrays of the form x = [n,3] 
+	is useful when you expect data arrays of the form x = [n,3] with weird combinations of lists/numpy arrays
 	"""
-	if(a.shape == ()): #Just a float
+	if(a.shape == () or a.shape == (len(a),)): #Just a float
+		length = 1
+		ax = 0
+	elif (a.shape == (1,len(a))):
 		length = 1
 		ax = 0
 	else:
