@@ -37,18 +37,19 @@ class Binary(object):
 		#Ensure input is proper
 		assert (len(X) == 6), "len(Input Array) != 6. len = %d." % len(X)		
 		
-		if state == "Cartesian" or "cartesian":
+		
+		if state == "Cartesian" or state == "cartesian":
 			self.r = X[0:3]
 			self.v = X[3:]
 			self.m1 = m1
 			self.m2 = m2
 			self.state = state
-		elif state == "Kepler" or "kepler":
-			self.assignOrbElems(self,X,m1,m2,state)
+		elif state == "Kepler" or state == "kepler":
+			self.assignOrbElems(self,X)
 			self.m1 = m1
 			self.m2 = m2
 			self.state = state
-		elif state == "Snapshot" or "snapshot":
+		elif state == "Snapshot" or state == "snapshot":
 			pass
 		else:
 			print "Invalid input data type state: %s.  All params set to 0 by default." % state
@@ -67,13 +68,7 @@ class Binary(object):
 		Output:
 		None
 		"""
-		self.e = X[0]
-		self.a = X[1]
-		self.i = X[2]
-		self.Omega = X[3]
-		self.w = X[4]
-		self.nu = X[5]
-		return
+		
 
 	def computeOrbElems(self):
 		"""
@@ -95,7 +90,7 @@ class Binary(object):
 		"""
 		Compute the Cartesian position and velocity in the reduced mass frame.
 		"""
-		assert (self.state == "Kepler" or "kepler")
+		assert (self.state == "Kepler" or self.state == "kepler")
 		zero = np.asarray([0.,0.,0.])		
 		M = AddBinary.calcMeanAnomaly(self.r,zero,self.v,zero,self.m1,self.m2)
 		self.r, self.v = AddBinary.keplerToCartesian(self.a,self.e,self.i,self.Omega,self.w,M,self.m1,self.m2)
@@ -105,10 +100,10 @@ class Binary(object):
 		From Kepler orbital elements, compute the initial position, velocities for two stars in ChaNGa-friendly units.
 		"""
 		zero = np.asarray([0.,0.,0.])
-		if self.state == "Kepler" or "kepler":
+		if self.state == "Kepler" or self.state == "kepler":
 			M = AddBinary.calcMeanAnomaly(self.r,zero,self.v,zero,self.m1,self.m2)
 			x1,x2,v1,v2 = AddBinary.initializeBinary(self.a,self.e,self.i,self.Omega,self.w,M,self.m1,self.m2)
-		elif self.state == "Cartesian" or "cartesian":
+		elif self.state == "Cartesian" or self.state == "cartesian":
 			oe = self.computeOrbElems(self.r,zero,self.v,zero,self.m1,self.m2)
 			x1,x2,v1,v2 = AddBinary.initializeBinary(self.a,self.e,self.i,self.Omega,self.w,M,self.m1,self.m2)
 		else:
