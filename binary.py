@@ -10,6 +10,7 @@ import numpy as np
 
 #Import my binary star module that continue relevant routines
 import AddBinary
+import pynbody
 
 class Binary(object):
 	"""
@@ -29,15 +30,18 @@ class Binary(object):
 		inclination (degrees), Longitude of Ascending Node (degrees), argument of periapsis (degrees), and
 		the true anomaly (degrees).  Note the units!  m1, m2 are defined above.
 	With Snapshot:
-	
-	
+		X is a tipsy snapshot to be loaded.  Positions and orbital elements will be calculated from it.
 	"""	
 	
 	def __init__(self,X,m1,m2,state):
+		"""
+		For a user-specified data type, initialize Cartesian positions in the center of mass frame and the
+		associated Keplerian orbital elements for the binary system.
+		"""
 		
 		if state == "Cartesian" or state == "cartesian":
 			#Ensure input is proper
-			assert (len(X) == 2), "len(Input Array) != 2. len = %d." % len(X)				
+			assert (len(X) == 2), "len(Input Array) != 2. len = %d.  State should be cartesian." % len(X)				
 			
 			self.r = X[0]
 			self.v = X[1]
@@ -45,19 +49,44 @@ class Binary(object):
 			self.m2 = m2
 			self.state = state
 			self.reshapeData()
+			self.computeOrbElems()			
 			
 		elif state == "Kepler" or state == "kepler":
 			#Ensure input is proper
-			assert (len(X) == 6), "len(Input Array) != 6. len = %d." % len(X)	
+			assert (len(X) == 6), "len(Input Array) != 6. len = %d.  State should be kepler" % len(X)	
 		
 			self.assignOrbElems(X)
 			self.m1 = m1
 			self.m2 = m2
 			self.state = state
-		elif state == "Snapshot" or state == "snapshot":
-			pass
+			self.computeCartesian()
+			self.reshapeData()
+			
+		elif state == "Snapshot" or state == "snapshot":			
+			#Extract data from snapshot
+			x1 = X.stars[0]['pos']
+			x2 = X.stars[1]['pos']
+			v1 = X.stars[0]['vel']
+			v2 = X.stars[1]['vel']
+			self.m1 = X.stars[0]['mass']
+			self.m2 = X.stars[1]['mass']			
+			
+			#Compute position, velocity in center of mass frame then compute orbital elements
+			self.r = x1 - x2
+			self.v = v1 - v2
+			self.reshapeData()
+			self.computeOrbElems()
+		
 		else:
-			print "Invalid input data type state: %s.  All params set to 0 by default." % state
+			print "Invalid input data type state: %s." % state
+		
+	#end function
+		
+	def __repr__(self):
+		"""
+		When invoked, return the orbital elements.
+		"""		
+		return "(%s,%s,%s,%s,%s,%s)" % (self.e,self.a,self.i,self.Omega,self.w,self.nu)
 		
 	#end function
 		
@@ -70,26 +99,28 @@ class Binary(object):
 		Input:
 		X is e, a, i, Omega, w, nu which are the eccentricity, semimajor axis (AU),
 		inclination (degrees), Longitude of Ascending Node (degrees), argument of periapsis (degrees), and
-		the true anomaly (degrees).
+		the true anomaly (degrees).  Convert all values to float for consistency and as a sanity check.
 			
 		Output:
 		None
 		"""
-		self.e = X[0]
-		self.a = X[1]
-		self.i = X[2]
-		self.Omega = X[3]
-		self.w = X[4]
-		self.nu = X[5]
+		self.e = float(X[0])
+		self.a = float(X[1])
+		self.i = float(X[2])
+		self.Omega = float(X[3])
+		self.w = float(X[4])
+		self.nu = float(X[5])
 
 	#end function		
 		
 	def reshapeData(self):
 		"""
 		Ensure data, specifically r and v arrays, are of the proper shape for further manipulation.
+		This is useful because sometimes they come in as a list, a (1,3) numpy array or a (3,) numpy array.
+		Much easier to clean up upon initialization then have many checks in later functions.
 		"""
-		self.r = self.r.reshape((1,3))
-		self.v = self.v.reshape((1,3))
+		self.r = np.asarray(self.r).reshape((1,3))
+		self.v = np.asarray(self.v).reshape((1,3))
 		
 	#end function
 
@@ -115,9 +146,8 @@ class Binary(object):
 		"""
 		Compute the Cartesian position and velocity in the reduced mass frame.
 		"""
-		assert (self.state == "Kepler" or self.state == "kepler")
-		zero = np.asarray([0.,0.,0.])		
-		M = AddBinary.calcMeanAnomaly(self.r,zero,self.v,zero,self.m1,self.m2)
+		assert (self.state == "Kepler" or self.state == "kepler"), "Already have cartesian coords!"
+		M = AddBinary.trueToMean(self.nu,self.e)
 		self.r, self.v = AddBinary.keplerToCartesian(self.a,self.e,self.i,self.Omega,self.w,M,self.m1,self.m2)
 
 	#end function		
@@ -126,23 +156,8 @@ class Binary(object):
 		"""
 		From Kepler orbital elements, compute the initial position, velocities for two stars in ChaNGa-friendly units.
 		"""
-		#Define required array of 0s		
-		zero = np.asarray([0.,0.,0.])
-		
-		
-		if self.state == "Kepler" or self.state == "kepler":
-			M = AddBinary.trueToMean(self.nu,self.e)
-			x1,x2,v1,v2 = AddBinary.initializeBinary(self.a,self.e,self.i,self.Omega,self.w,M,self.m1,self.m2)
-			
-		elif self.state == "Cartesian" or self.state == "cartesian":
-			M = AddBinary.calcMeanAnomaly(self.r,zero,self.v,zero,self.m1,self.m2)
-			x1,x2,v1,v2 = AddBinary.reduceToPhysical(self.r,self.v,self.m1,self.m2)
-			
-		else:
-			pass
-		
-		return x1, x2, v1, v2
-		
+		return AddBinary.reduceToPhysical(self.r,self.v,self.m1,self.m2)
+				
 	#end function
 		
 		
