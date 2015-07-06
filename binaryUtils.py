@@ -341,7 +341,7 @@ def calcNetTorque(stars,gas):
 #end function
 
 #def torqueVsRadius(s,r_in=0,r_out=0,bins=50):
-def torqueVsRadius(s,r,rBinEdges):
+def torqueVsRadius(s,rBinEdges):
 	"""
 	Takes in pynbody snapshot s for a binary system with a CB disk 
 	returns torque per unit mass vs radius and the approximate radius of the bin where
@@ -356,10 +356,9 @@ def torqueVsRadius(s,r,rBinEdges):
 
 	Outputs:
 	tau: Torque per unit mass as function of radius (cgs vs au)
-	r: radius array over which torque was calculated
 	"""
 	#Create array to hold torque as function of radius
-	tau = np.zeros((len(r),3))
+	tau = np.zeros((len(rBinEdges)-1,3))
 
 	#For a given radius, put gas particles in bins where s.gas['r'] is in au and pynbody units are stripped
 	for i in range(0,len(rBinEdges)-1):
@@ -537,7 +536,7 @@ def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
 
 #end function
 
-def calcEccVsRadius(s,r,rBinEdges):
+def calcEccVsRadius(s,rBinEdges):
 	"""
 	Calculates the average circumbinary disk eccentricity in radial bins.
 	Also general enough to work for a circumstellar disk.	
@@ -550,7 +549,7 @@ def calcEccVsRadius(s,r,rBinEdges):
 	Outputs:
 	ecc: Vector of len = len(r) containing disk eccentricity.
 	"""
-	ecc = np.zeros(len(r))
+	ecc = np.zeros(len(rBinEdges)-1)
 
 	for i in range(0,len(rBinEdges)-1):
 		rMask = np.logical_and(isaac.strip_units(s.gas['rxy']) > rBinEdges[i], isaac.strip_units(s.gas['rxy']) < rBinEdges[i+1])
@@ -607,3 +606,19 @@ def calcCoMVsRadius(s,rBinEdges,starFlag=False):
 	return com
 
 #end function
+
+def calcPoissonVsRadius(s,rBinEdges):
+	"""
+	Given a tipsy snapshot and radial bins, compute the Poisson noise, N_particles*sqrt(radius), in each radial bin.
+	Expect a powerlaw trend since N_particles ~ Surface density profile.
+	"""	
+	gas = s.gas
+	poisson = np.zeros(len(rBinEdges)-1)	
+	
+	for i in range(0,len(rBinEdges)-1):
+		rMask = np.logical_and(isaac.strip_units(gas['rxy']) > rBinEdges[i], isaac.strip_units(gas['rxy']) < rBinEdges[i+1])
+		N = len(gas[rMask])
+		r = (rBinEdges[i] + rBinEdges[i+1])/2.0
+		poisson[i] = np.sqrt(N)*r
+	
+	return poisson

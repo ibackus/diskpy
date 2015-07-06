@@ -1,16 +1,14 @@
 """
-author: @dflemin3
+author: @dflemin3 July 2015
 Module for Binary star class.  Holds the Cartesian position/velocity coordinates and Kepler orbital elements for the binary in the 
 reduced mass frame.  Can be initialized with orbital elements (preferred) or Cartesian position/velocity or a tipsy format snapshot
-that is readable by pynbody.  Just need to pass a string to let it know which input type it's getting.
-
-Rest of docstring: todo
+that was read in using pynbody.load("snapshot.name").  Just need to pass a string to let it know which input type it's getting.
 """
 import numpy as np
 
 #Import my binary star module that continue relevant routines
 import AddBinary
-import pynbody
+import isaac
 
 class Binary(object):
 	"""
@@ -41,37 +39,41 @@ class Binary(object):
 		
 		if state == "Cartesian" or state == "cartesian":
 			#Ensure input is proper
-			assert (len(X) == 2), "len(Input Array) != 2. len = %d.  State should be cartesian." % len(X)				
+			assert (len(X) == 2), "Improper input. len(Input Array) != 2. len = %d.  State should be cartesian." % len(X)		
+			self.state = state
 			
 			self.r = X[0]
 			self.v = X[1]
 			self.m1 = m1
 			self.m2 = m2
-			self.state = state
 			self.reshapeData()
 			self.computeOrbElems()			
 			
 		elif state == "Kepler" or state == "kepler":
 			#Ensure input is proper
-			assert (len(X) == 6), "len(Input Array) != 6. len = %d.  State should be kepler" % len(X)	
+			assert (len(X) == 6), "Improper input. len(Input Array) != 6. len = %d.  State should be kepler" % len(X)	
+			self.state = state
 		
 			self.assignOrbElems(X)
 			self.m1 = m1
 			self.m2 = m2
-			self.state = state
 			self.computeCartesian()
 			self.reshapeData()
 			
-		elif state == "Snapshot" or state == "snapshot":			
-			#Extract data from snapshot
-			x1 = X.stars[0]['pos']
-			x2 = X.stars[1]['pos']
-			v1 = X.stars[0]['vel']
-			v2 = X.stars[1]['vel']
-			self.m1 = X.stars[0]['mass']
-			self.m2 = X.stars[1]['mass']			
+		elif state == "Snapshot" or state == "snapshot":		
+			#Ensure input is indeed a tipsy snapshot of a binary system
+			assert(len(X.stars) == 2), "Improper input.  Is this a tipsy snapshot of a circumbinary system?"			
+			self.state = state			
 			
-			#Compute position, velocity in center of mass frame then compute orbital elements
+			#Extract data from snapshot
+			x1 = isaac.strip_units(X.stars[0]['pos'])
+			x2 = isaac.strip_units(X.stars[1]['pos'])
+			v1 = isaac.strip_units(X.stars[0]['vel'])
+			v2 = isaac.strip_units(X.stars[1]['vel'])
+			self.m1 = isaac.strip_units(X.stars[0]['mass'])
+			self.m2 = isaac.strip_units(X.stars[1]['mass'])			
+			
+			#Compute position, velocity in center of mass frame then orbital elements
 			self.r = x1 - x2
 			self.v = v1 - v2
 			self.reshapeData()
@@ -104,6 +106,7 @@ class Binary(object):
 		Output:
 		None
 		"""
+		#Only assign data if it doesn't exist
 		self.e = float(X[0])
 		self.a = float(X[1])
 		self.i = float(X[2])
@@ -154,15 +157,9 @@ class Binary(object):
 		
 	def generateICs(self):
 		"""
-		From Kepler orbital elements, compute the initial position, velocities for two stars in ChaNGa-friendly units.
+		From Kepler orbital elements, compute the position, velocities for two stars in ChaNGa-friendly units.
+		Called "generateICs" since I'll use this mainly to...generate initial conditions
 		"""
 		return AddBinary.reduceToPhysical(self.r,self.v,self.m1,self.m2)
 				
 	#end function
-		
-		
-		
-		
-		
-		
-		
