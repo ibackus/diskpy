@@ -876,12 +876,11 @@ def initializeBinary(a,e,i,Omega,w,M,m1,m2,angleFlag=True,scaleFlag=True):
 #                                                                                               #
 #################################################################################################
 
-def accretionEDot(Binary,Mdot):
+def accretionEDot(Binary,Mdot,dt):
 	"""
 	Given a Binary object and an accretion rate (assumed to be in M_sol/yr), compute the theoretical rate of change of the 
 	binary's eccentricity in 1/second.  
 	Assumptions:
-	-Binary orbit is nearly circular (e < 0.2 will keep error < 10%)
 	-radius, velocity of binary nearly constant over accretion (found to more or less apply via empirical measurements)
 	
 	Input:
@@ -892,21 +891,21 @@ def accretionEDot(Binary,Mdot):
 	de/dt: change in eccentricity in 1/second
 	"""
 	#Convert relevant quantities into cgs
-	a = Binary.a
+	a = Binary.a*AUCM
 	e = Binary.e
-	M = (Binary.m1 + Binary.m2)
-	P = aToP(a,M)*DAYSEC
-	a *= (AUCM*(1.0+e))
-	M *= Msol
-	Mdot *= (Msol/YEARSEC)
-
-	r = a*(1.0 + (e*e)/2.0)
-	v = (2.0*np.pi*a/P)*(1.0 - ((e*e)/4.0))
-	L = np.sqrt(BigG*M*a*(1.0-e*e))	
+	M = (Binary.m1 + Binary.m2)*Msol
+	mu = BigG*M
+	Mdot *= Msol
+	#dm = Mdot*dt
+	r = a*(1.0+e)
+	eps = -mu/(2.0*a)
+	v = np.sqrt((BigG*M/a)*((1.0-e)/(1.0+e)))
+	h = r*v
+	#Hdot = BigG*dm*dt/r
+	Hdot = Mdot*r*v/M	
 	
-	edot = -1.0*Mdot/(BigG*M*M*a*e)
-	edot *= (r*v - L)*L
-	edot += (Mdot*(1.0-e*e))/(2.0*M*e)	
+	edot = 2.0*eps*h*Hdot/(mu*mu)
+	edot /= np.sqrt(1.0 + (2.0*eps*h*h)/(mu*mu))	
 	
 	return edot	
 	

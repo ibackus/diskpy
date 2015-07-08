@@ -160,6 +160,11 @@ class Binary(object):
 		From Kepler orbital elements, compute the position, velocities for two stars in ChaNGa-friendly units.
 		Called "generateICs" since I'll use this mainly to...generate initial conditions
 		"""
-		return AddBinary.reduceToPhysical(self.r,self.v,self.m1,self.m2)
+		x1,x2,v1,v2 = AddBinary.reduceToPhysical(self.r,self.v,self.m1,self.m2)
+		x1 = np.asarray(x1).reshape((1,3))
+		x2 = np.asarray(x2).reshape((1,3))
+		v1 = np.asarray(v1).reshape((1,3))
+		v2 = np.asarray(v2).reshape((1,3))
+		return x1, x2, v1, v2
 				
 	#end function
