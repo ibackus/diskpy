@@ -80,7 +80,18 @@ class Binary(object):
 			self.computeOrbElems()
 		
 		else:
-			print "Invalid input data type state: %s." % state
+			print "Default Binary init"
+			self.r = np.zeros((1,3))
+			self.v = np.zeros((1,3))
+			self.m1 = 0.0
+			self.m2 = 0.0
+			self.e = 0.0
+			self.a = 0.0
+			self.i = 0.0
+			self.Omega = 0.0
+			self.w = 0.0
+			self.nu = 0.0
+			self.state = 'Default'
 		
 	#end function
 		
@@ -88,7 +99,7 @@ class Binary(object):
 		"""
 		When invoked, return the orbital elements.
 		"""		
-		return "(%s,%s,%s,%s,%s,%s)" % (self.e,self.a,self.i,self.Omega,self.w,self.nu)
+		return "(%s,%s,%s,%s,%s,%s), mass: (%s,%s)" % (self.e,self.a,self.i,self.Omega,self.w,self.nu,self.m1,self.m2)
 		
 	#end function
 		

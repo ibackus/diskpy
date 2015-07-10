@@ -103,24 +103,11 @@ class physical:
     """
     
     #def __init__(self, kind=None):
-    def __init__(self, kind=None, ecc=0, period = 5, inc = 0, Omega = 0, w = 0, MA = 0, priMassPerc = 1):
-        #editted by dflemin3 06/10/2015
-        """        
+    def __init__(self, kind=None, binsys=None):
+        #editted by dflemin3 07/10/2015
         # Molecular mass of the gass.  If m = None, Assumed to be H2, m = 2.00132 m_p
         self.m = SimArray(2.00132,'m_p')
-        # Mass of the star.  If M = None, Assumed to be 0.33 Msol
-        self.M = SimArray(0.33 , 'Msol')
-        # CONSTANTS FOR CALCULATING TEMPERATURE.  T(r) = T0(r/r0)^Tpower.
-        # See calc_temp.py.  If None, defaults to settings in calc_temp.py
-        self.T0 = SimArray(332.406,'K')
-        self.r0 = SimArray(0.5,'au')
-        self.Tpower = -0.59
-        self.Tmin = SimArray(0, 'K')    # Minimum temperature cut-off
-        self.Tmax = SimArray(np.inf, 'K')
-        """
-        # Molecular mass of the gass.  If m = None, Assumed to be H2, m = 2.00132 m_p
-        self.m = SimArray(2.00132,'m_p')
-        # Mass of the star.  If M = None, Assumed to be 0.33 Msol
+        # Mass of the star (or total mass of binary system).  If M = None, Assumed to be 0.33 Msol
         self.M = SimArray(0.33 , 'Msol')
         # CONSTANTS FOR CALCULATING TEMPERATURE.  T(r) = T0(r/r0)^Tpower.
         # See calc_temp.py.  If None, defaults to settings in calc_temp.py
@@ -130,15 +117,9 @@ class physical:
         self.Tmin = SimArray(0, 'K')    # Minimum temperature cut-off
         self.Tmax = SimArray(np.inf, 'K')
 
-        #Binary Orbital Parameters
-        self.ecc = ecc #Binary Eccentricity
-        self.period = period #Binary Period
-        self.inc = inc #Binary inclination
-        self.Omega = Omega #Binary Longitude of Ascending Node
-        self.w = w #Binary Argument of Pericenter
-        self.MA = MA #Binary Mean Anomaly
-        self.priMassPerc = priMassPerc
-
+        #Binary Orbital Parameters...store in Binary class from binary.py
+        self.binsys = binsys
+      
         if kind is None:
             
             kind = 'powerlaw'
