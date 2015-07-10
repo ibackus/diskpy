@@ -189,14 +189,14 @@ def snapshot_gen(ICobj):
     period = ICobj.settings.physical.period #days    
     e = ICobj.settings.physical.ecc #eccentricity
     a = AddBinary.pToA(period,m1+m2)
-    
+ 
     #Get other Orbital Parameters to use later
     w = ICobj.settings.physical.w #Argument of Pericenter
     Omega = ICobj.settings.physical.Omega #Longitude of Ascending Node
     inc = ICobj.settings.physical.inc
-    MA = ICobj.settings.physical.M
+    MA = ICobj.settings.physical.MA
 
-    x1, x2, v1, v2 = AddBinary.initializeBinary(a,e,inc,Omega,w,MA,m1,m2,angleFlag=True,scaleFlag=False)
+    x1, x2, v1, v2 = AddBinary.initializeBinary(a,e,inc,Omega,w,MA,m1,m2,angleFlag=True,scaleFlag=True)
 
     #Calculate Binary Star x positions, perihelion velocities
     #x1, x2 = AddBinary.calcPositions(m1+m2,a,e,p)

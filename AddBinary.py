@@ -755,7 +755,7 @@ def keplerToCartesian(a,e,i,Omega,w,M,m1,m2,angleFlag=True,scaleFlag=True):
 		w /= RAD2DEG
 		M /= RAD2DEG
 
-	#Step 1: Convert M->E by solving M = E-esinE for E
+	#Convert M->E by solving M = E-esinE for E
 	#Rearrange to E - esinE - M = 0 to solve for root
 	def F(E,m,ecc):
 		return E - ecc*np.sin(E) - m
@@ -763,8 +763,8 @@ def keplerToCartesian(a,e,i,Omega,w,M,m1,m2,angleFlag=True,scaleFlag=True):
 	#Compute eccentric anomaly in radians			
 	E = optimize.newton(F,M,args=(M,e))	
 	
-	"""
 	#Compute unit vectors P, Q along axes of PQW frame
+	#These vectors will transform to proper barycentric frame given i, Omega, w orbital params
 	P = np.zeros((length,3))
 	Q = np.zeros((length,3))
 	if(length > 1):
@@ -781,7 +781,7 @@ def keplerToCartesian(a,e,i,Omega,w,M,m1,m2,angleFlag=True,scaleFlag=True):
 		Q[0,0] = -np.sin(w)*np.cos(Omega) - np.cos(w)*np.cos(i)*np.sin(Omega)
 		Q[0,1] = -np.sin(w)*np.sin(Omega) + np.cos(w)*np.cos(i)*np.cos(Omega)
 		Q[0,2] = np.sin(i)*np.cos(w)
-
+		
 	#Compute Standard Gravitational Parameter in cgs assuming masses in Msol
 	mu = BigG*(m1+m2)*Msol 
 
@@ -792,20 +792,7 @@ def keplerToCartesian(a,e,i,Omega,w,M,m1,m2,angleFlag=True,scaleFlag=True):
 	tmp = np.sqrt(mu)/(np.power(a,1.5)*(1.0 - e*np.cos(E)))
 	v = -a*e*np.sin(E)*tmp*P 
 	v += a*np.sqrt(1.0-e*e)*np.cos(E)*tmp*Q
-	"""
-	#Compute True Anomaly nu
-	nu = 2.0*np.arctan2(np.sqrt(1.0+e)*np.sin(E/2.0),np.sqrt(1.0-e)*np.cos(E/2.0))
 	
-	#Compute standard gravitational parameter in cgs assuming masses in Msol
-	mu = BigG*(m1+m2)*Msol
-	
-	#Compute correct radius and velocity of object in reduced mass frame
-	r = np.asarray(a*(1.0-e*np.cos(E))*np.array([np.cos(nu),np.sin(nu),0.0])) #Note: set r_z == 0 because we're in a plane
-	v = np.sqrt(mu*a)*np.asarray([-np.sin(E),np.sqrt(1.0-e*e)*np.cos(E),0.0])
-	
-	#Handle v/0 errors
-	v = v/r[np.fabs(r) > SMALL]	
-
 	#Convert v to km/s and in sim units if flag says yes
 	conv = 1.0/(np.sqrt(AUCM)*100.0*1000.0)
 	if scaleFlag:
@@ -865,7 +852,7 @@ def initializeBinary(a,e,i,Omega,w,M,m1,m2,angleFlag=True,scaleFlag=True):
 	v1, v2: Velocities of 2 objects about origin (km/s in Sim Units)
 
 	"""
-	r,v = keplerToCartesian(a,e,i,Omega,w,M,m1,m2,angleFlag=True,scaleFlag=True)
+	r,v = keplerToCartesian(a,e,i,Omega,w,M,m1,m2,angleFlag,scaleFlag)
 	return reduceToPhysical(r,v,m1,m2)
 
 #end function
