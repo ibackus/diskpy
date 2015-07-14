@@ -43,8 +43,11 @@ Load (read) settings from disk:
     settings.load('filename')
 """
 
-__version__ = "$Revision: 1 $"
+__version__ = "$Revision: 2 $"
 # $Source$
+__iversion__ = int(filter(str.isdigit,__version__))
+
+from ICgen_utils import checkversion
 
 import pynbody
 SimArray = pynbody.array.SimArray
@@ -115,6 +118,10 @@ class physical:
         self.Tpower = -0.59
         self.Tmin = SimArray(0, 'K')    # Minimum temperature cut-off
         self.Tmax = SimArray(np.inf, 'K')
+        # Equation of state parameters
+        self.eos = 'isothermal' # isothermal or adiabatic
+        self.gamma = 1.4
+        
         
         if kind is None:
             
@@ -401,6 +408,8 @@ class settings:
     """    
     def __init__(self, settings_filename=None, kind=None):
         
+        self.__version__ = __iversion__
+        
         if settings_filename is None:
             # Load the defaults
             self.filenames = filenames()
@@ -470,3 +479,13 @@ class settings:
         
         self.__dict__.update(tmp_dict)
         self.settings_filename = settings_filename
+        
+        version = checkversion(self)
+        
+        if version < 2:
+            
+            # Add EOS parameters
+            print 'Assuming isothermal EOS with gamma=1.4'
+            self.physical.eos = 'isothermal' # isothermal or adiabatic
+            self.physical.gamma = 1.4
+            self.__version__ = 2
