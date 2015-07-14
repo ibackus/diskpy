@@ -328,13 +328,13 @@ def load(filename):
             
     else:
         # Initialize blank IC object, sigma has not been generated yet
-        ICobj = IC()        
-    
+        ICobj = IC()
+        
     if 'settings' in input_dict:
 
         print 'loading settings'
-        IC.settings = ICgen_settings.settings()
-        IC.settings.load(input_dict['settings'])
+        #ICobj.settings = ICgen_settings.settings()
+        ICobj.settings.load(input_dict['settings'])
         
     if 'rho' in input_dict:
         
