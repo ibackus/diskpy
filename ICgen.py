@@ -355,20 +355,22 @@ def load(filename):
         try:
         
             ICobj.snapshot = pynbody.load(fname)
+            if 'snapshot_param' in input_dict:
+        
+                print 'loading param'
+                ICobj.snapshot_param = input_dict['snapshot_param']
+                
+            if 'snapshot_director' in input_dict:
+                
+                print 'loading director'
+                ICobj.snapshot_director = input_dict['snapshot_director']
             
         except IOError:
             
             warn('Could not find snapshot ({0})'.format(fname))
+            print 'Could not find snapshot ({0})'.format(fname)
         
-    if 'snapshot_param' in input_dict:
-        
-        print 'loading param'
-        ICobj.snapshot_param = input_dict['snapshot_param']
-        
-    if 'snapshot_director' in input_dict:
-        
-        print 'loading director'
-        ICobj.snapshot_director = input_dict['snapshot_director']
+    
 
     return ICobj
             
