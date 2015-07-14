@@ -1,7 +1,8 @@
 """
 @author: dflemin3
-ICgen for CB disk around Kepler-38
-ICs modeled after Kley+2014
+Script for generating disk ICs about a stellar system
+using ibackus's ICgen routines.
+See https://github.com/ibackus/ICgen
 """
 import ICgen
 import pynbody
@@ -12,18 +13,22 @@ SimArray = pynbody.array.SimArray
 IC = ICgen.IC()
 
 # Let's set the star mass and gas mass assuming H2 = 2 (m_h = 1) and some metals added
-IC.settings.physical.M = SimArray(1.198, 'Msol') # star mass in solar masses
+IC.settings.physical.M = SimArray(1.198, 'Msol') #Total stellar mass in solar masses
 IC.settings.physical.m = SimArray(2.35, 'm_p') #mean molecular mass
 
 #Define masses of primary, secondary as pynbody SimArrays
-#Note, m1 + m2 == IC.settings.physical.M !!
+#Note, m1 + m2 == IC.settings.physical.M 
+#Only need to set if you're considernig a circumbinary system
 m1 = SimArray(0.949,'Msol')
 m2 = IC.settings.physical.M - m1
 
 #Scale the mass of the disk to be some fraction of the star mass
 IC.settings.snapshot.mScale = 0.05
 
-#Set binary system parameters
+#Define whether the star is a single star or binary
+IC.settings.physical.starMode = 'binary'
+
+#Set binary system parameters.  If single star, comment this out
 #Define list of orbital elements of the following form:
 #X = [e, a [AU], i, Omega, w, nu] where all angles are in degrees
 X = [0.1032, 0.1469, 0.0, 0.0, 0.0, 0.0]

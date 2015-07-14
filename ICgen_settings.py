@@ -102,8 +102,7 @@ class physical:
         physical.settingname
     """
     
-    #def __init__(self, kind=None):
-    def __init__(self, kind=None, binsys=None):
+    def __init__(self, kind=None, binsys=None, starMode = 'single'):
         #editted by dflemin3 07/10/2015
         # Molecular mass of the gass.  If m = None, Assumed to be H2, m = 2.00132 m_p
         self.m = SimArray(2.00132,'m_p')
@@ -116,6 +115,7 @@ class physical:
         self.Tpower = -0.59
         self.Tmin = SimArray(0, 'K')    # Minimum temperature cut-off
         self.Tmax = SimArray(np.inf, 'K')
+        self.starMode = starMode #single star or binary?
 
         #Binary Orbital Parameters...store in Binary class from binary.py
         self.binsys = binsys
