@@ -91,9 +91,12 @@ def snapshot_gen(ICobj):
     v_unit = (pos_unit/t_unit).ratio('km s**-1')
     # Make it a unit, save value for future conversion
     v_unit_vel = v_unit
+<<<<<<< HEAD
     #Ensure v_unit_vel is the same as what I assume it is.
     assert(np.fabs(AddBinary.VEL_UNIT-v_unit_vel)<AddBinary.SMALL),"VEL_UNIT not equal to ChaNGa unit! Why??"			
 	
+=======
+>>>>>>> master
     v_unit = pynbody.units.Unit('{0} km s**-1'.format(v_unit))
     
     # Other settings
@@ -160,7 +163,11 @@ def snapshot_gen(ICobj):
     ## Save .director file
     #isaac.configsave(director, directorName, 'director')
 
+<<<<<<< HEAD
     #Now that velocities and everything are all initialized for gas particles, create new snapshot to return in which
+=======
+    #Now that velocities are all initialized for gas particles, create new snapshot to return in which
+>>>>>>> master
     #single star particle is replaced by 2, same units as above
     snapshotBinary = pynbody.new(star=2,gas=nParticles)
     snapshotBinary['eps'] = 0.01*SimArray(np.ones(nParticles+2, dtype=np.float32), pos_unit)
@@ -179,6 +186,7 @@ def snapshot_gen(ICobj):
     snapshotBinary.gas['mass'] = snapshot.gas['mass']
     snapshotBinary.gas['metals'] = snapshot.gas['metals']
 
+<<<<<<< HEAD
     #Load Binary system obj to initialize system
     binsys = ICobj.settings.physical.binsys
     
@@ -191,25 +199,76 @@ def snapshot_gen(ICobj):
     #v2 /= conv
 
     #Assign position, velocity assuming CCW orbit
+=======
+    #Calculate binary star parameters
+    #***Consider binary system where m_star = m1 + m2***
+    #1 = primary (more massive) star, 2 = secondary
 
+    #Calculate Binary Star masses
+    p = ICobj.settings.physical.priMassPerc
+    m1 = isaac.strip_units(m_star)*p
+    m2 = isaac.strip_units(m_star)*(1.0-p)
+
+    #Calculate Binary Semimajor axis (in au) given period
+    period = ICobj.settings.physical.period #days    
+    e = ICobj.settings.physical.ecc #eccentricity
+    a = AddBinary.pToA(period,m1+m2)
+    
+    #Get other Orbital Parameters to use later
+    w = ICobj.settings.physical.w #Argument of Pericenter
+    Omega = ICobj.settings.physical.Omega #Longitude of Ascending Node
+    inc = ICobj.settings.physical.inc
+    MA = ICobj.settings.physical.M
+
+    x1, x2, v1, v2 = AddBinary.initializeBinary(a,e,inc,Omega,w,MA,m1,m2,angleFlag=True,scaleFlag=False)
+
+    #Calculate Binary Star x positions, perihelion velocities
+    #x1, x2 = AddBinary.calcPositions(m1+m2,a,e,p)
+    #v1, v2 = AddBinary.calcV(m1,m2,a,e)
+
+    #Put velocity in sim units
+    #!!! Note: v_unit_vel will always be 29.785598165 km/s when m_unit = Msol and r_unit = 1 AU in kpc!!!
+    conv = v_unit_vel #km/s in sim units
+    #v1 /= conv
+    #v2 /= conv
+
+    #Assign stellar parameters for CCW rotation
+    #snapshotBinary.star[0]['pos'] = SimArray([[x1, 0., 0.]],pos_unit)
+    #snapshotBinary.star[0]['vel'] = SimArray([[0., v1, 0.]],v_unit)
+    
+>>>>>>> master
     snapshotBinary.star[0]['pos'] = SimArray(x1,pos_unit)
     snapshotBinary.star[0]['vel'] = SimArray(v1,v_unit)
     snapshotBinary.star[1]['pos'] = SimArray(x2,pos_unit)
     snapshotBinary.star[1]['vel'] = SimArray(v2,v_unit)
 
+<<<<<<< HEAD
     #Set stellar masses
     #Set Mass units
     #Create simArray for mass, convert units to simulation mass units
     priMass = SimArray(binsys.m1,m_unit)
     secMass = SimArray(binsys.m2,m_unit)
+=======
+    #snapshotBinary.star[1]['pos'] = SimArray([[x2, 0., 0.]],pos_unit)
+    #snapshotBinary.star[1]['vel'] = SimArray([[0., v2, 0.]],v_unit)
 
+    #Set stellar masses
+    #Set Mass units
+    #Create simArray for mass, convert units to simulation mass units
+    priMass = SimArray(m1,m_unit)
+    secMass = SimArray(m2,m_unit)
+>>>>>>> master
     snapshotBinary.star[0]['mass'] = priMass
     snapshotBinary.star[1]['mass'] = secMass
     snapshotBinary.star['metals'] = SimArray(star_metals)
 
+<<<<<<< HEAD
     #Estimate stars' softening length as fraction of distance to COM
     d = np.linalg.norm(x1) - np.linalg.norm(x2)
-
+=======
+    d = np.linalg.norm(x1) - np.linalg.norm(x2)
+    #Estimate stars' softening length as fraction of distance to COM
+>>>>>>> master
     snapshotBinary.star[0]['eps'] = SimArray(math.fabs(d)/4.0,pos_unit)
     snapshotBinary.star[1]['eps'] = SimArray(math.fabs(d)/4.0,pos_unit)
  
@@ -218,11 +277,16 @@ def snapshot_gen(ICobj):
     # UW ChaNGa treat it as a sink particle.
     snapshotBinary.star['tform'] = -1.0
     
+<<<<<<< HEAD
     #Set Sink Radius to be mass-weighted average of Roche lobes of two stars
     r1 = AddBinary.calcRocheLobe(binsys.m1/binsys.m2,binsys.a) 
     r2 = AddBinary.calcRocheLobe(binsys.m2/binsys.m1,binsys.a)
     p = isaac.strip_units(binsys.m1/(binsys.m1 + binsys.m2))
-
+=======
+    #Set Sink Radius to be weighted average of Roche lobes of two stars
+    r1 = AddBinary.calcRocheLobe(m1/m2,a) 
+    r2 = AddBinary.calcRocheLobe(m2/m1,a)
+>>>>>>> master
     r_sink = (r1*p) + (r2*(1.0-p))
     param['dSinkBoundOrbitRadius'] = r_sink
     param['dSinkRadius'] = r_sink
