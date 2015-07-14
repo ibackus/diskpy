@@ -114,7 +114,7 @@ def snapshot_gen(ICobj):
         param['bGasAdiabatic'] = 1
         param['bGasIsothermal'] = 0
         
-    param['dConstGamma'] = settings.physical.gamma
+    param['dConstGamma']
        
     gc.collect()
     
