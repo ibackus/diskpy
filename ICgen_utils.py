@@ -493,3 +493,15 @@ def arg_cat(arg_list):
     args_str = ' '.join(args_str.split())
     
     return args_str
+    
+def checkversion(obj):
+    """
+    Checks the version of an object.  Returns -1 if there is no version
+    """
+    if hasattr(obj, '__version__'):
+        
+        return obj.__version__
+        
+    else:
+        
+        return -1
