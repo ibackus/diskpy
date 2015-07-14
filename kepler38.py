@@ -1,5 +1,6 @@
 """
 @author: dflemin3
+<<<<<<< HEAD
 Script for generating disk ICs about a stellar system
 using ibackus's ICgen routines.
 See https://github.com/ibackus/ICgen
@@ -7,12 +8,20 @@ See https://github.com/ibackus/ICgen
 import ICgen
 import pynbody
 import binary
+=======
+ICgen for CB disk around Kepler-38
+ICs modeled after Kley+2014
+"""
+import ICgen
+import pynbody
+>>>>>>> master
 SimArray = pynbody.array.SimArray
 
 # Initialize a blank initial conditions (IC) object:
 IC = ICgen.IC()
 
 # Let's set the star mass and gas mass assuming H2 = 2 (m_h = 1) and some metals added
+<<<<<<< HEAD
 IC.settings.physical.M = SimArray(1.198, 'Msol') #Total stellar mass in solar masses
 IC.settings.physical.m = SimArray(2.35, 'm_p') #mean molecular mass
 
@@ -33,6 +42,22 @@ IC.settings.physical.starMode = 'binary'
 #X = [e, a [AU], i, Omega, w, nu] where all angles are in degrees
 X = [0.1032, 0.1469, 0.0, 0.0, 0.0, 0.0]
 IC.settings.physical.binsys = binary.Binary(X,m1,m2,'kepler')
+=======
+IC.settings.physical.M = SimArray(1.198, 'Msol') # star mass in solar masses
+IC.settings.physical.m = SimArray(2.35, 'm_p') #mean molecular mass
+
+#Scale the mass of the disk to be some fraction of the star mass
+IC.settings.snapshot.mScale = 0.1 #0.05
+
+#Set binary system parameters
+IC.settings.physical.period = 18.8 #In days
+IC.settings.physical.ecc = 0.1032
+IC.settings.physical.MA = 0.0
+IC.settings.physical.w = 0.0
+IC.settings.physical.Omega = 0.0
+IC.settings.physical.inc = 0.0
+IC.settings.physical.priMassPerc = 0.792154 #%of system mass in primary.  I.e. if system is 1Msol and priMassPerc = 0.5, primary is 0.5Msol 
+>>>>>>> master
 
 # Lets generate a disk with powerlaw from [Rin,Rd] au followed by a cutoff
 # Set up the surface density profile settings.  Notice that right now the
@@ -45,24 +70,40 @@ IC.settings.physical.binsys = binary.Binary(X,m1,m2,'kepler')
 #	power: sigma ~ r^(power)
 IC.settings.sigma.kind = 'powerlaw'
 IC.settings.sigma.power = -0.5
+<<<<<<< HEAD
 IC.settings.sigma.Qmin = 1.5
 IC.settings.sigma.n_points = 500
+=======
+IC.settings.sigma.Qmin = 0.2 #1.5
+IC.settings.sigma.n_points = 100 #10000
+>>>>>>> master
 IC.settings.sigma.Rd = SimArray(2.0,'au') #Outer edge of powerlaw part of disk
 IC.settings.sigma.rmax = 2.0 #Set rmax 
 IC.settings.sigma.rin = 0.25 #Set inner disk radius
 IC.settings.cutlength = 0.01 #Set exp cutoff length scale
+<<<<<<< HEAD
 IC.settings.pos_gen.method = 'grid' #Instead of grid sampling, use random
+=======
+>>>>>>> master
 
 #This will save the ICs to
 # IC.p in the current directory
 IC.save()
 
 # Change the settings used for numerically calculating the gas density
+<<<<<<< HEAD
 IC.settings.rho_calc.nr = 500 # Number of radial points to calculate on
 IC.settings.rho_calc.nz = 100 # Number of vertical points to calculate on
 
 # Set the number of gas particles
 IC.settings.pos_gen.nParticles = 100000
+=======
+IC.settings.rho_calc.nr = 100 #5000 # Number of radial points to calculate on
+IC.settings.rho_calc.nz = 100 #1000 # Number of vertical points to calculate on
+
+# Set the number of gas particles
+IC.settings.pos_gen.nParticles = 10000 #1000000
+>>>>>>> master
 
 # Set up the temperature profile to use.  Available kinds are 'powerlaw'
 # and 'MQWS'

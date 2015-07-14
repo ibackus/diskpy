@@ -17,6 +17,7 @@ import numpy as np
 import os
 import cPickle as pickle
 from warnings import warn
+import make_snapshotBinary
 
 # ICgen modules
 import calc_rho_zr
