@@ -83,7 +83,7 @@ def _applycut(r, sigma, rcut, outer=True):
     
     if np.any(mask):
         
-        sigma[mask] *= 0
+        sigma[mask] = 0
         
     return sigma
     

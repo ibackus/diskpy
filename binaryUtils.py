@@ -622,3 +622,48 @@ def calcPoissonVsRadius(s,rBinEdges):
 		poisson[i] = np.sqrt(N)*r
 	
 	return poisson
+	
+#end function
+	
+def calcQ(cs,kappa,sigma):
+	"""
+	Compute the Toomre Q parameter for a gaseous disk.  Implimented here since pynbody calculates it for a
+	stellar disk.
+	Q = (c_s * kappa)/(pi*G*Sigma) > 1 -> axisymmetric stability
+	Input: (all cgs)	
+	c_s: sound speed (cm/s)
+	Kappa: radially epicycle frequency (1/s).  Can also be Omega for a quasi-Keplerian disk
+	Sigma: surface density at some radius (g/cm^2)	
+	
+	Output:
+	Q: unitless
+	"""
+	
+	return (cs*kappa)/(AddBinary.BigG*np.pi*sigma)
+	
+#end function
+	
+def calcQVsRadius(s,a_in,a_out,bins):
+	"""
+	Given a tispy snapshot, compute the Toomre Q parameter at each radial point.
+	Input:
+	s: Tipsy snapshot
+	a_in, a_out: Minimum and maximum radial points on which to calculate the profile [AU]	
+	bins = number of radial bins	
+	
+	Output:
+	Q and radially profile (AU) it was calculated on.
+	"""
+	#Derive quantities in correct units
+	p = pynbody.analysis.profile.Profile(s.gas,max=a_out,min=a_in,nbins=bins)
+	sigma = p['density'].in_units('g cm**-2');
+	kappa = p['kappa'].in_units('s**-1');
+	cs = p['cs'].in_units('cm s**-1');
+	r = p['rbins'];
+	
+	return r, calcQ(cs,kappa,sigma)
+	
+#end function
+	
+def calcStableSigma(r,rd,Mstar,Mdisk,Q):
+	return None
