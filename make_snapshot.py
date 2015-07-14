@@ -107,6 +107,14 @@ def snapshot_gen(ICobj):
     # Make param file
     param = isaac.make_param(snapshot, snapshotName)
     param['dMeanMolWeight'] = m
+    eos = (settings.physical.eos).lower()
+    
+    if eos == 'adiabatic':
+        
+        param['bGasAdiabatic'] = 1
+        param['bGasIsothermal'] = 0
+        
+    param['dConstGamma'] = settings.physical.gamma
        
     gc.collect()
     
