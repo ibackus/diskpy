@@ -502,6 +502,10 @@ def checkversion(obj):
         
         return obj.__version__
         
+    elif ('__version__' in obj) and isinstance(obj, dict):
+        
+        return obj['__version__']
+        
     else:
         
         return -1

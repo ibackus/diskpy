@@ -17,12 +17,14 @@ import numpy as np
 import os
 import cPickle as pickle
 from warnings import warn
+import make_snapshotBinary
 
 # ICgen modules
 import calc_rho_zr
 import calc_temp
 import pos_class
 import make_snapshot
+import make_snapshotBinary
 import ICgen_settings
 import make_sigma
 import sigma_profile
@@ -542,9 +544,16 @@ class maker:
         Uses make_snapshot.py
         """
         
-        # Generate snapshot
-        snapshot, snapshot_param, snapshot_director = make_snapshot.snapshot_gen(self._parent)
-        # Save to ICobj
+        # Generate snapshot for either a single star or binary depending on IC.settings.physical.starMode
+        if self._parent.settings.physical.starMode == "single":							
+            snapshot, snapshot_param, snapshot_director = make_snapshot.snapshot_gen(self._parent)
+        elif self._parent.settings.physical.starMode == "binary":
+            snapshot, snapshot_param, snapshot_director = make_snapshotBinary.snapshot_gen(self._parent)
+        else:
+            print "Invalid starMode given in ICobj.  Assuming default single star."
+            snapshot, snapshot_param, snapshot_director = make_snapshot.snapshot_gen(self._parent)
+										
+	  # Save to ICobj
         self._parent.snapshot = snapshot
         self._parent.snapshot_param = snapshot_param
         self._parent.snapshot_director = snapshot_director
