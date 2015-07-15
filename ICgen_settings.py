@@ -43,7 +43,7 @@ Load (read) settings from disk:
     settings.load('filename')
 """
 
-__version__ = "$Revision: 2 $"
+__version__ = "$Revision: 3 $"
 # $Source$
 __iversion__ = int(filter(str.isdigit,__version__))
 
@@ -105,11 +105,11 @@ class physical:
         physical.settingname
     """
     
-    def __init__(self, kind=None):
-        
+    def __init__(self, kind=None, binsys=None, starMode = 'single'):
+        #editted by dflemin3 07/10/2015
         # Molecular mass of the gass.  If m = None, Assumed to be H2, m = 2.00132 m_p
         self.m = SimArray(2.00132,'m_p')
-        # Mass of the star.  If M = None, Assumed to be 0.33 Msol
+        # Mass of the star (or total mass of binary system).  If M = None, Assumed to be 0.33 Msol
         self.M = SimArray(0.33 , 'Msol')
         # CONSTANTS FOR CALCULATING TEMPERATURE.  T(r) = T0(r/r0)^Tpower.
         # See calc_temp.py.  If None, defaults to settings in calc_temp.py
@@ -122,6 +122,10 @@ class physical:
         self.eos = 'isothermal' # isothermal or adiabatic
         self.gamma = 1.4
         
+        # Binary parameters
+        self.starMode = starMode #single star or binary?
+        #Binary Orbital Parameters...store in Binary class from binary.py
+        self.binsys = binsys
         
         if kind is None:
             
@@ -178,12 +182,15 @@ class sigma:
             self.cutlength = 0.3
             self.Qmin = 1.5
             self.n_points = 1000
-            
+            self.power = -1 #Power on powerlaw of form sigma ~ r^(power)
+       
+     
         if (kind == 'mqws') | (kind == 'MQWS'):
             
             self.rin = 4.0
             self.rout = 20.0
             self.rmax = None
+            self.power = -1
             self.m_disk = SimArray(0.1, 'Msol')
             self.n_points = 1000
             self.Qmin = 1.5
@@ -193,6 +200,7 @@ class sigma:
             self.Rd = SimArray(1.0, 'au')
             self.rin = 0.1
             self.rmax = 2.0
+            self.power = -1
             self.m_disk = SimArray(0.1, 'Msol')
             self.n_points = 1500
             self.gamma = 0.9
@@ -482,10 +490,12 @@ class settings:
         
         version = checkversion(self)
         
-        if version < 2:
+        # Version checking
             
-            # Add EOS parameters
-            print 'Assuming isothermal EOS with gamma=1.4'
-            self.physical.eos = 'isothermal' # isothermal or adiabatic
-            self.physical.gamma = 1.4
-            self.__version__ = 2
+        if version < 3:
+            
+            # Might be missing EOS and binary parameters.  Get those setup
+            self.physical = physical()
+            self.physical.__dict__.update(tmp_dict['physical'].__dict__)
+            # update the version
+            self.__version__ = 3
