@@ -32,7 +32,7 @@ def angMomSearch(name,simUnits=False,flag="AngularMomentum="):
 	#Find lines with angular momentum in them with correct format
 	mask = (np.core.defchararray.find(data,flag) > -1)
 	L = data[mask]
-
+ 
 	#Loop over values in array containing angular momentum lines
 	res = 0
 	for i in range(len(L)):
@@ -667,4 +667,24 @@ def calcQVsRadius(s,a_in,a_out,bins):
 #end function
 	
 def calcStableSigma(r,rd,Mstar,Mdisk,Q):
-	return None
+    """
+    Compute the surfance density sigma_0 such that if the quasi-keplerian disk
+    had a surface density of sigma > sigma_0 at an OLR, the disk would be 
+    unstable to a m=1 mode.  Condition comes from eqn. 110 in Shu 1990.
+    Note: Assumes (b_n - c)^2 ~ 1 as authors did.    
+    
+    Input:
+    r: radii of OLR [AU]
+    rd: Maximum radially extent of the disk [AU]
+    Mstar, Mdisk: Masses of the central star(s) and disk, respectively [Msol]
+    Q: Toomre Q stability parameter evalutated at rd
+    
+    Output:
+    sigma_0: critical surfance density [Msol/AU^2]
+    """    
+    
+    sigma_0 = 3.0*(Mstar + Mdisk)/(8.0*np.pi*np.pi*r*r)
+    sigma_0 *= np.power(r/rd,3.0)
+    sigma_0 *= np.sqrt(1.0 + 4.0*Q*Q*(np.power(rd/r,3.0) - np.power(rd/r,1.5)))
+    
+    return sigma_0

@@ -35,7 +35,6 @@ IC.settings.physical.starMode = 'binary'
 X = [0.1032, 0.1469, 0.0, 0.0, 0.0, 0.0]
 IC.settings.physical.binsys = binary.Binary(X,m1,m2,'kepler')
 
-
 # Lets generate a disk with powerlaw from [Rin,Rd] au followed by a cutoff
 # Set up the surface density profile settings.  Notice that right now the
 # Lets use a simple powerlaw with cut-offs at the interior and edge of the
@@ -47,7 +46,7 @@ IC.settings.physical.binsys = binary.Binary(X,m1,m2,'kepler')
 #	power: sigma ~ r^(power)
 IC.settings.sigma.kind = 'powerlaw'
 IC.settings.sigma.power = -0.5
-IC.settings.sigma.Qmin = 1.5
+IC.settings.sigma.Qmin = 0.7#1.5
 IC.settings.sigma.n_points = 500
 
 IC.settings.sigma.Rd = SimArray(2.0,'au') #Outer edge of powerlaw part of disk
