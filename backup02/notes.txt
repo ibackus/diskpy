@@ -1,1 +1,0 @@
-This version of ICgen is just before implementing fit_velocity.py
