@@ -5,7 +5,7 @@ Created on Wed Mar 12 12:48:33 2014
 @author: ibackus
 """
 
-__version__ = "$Revision: 3 $"
+__version__ = "$Revision: 4 $"
 # $Source$
 
 __iversion__ = int(filter(str.isdigit,__version__))
@@ -217,8 +217,8 @@ def save(ICobj, filename=None):
     # --------------------------------------------------
     # GET SETTINGS/save a copy
     # --------------------------------------------------
-    save_dict['settings'] = ICobj.settings
     settings_name = os.path.splitext(filename)[0] + '_settings.p'
+    save_dict['settings'] = settings_name
     ICobj.settings.save(settings_name)
     
     # --------------------------------------------------
@@ -330,12 +330,13 @@ def load(filename):
             
     else:
         # Initialize blank IC object, sigma has not been generated yet
-        ICobj = IC()        
-    
+        ICobj = IC()
+        
     if 'settings' in input_dict:
 
-        print 'loading settings'        
-        ICobj.settings = input_dict['settings']
+        print 'loading settings'
+        #ICobj.settings = ICgen_settings.settings()
+        ICobj.settings.load(input_dict['settings'])
         
     if 'rho' in input_dict:
         
@@ -356,20 +357,22 @@ def load(filename):
         try:
         
             ICobj.snapshot = pynbody.load(fname)
+            if 'snapshot_param' in input_dict:
+        
+                print 'loading param'
+                ICobj.snapshot_param = input_dict['snapshot_param']
+                
+            if 'snapshot_director' in input_dict:
+                
+                print 'loading director'
+                ICobj.snapshot_director = input_dict['snapshot_director']
             
         except IOError:
             
             warn('Could not find snapshot ({0})'.format(fname))
+            print 'Could not find snapshot ({0})'.format(fname)
         
-    if 'snapshot_param' in input_dict:
-        
-        print 'loading param'
-        ICobj.snapshot_param = input_dict['snapshot_param']
-        
-    if 'snapshot_director' in input_dict:
-        
-        print 'loading director'
-        ICobj.snapshot_director = input_dict['snapshot_director']
+    
 
     return ICobj
             
@@ -414,6 +417,10 @@ def _upgrade_version(IC_input, version):
             paramName = IC_input['settings'].filenames.paramName
             directorName = os.path.splitext(paramName)[0] + '.director'
             IC_input['settings'].filenames.directorName = directorName
+            
+    if version < 4:
+        
+        IC_input['settings'] = IC_input['settings'].settings_filename
         
         
 class add:

@@ -43,8 +43,11 @@ Load (read) settings from disk:
     settings.load('filename')
 """
 
-__version__ = "$Revision: 1 $"
+__version__ = "$Revision: 3 $"
 # $Source$
+__iversion__ = int(filter(str.isdigit,__version__))
+
+from ICgen_utils import checkversion
 
 import pynbody
 SimArray = pynbody.array.SimArray
@@ -115,11 +118,15 @@ class physical:
         self.Tpower = -0.59
         self.Tmin = SimArray(0, 'K')    # Minimum temperature cut-off
         self.Tmax = SimArray(np.inf, 'K')
+        # Equation of state parameters
+        self.eos = 'isothermal' # isothermal or adiabatic
+        self.gamma = 1.4
+        
+        # Binary parameters
         self.starMode = starMode #single star or binary?
-
         #Binary Orbital Parameters...store in Binary class from binary.py
         self.binsys = binsys
-      
+        
         if kind is None:
             
             kind = 'powerlaw'
@@ -409,6 +416,8 @@ class settings:
     """    
     def __init__(self, settings_filename=None, kind=None):
         
+        self.__version__ = __iversion__
+        
         if settings_filename is None:
             # Load the defaults
             self.filenames = filenames()
@@ -478,3 +487,15 @@ class settings:
         
         self.__dict__.update(tmp_dict)
         self.settings_filename = settings_filename
+        
+        version = checkversion(self)
+        
+        # Version checking
+            
+        if version < 3:
+            
+            # Might be missing EOS and binary parameters.  Get those setup
+            self.physical = physical()
+            self.physical.__dict__.update(tmp_dict['physical'].__dict__)
+            # update the version
+            self.__version__ = 3
