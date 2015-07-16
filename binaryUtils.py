@@ -1458,4 +1458,23 @@ def calcQVsRadius(s, a_in, a_out, bins):
 
 
 def calcStableSigma(r, rd, Mstar, Mdisk, Q):
-    return 0
+    """
+    Compute sigma_0 from eqn. 110 in Shu 1990.  If sigma_disk > sigma_0 and a 
+    OLR, the disk is unstable to m = 1 perturbations.
+    Assumes (b_n - c)^2 ~ 1 following the lead of Shu et al.
+    
+    Inputs: [preferred units]
+    r: radial location of OLR [AU]
+    rd: disk radius [AU]
+    Mstar, Mdisk: mass of central star(s) and disk, respectively [Msol]
+    Q: Toomre Stability parameter evaluated at rd    
+    
+    Output:
+    sigma_0 evaluated at r [Msol/AU^2]
+    """
+
+    sigma_0 = 3.0*(Mstar+Mdisk)/(8.0*np.pi*np.pi*r*r)
+    sigma_0 *= np.power(r/rd,3.0)
+    sigma_0 *= np.sqrt(1.0 + 4.0*Q*Q*(np.power(rd/r,3.0) - np.power(rd/r,1.5)))
+    
+    return sigma_0
