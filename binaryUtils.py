@@ -610,7 +610,7 @@ def calcCoMVsRadius(s,rBinEdges,starFlag=False):
 
 def calcPoissonVsRadius(s,rBinEdges):
 	"""
-	Given a tipsy snapshot and radial bins, compute the Poisson noise, N_particles*sqrt(radius), in each radial bin.
+	Given a tipsy snapshot and radial bins, compute the Poisson noise, r/sqrt(N_particles), in each radial bin.
 	Expect a powerlaw trend since N_particles ~ Surface density profile.
 	"""	
 	gas = s.gas
@@ -620,7 +620,7 @@ def calcPoissonVsRadius(s,rBinEdges):
 		rMask = np.logical_and(isaac.strip_units(gas['rxy']) > rBinEdges[i], isaac.strip_units(gas['rxy']) < rBinEdges[i+1])
 		N = len(gas[rMask])
 		r = (rBinEdges[i] + rBinEdges[i+1])/2.0
-		poisson[i] = np.sqrt(N)*r
+		poisson[i] = r/np.sqrt(N)
 	
 	return poisson
 	
@@ -657,10 +657,10 @@ def calcQVsRadius(s,a_in,a_out,bins):
 	"""
 	#Derive quantities in correct units
 	p = pynbody.analysis.profile.Profile(s.gas,max=a_out,min=a_in,nbins=bins)
-	sigma = p['density'].in_units('g cm**-2');
-	kappa = p['kappa'].in_units('s**-1');
-	cs = p['cs'].in_units('cm s**-1');
-	r = p['rbins'];
+	sigma = p['density'].in_units('g cm**-2')
+	kappa = p['omega'].in_units('s**-1')
+	cs = p['cs'].in_units('cm s**-1')
+	r = p['rbins']
 	
 	return r, calcQ(cs,kappa,sigma)
 	
