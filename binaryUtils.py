@@ -1458,4 +1458,4 @@ def calcQVsRadius(s, a_in, a_out, bins):
 
 
 def calcStableSigma(r, rd, Mstar, Mdisk, Q):
-    return None
+    return 0
