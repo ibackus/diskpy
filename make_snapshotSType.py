@@ -121,7 +121,7 @@ def snapshot_gen(ICobj):
     snapshot.star['mass'] = m_star
     snapshot.star['metals'] = SimArray(star_metals)
     # Estimate the star's softening length as the closest particle distance
-    #snapshot.star['eps'] = r.min()
+    eps = r.min()
     
     # Make param file
     param = isaac.make_param(snapshot, snapshotName)
@@ -204,7 +204,7 @@ def snapshot_gen(ICobj):
     """
     snapshotBinary.gas['pos'] += snapshotBinary.star[0]['pos']
     snapshotBinary.gas['vel'] += snapshotBinary.star[0]['vel']
-
+    
     #Set stellar masses
     #Set Mass units
     #Create simArray for mass, convert units to simulation mass units
@@ -214,12 +214,6 @@ def snapshot_gen(ICobj):
     snapshotBinary.star[0]['mass'] = priMass
     snapshotBinary.star[1]['mass'] = secMass
     snapshotBinary.star['metals'] = SimArray(star_metals)
-
-    #Estimate stars' softening length as fraction of distance to COM
-    d = np.linalg.norm(x1) - np.linalg.norm(x2)
-
-    snapshotBinary.star[0]['eps'] = SimArray(math.fabs(d)/4.0,pos_unit)
-    snapshotBinary.star[1]['eps'] = SimArray(math.fabs(d)/4.0,pos_unit)
  
     print 'Wrapping up'
     # Now set the star particle's tform to a negative number.  This allows
@@ -227,11 +221,16 @@ def snapshot_gen(ICobj):
     snapshotBinary.star['tform'] = -1.0
     
     #Set Sink Radius to be mass-weighted average of Roche lobes of two stars
-    r1 = AddBinary.calcRocheLobe(binsys.m1/binsys.m2,binsys.a) 
-    r2 = AddBinary.calcRocheLobe(binsys.m2/binsys.m1,binsys.a)
-    p = isaac.strip_units(binsys.m1/(binsys.m1 + binsys.m2))
-
-    r_sink = (r1*p) + (r2*(1.0-p))
+    #r1 = AddBinary.calcRocheLobe(binsys.m1/binsys.m2,binsys.a) 
+    #r2 = AddBinary.calcRocheLobe(binsys.m2/binsys.m1,binsys.a)
+    #p = isaac.strip_units(binsys.m1/(binsys.m1 + binsys.m2))
+    #r_sink = (r1*p) + (r2*(1.0-p))
+    
+    #Set sink radius, stellar smoothing length as fraction of distance
+    #from primary to inner edge of the disk
+    r_sink = eps
+    snapshotBinary.star[0]['eps'] = SimArray(r_sink/2.0,pos_unit)
+    snapshotBinary.star[1]['eps'] = SimArray(r_sink/2.0,pos_unit)
     param['dSinkBoundOrbitRadius'] = r_sink
     param['dSinkRadius'] = r_sink
     param['dSinkMassMin'] = 0.9 * isaac.strip_units(secMass)
