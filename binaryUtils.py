@@ -227,9 +227,10 @@ def computeCOM(stars,gas,cutoff=None,starFlag=True):
 		starPos = (stars[0]['pos']*isaac.strip_units(stars[0]['mass']) + stars[1]['pos']*isaac.strip_units(stars[1]['mass']))
 	
 		#Compute, return total center of mass
-		return np.asarray((starPos + np.sum(gas['pos']*isaac.strip_units(np.mean(gas['mass']))))/np.sum(starMass+np.sum(gas['mass'])))
+		return np.asarray((starPos + np.sum(gas['pos']*isaac.strip_units(np.mean(gas['mass'])),axis=0))/ \
+                  np.sum(starMass+np.sum(gas['mass'])))
 	else: #No stars, just gas
-		return np.sum(gas['pos']*isaac.strip_units(np.mean(gas['mass'])))/np.sum(gas['mass'])
+		return np.sum(gas['pos']*isaac.strip_units(np.mean(gas['mass'])),axis=0)/np.sum(gas['mass'])
 
 #end function
 

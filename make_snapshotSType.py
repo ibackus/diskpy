@@ -17,7 +17,7 @@ __version__ = "$Revision: 1 $"
 import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
-import math
+import binaryUtils
 import gc
 import os
 import AddBinary
@@ -189,6 +189,10 @@ def snapshot_gen(ICobj):
 
     #Load Binary system obj to initialize system
     binsys = ICobj.settings.physical.binsys
+    m_disk = isaac.strip_units(np.sum(snapshotBinary.gas['mass']))
+    binsys.m1 = binsys.m1 + m_disk  
+    #Recompute cartesian coords considering primary as m1+m_disk    
+    binsys.computeCartesian()
     
     x1,x2,v1,v2 = binsys.generateICs()
 
@@ -203,28 +207,26 @@ def snapshot_gen(ICobj):
     shift the position, velocity of the gas disk to be around the primary.
     """
     snapshotBinary.gas['pos'] += snapshotBinary.star[0]['pos']
-    snapshotBinary.gas['vel'] += snapshotBinary.star[0]['vel']
+    snapshotBinary.gas['vel'] += snapshotBinary.star[0]['vel']  
     
-    #Set stellar masses
-    #Set Mass units
-    #Create simArray for mass, convert units to simulation mass units
-    priMass = SimArray(binsys.m1,m_unit)
-    secMass = SimArray(binsys.m2,m_unit)
-
-    snapshotBinary.star[0]['mass'] = priMass
-    snapshotBinary.star[1]['mass'] = secMass
+    #Set stellar masses: Create simArray for mass, convert units to simulation mass units
+    snapshotBinary.star[0]['mass'] = SimArray(binsys.m1-m_disk,m_unit)
+    snapshotBinary.star[1]['mass'] = SimArray(binsys.m2,m_unit)
     snapshotBinary.star['metals'] = SimArray(star_metals)
+ 
+    #Now that everything has masses and positions, adjust positions so the 
+    #system center of mass corresponds to the origin
+    """    
+    com = binaryUtils.computeCOM(snapshotBinary.stars,snapshotBinary.gas)
+    print com
+    snapshotBinary.stars['pos'] -= com
+    snapshotBinary.gas['pos'] -= com   
+    """
  
     print 'Wrapping up'
     # Now set the star particle's tform to a negative number.  This allows
     # UW ChaNGa treat it as a sink particle.
     snapshotBinary.star['tform'] = -1.0
-    
-    #Set Sink Radius to be mass-weighted average of Roche lobes of two stars
-    #r1 = AddBinary.calcRocheLobe(binsys.m1/binsys.m2,binsys.a) 
-    #r2 = AddBinary.calcRocheLobe(binsys.m2/binsys.m1,binsys.a)
-    #p = isaac.strip_units(binsys.m1/(binsys.m1 + binsys.m2))
-    #r_sink = (r1*p) + (r2*(1.0-p))
     
     #Set sink radius, stellar smoothing length as fraction of distance
     #from primary to inner edge of the disk
@@ -233,7 +235,7 @@ def snapshot_gen(ICobj):
     snapshotBinary.star[1]['eps'] = SimArray(r_sink/2.0,pos_unit)
     param['dSinkBoundOrbitRadius'] = r_sink
     param['dSinkRadius'] = r_sink
-    param['dSinkMassMin'] = 0.9 * isaac.strip_units(secMass)
+    param['dSinkMassMin'] = 0.9 * binsys.m2
     param['bDoSinks'] = 1
     
     return snapshotBinary, param, director
