@@ -1,8 +1,10 @@
 #!/bin/bash
+# Before running this, see the directions at:
+#   http://lucasbardella.com/blog/2010/02/hosting-your-sphinx-docs-in-github
 # Dependencies:
 # sphinx
 # numpydocs
-BUILDDIR=/home/ibackus/docs/custom_python_package
+BUILDDIR=/home/ibackus/docs/diskpy
 HTMLDIR=$BUILDDIR/html
 rm -rf doc
 mkdir doc
