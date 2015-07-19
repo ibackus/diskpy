@@ -1,0 +1,17 @@
+#!/bin/bash
+# Dependencies:
+# sphinx
+# numpydocs
+BUILDDIR=/home/ibackus/docs/custom_python_package
+HTMLDIR=$BUILDDIR/html
+rm -rf doc
+mkdir doc
+cp docconf.py doc/conf.py
+sphinx-apidoc -d 4 -A "Isaac Backus" -F -o doc ../diskpy
+cd doc
+make html BUILDDIR=$BUILDDIR
+cd $HTMLDIR
+echo > .nojekyll
+git add -A
+git commit -a -m "Updating docs"
+git push origin gh-pages
