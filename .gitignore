@@ -1,3 +1,6 @@
+# User added git ignores
+~
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
