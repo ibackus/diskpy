@@ -1,6 +1,8 @@
 # User added git ignores
 ~
 doc/
+*.nfs*
+*.orig
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -59,3 +61,4 @@ docs/_build/
 
 # PyBuilder
 target/
+
