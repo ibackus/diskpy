@@ -5,7 +5,7 @@ Created on Thu Jul 16 11:25:15 2015
 @author: ibackus
 """
 
-import ICgen_
+import ICgen
 import utils
 import pdmath
 import disk

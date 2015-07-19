@@ -11,7 +11,7 @@ import re
 from subprocess import Popen, PIPE
 import pynbody
 
-from diskpy.ICgen_ import global_settings
+from diskpy.ICgen.ICgen import global_settings
 from diskpy.utils import configparser, configsave, units_from_param
 
 

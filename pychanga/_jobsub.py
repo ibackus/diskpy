@@ -12,7 +12,7 @@ from subprocess import Popen, PIPE
 import pynbody
 
 import diskpy
-global_settings = diskpy.ICgen_.global_settings
+global_settings = diskpy.ICgen.ICgen.global_settings
 from diskpy.utils import configparser, configsave
 
 import isaac
