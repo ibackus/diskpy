@@ -53,6 +53,9 @@ import pynbody
 SimArray = pynbody.array.SimArray
 import cPickle as pickle
 import numpy as np
+import os
+
+_dir = os.path.dirname(os.path.realpath(__file__))
 
 """ **************************************************
 SETTINGS
@@ -159,6 +162,7 @@ class sigma:
         # Kind of surface density profile to use.  Options:
         #   'powerlaw'
         #   'MQWS'
+        #   'viscous'
         # Setting self.kind automatically initializes the default settings
         # for that kind
         self.kind = kind
@@ -480,10 +484,36 @@ class settings:
         """
         Load settings from settings_filename.
         """
-        
-        f = open(settings_filename,'rb')
-        tmp_dict = pickle.load(f)
-        f.close()
+        resave = False
+        try:
+            
+            # Unpickle the settings file
+            tmp_dict = pickle.load(open(settings_filename, 'rb'))
+            
+        except ImportError as err:
+            
+            # Since updating to diskpy, ICgen_settings is no longer on
+            # the PYTHONPATH.  Handle this exception
+            if err.message != 'No module named ICgen_settings':
+                
+                raise
+                
+            # Add ICgen_settings directory to sys.path (PYTHONPATH)
+            print 'Attempting to load out of date file.'
+            import sys
+            sys.path.insert(0, _dir)
+            
+            try:
+                
+                # Unpickle settings file
+                tmp_dict = pickle.load(open(settings_filename, 'rb'))
+                resave = True
+            
+            finally:
+                
+                # Remove directory
+                sys.path.remove(_dir)
+            
         
         self.__dict__.update(tmp_dict)
         self.settings_filename = settings_filename
@@ -499,3 +529,10 @@ class settings:
             self.physical.__dict__.update(tmp_dict['physical'].__dict__)
             # update the version
             self.__version__ = 3
+            # Flag to re-save these settings
+            resave = True
+            
+        if resave:
+            
+            print 'Re-Saving updated settings file'
+            self.save(settings_filename)
