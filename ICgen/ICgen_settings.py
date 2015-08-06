@@ -43,11 +43,11 @@ Load (read) settings from disk:
     settings.load('filename')
 """
 
-__version__ = "$Revision: 3 $"
+__version__ = "$Revision: 5 $"
 # $Source$
 __iversion__ = int(filter(str.isdigit,__version__))
 
-from ICgen_utils import checkversion
+from ICgen_utils import checkversion, pickle_import
 
 import pynbody
 SimArray = pynbody.array.SimArray
@@ -88,15 +88,7 @@ class filenames:
         
     def __call__(self):
         
-        print '--------------------'
-        print 'Filenames:'
-        print ''
-        for key,val in self.__dict__.iteritems():
-            
-            if pynbody.units.has_units(val):
-                print '{0} : {1} {2}'.format(key,val,val.units)
-            else:
-                print '{0} : {1}'.format(key,val)
+        print_settings(self, 'Filenames:')
             
 class physical:
     """
@@ -138,15 +130,7 @@ class physical:
         
     def __call__(self):
         
-        print '--------------------'
-        print 'General physical parameters:'
-        print ''
-        for key,val in self.__dict__.iteritems():
-            
-            if pynbody.units.has_units(val):
-                print '{0} : {1} {2}'.format(key,val,val.units)
-            else:
-                print '{0} : {1}'.format(key,val)
+        print_settings(self, 'General physical parameters:')
         
 class sigma:
     """
@@ -229,15 +213,7 @@ class sigma:
         
     def __call__(self):
         
-        print '--------------------'
-        print 'Sigma profile parameters:'
-        print ''
-        for key,val in self.__dict__.iteritems():
-            
-            if pynbody.units.has_units(val):
-                print '{0} : {1} {2}'.format(key,val,val.units)
-            else:
-                print '{0} : {1}'.format(key,val)
+        print_settings(self, 'Sigma profile parameters:')
 
 class rho_calc:
     """
@@ -252,29 +228,22 @@ class rho_calc:
     def __init__(self):
         
 
-        # The number of radial data points to calculate rho(z,r) at
-        self.nr = 1000
+        # The number of radial data points to calculate rho(z,r)
+        # If None (default), reasonable r bins are automatically estimated
+        self.nr = None
         # The number of vertical points to calculate rho(z,r) at
-        self.nz = 1000
-        # The maximum z (assumed to be au) to calculate rho(z,r) at.  Outside zmax,
-        # rho = 0.  If None, zmax is twice the scale height at rmax
+        self.nz = 200
+        # The maximum z (assumed to be au) to calculate rho(z,r) at.
+        # If None (default, safe) zmax is automatically estimated at each rbin
         self.zmax = None
-        # Numerical parameter.  During the calculation of rho(z) for a given r.  See
-        # the doc-string for calc_rho.py
-        self.rho_tol = 1.001
-
+        # Minimum number of rbins to use
+        self.min_r_bins = 150
+        # Accuracy requirement for r bins
+        self.r_bin_tol = 1e-3
         
     def __call__(self):
         
-        print '--------------------'
-        print 'Rho calculation settings:'
-        print ''
-        for key,val in self.__dict__.iteritems():
-            
-            if pynbody.units.has_units(val):
-                print '{0} : {1} {2}'.format(key,val,val.units)
-            else:
-                print '{0} : {1}'.format(key,val)
+        print_settings(self, 'Rho calculation settings:')
         
 class pos_gen:
     """
@@ -295,15 +264,7 @@ class pos_gen:
         
     def __call__(self):
         
-        print '--------------------'
-        print 'Position generator settings:'
-        print ''
-        for key,val in self.__dict__.iteritems():
-            
-            if pynbody.units.has_units(val):
-                print '{0} : {1} {2}'.format(key,val,val.units)
-            else:
-                print '{0} : {1}'.format(key,val)
+        print_settings(self, 'Position generator settings:')
         
 class snapshot:
     """
@@ -324,15 +285,7 @@ class snapshot:
         
     def __call__(self):
         
-        print '--------------------'
-        print 'Tipsy snapshot generator settings:'
-        print ''
-        for key,val in self.__dict__.iteritems():
-            
-            if pynbody.units.has_units(val):
-                print '{0} : {1} {2}'.format(key,val,val.units)
-            else:
-                print '{0} : {1}'.format(key,val)
+        print_settings(self, 'Tipsy snapshot generator settings:')
                 
 class changa_run:
     """
@@ -354,15 +307,7 @@ class changa_run:
         
     def __call__(self):
         
-        print '--------------------'
-        print 'ChaNGa run options:'
-        print ''
-        for key,val in self.__dict__.iteritems():
-            
-            if pynbody.units.has_units(val):
-                print '{0} : {1} {2}'.format(key,val,val.units)
-            else:
-                print '{0} : {1}'.format(key,val)
+        print_settings(self, 'ChaNGa run options:')
         
 class settings:
     """
@@ -480,59 +425,53 @@ class settings:
         # Update the settings_filename
         self.settings_filename = settings_filename
         
-    def load(self,settings_filename):
+    def load(self, settings_filename):
         """
         Load settings from settings_filename.
         """
-        resave = False
-        try:
+        if isinstance(settings_filename, str):
+            # Load the settings
+            tmp_dict = pickle_import(settings_filename, _dir)
             
-            # Unpickle the settings file
-            tmp_dict = pickle.load(open(settings_filename, 'rb'))
-            
-        except ImportError as err:
-            
-            # Since updating to diskpy, ICgen_settings is no longer on
-            # the PYTHONPATH.  Handle this exception
-            if err.message != 'No module named ICgen_settings':
-                
-                raise
-                
-            # Add ICgen_settings directory to sys.path (PYTHONPATH)
-            print 'Attempting to load out of date file.'
-            import sys
-            sys.path.insert(0, _dir)
-            
-            try:
-                
-                # Unpickle settings file
-                tmp_dict = pickle.load(open(settings_filename, 'rb'))
-                resave = True
-            
-            finally:
-                
-                # Remove directory
-                sys.path.remove(_dir)
-            
+        else:
+            # Assume the an already loaded settings dictionary is being passed
+            tmp_dict = settings_filename
         
-        self.__dict__.update(tmp_dict)
-        self.settings_filename = settings_filename
+        # Sigma has to be handled specially because the settings are dynamic
+        if 'sigma' in tmp_dict:
+            
+            self.sigma.kind = tmp_dict['sigma'].kind
         
-        version = checkversion(self)
+        # Get the names of the settings objects
+        keys = []
         
-        # Version checking
+        for key in self.__dict__.keys():
             
-        if version < 3:
+            if key[0] != '_':
+                
+                keys.append(key)
+                
+        # Now update the dictionary with the settings object dictionaries
+        for key in keys:
             
-            # Might be missing EOS and binary parameters.  Get those setup
-            self.physical = physical()
-            self.physical.__dict__.update(tmp_dict['physical'].__dict__)
-            # update the version
-            self.__version__ = 3
-            # Flag to re-save these settings
-            resave = True
+            if key in tmp_dict:
+                
+                old = getattr(self, key)
+                new = tmp_dict[key]
+                # Update the old (possibly default) settings
+                old.__dict__.update(new.__dict__)
+                setattr(self, key, old)
+                
+        
+def print_settings(setting, header=None):
+    
+    print '------------------------'
+    print header
+    print ''
+    
+    for key,val in setting.__dict__.iteritems():
             
-        if resave:
-            
-            print 'Re-Saving updated settings file'
-            self.save(settings_filename)
+            if pynbody.units.has_units(val):
+                print '{0} : {1} {2}'.format(key,val,val.units)
+            else:
+                print '{0} : {1}'.format(key,val)

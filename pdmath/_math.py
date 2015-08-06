@@ -8,6 +8,7 @@ Created on Thu Jul 16 14:26:07 2015
 import os
 import numpy as np
 import scipy.interpolate as interp
+interp1d = interp.interp1d
 import pynbody as pb
 SimArray = pb.array.SimArray
 
@@ -49,6 +50,93 @@ def _loadcoeffs(fname):
 _dir = os.path.dirname(os.path.realpath(__file__))
 _coeffsfile = os.path.join(_dir, 'hermite_spline_coeffs.dat')
 hermite_coeffs = _loadcoeffs(_coeffsfile)
+
+def resolvedbins(x, y, minbins=200, ftol=None):
+    """
+    Generates a sub-view of x that allows y to be resolved up to ftol.  Since
+    f will only be sampled at x, x should be very (overly) high resolution.
+    
+    Parameters
+    ----------
+    
+    x : array or SimArray
+        initial bin positions to try.  should be many more than required
+    y : array or SimArray
+        y(x), same shape as x.  the function values to resolve
+    minbins : int
+        Minimum number of bins to return.  IF the ftol is met but there are 
+        not enough bins, ftol is decreased
+    ftol : SimArray, float
+        Function tolerance.  Maximum difference between the interpolated, 
+        subsampled y(x) and the full-ly resolved version
+    
+    Returns
+    -------
+    
+    x2 : array or SimArray
+        A subview of x that provides the required resolution
+    
+    """
+    
+    # Initialize
+    if ftol is None:
+        ftol = y.max() * 1e-5
+    nx = len(x)
+    # Begin with bin edges at both ends
+    binind = [0, nx-1]
+    
+    maxiter = int(1e5)
+    
+    # Main loop
+    for i in range(maxiter):
+        
+        # Linear spline interpolation
+        yspl = interp1d(x[binind], y[binind], kind='linear')
+        # Difference between interpolated and actual values (on the grid)
+        diff = abs(y - yspl(x))
+        
+        # Find if any new bins need to be made
+        nbins = len(binind) - 1    
+        newbins = []            
+        for i in range(nbins):
+            
+            # Get the indices of the current bin's edges
+            iLo = binind[i]
+            iHi = binind[i+1]
+            
+            # If they are separated by more than one, we may need another bin
+            if (iHi-iLo) > 1:
+                
+                # Find maximum error in the bin
+                err = diff[iLo+1:iHi].max()
+                
+                # If the error  exceeds the tolerance, add a new bin
+                if err > ftol:
+                    
+                    newbin = int((iLo + iHi)/2)
+                    newbins.append(newbin)
+        
+        # Check if there are new bins
+        if len(newbins) == 0:
+            
+            # No new bins - check if we have enough
+            if nbins < minbins:
+                
+                # Decrease ftol if we don't have enough bins
+                ftol /= 1.5
+                
+            else:
+                
+                # we have enough bins, break
+                break
+        
+        else:
+            # There are new bins, keep going
+            binind.extend(newbins)
+            binind.sort()
+    
+    binind = np.array(binind)
+    return x[binind]
 
 def extrap1d(x,y):
     """
@@ -95,6 +183,170 @@ def extrap1d(x,y):
         return out
 
     return fcn
+    
+def meshinterp(xedges, y, z, kind='linear', bounds_error=False, fill_value=0,
+               assume_sorted=True):
+    """
+    Generates a 2D interpolating function for z defined on a non-uniform mesh
+    Handles units
+    
+    Parameters
+    ----------
+    
+    xedges : array
+        1D array defining the x bin edges, monotonically increasing
+    y : array
+        2D array defining y values.  shape (nx, ny), where nx is the number
+        of xedges and ny is the number of y-points at each x-bin
+        So, y[i, :] are the monotonically increasing y values at xedges[i]
+    z : array
+        2D array of z(x,y).  shape (nx, ny) = y.shape
+    kind : str
+        (optional) Sets the kind of interpolation to perform
+        [see scipy.interpolate.interp1d]
+    bounds_error : bool
+        (optional) Flag to raise error if values outside of y are called
+        [see scipy.interpolate.interp1d]
+    fill_value : float
+        (optional) Sets the value to fill with if bounds_error = True
+        [see scipy.interpolate.interp1d]
+    assume_sorted : bool
+        [see scipy.interpolate.interp1d]
+    
+    Returns
+    -------
+    
+    meshspline(x, y): callable interpolation function
+        Function which can be called on x, y pairs to give the interpolated
+        value of z.  Values outside of the range of y are set to fill_value.
+        x values outside the range of xedges are set to the boundary of xedges
+    """
+    # Check shapes
+    
+    if z.shape != y.shape:
+        
+        raise ValueError, 'y and z must have same shape'
+        
+    if len(xedges) != len(y):
+        
+        raise ValueError, 'x and y must have same len'
+        
+    # Handle units
+    pos = [xedges, y, z]
+    units = []
+    for a in pos:
+        
+        if pb.units.has_units(a):
+            
+            units.append(a.units)
+            
+        else:
+            
+            units.append(None)
+    
+    xedges, y, z = strip_units(pos)
+    # Setup bin information
+    binsize = xedges[1:] - xedges[0:-1]
+    xmin = xedges[0]
+    xmax = xedges[-1]
+    nbins = len(xedges) - 1
+    
+    # set up spliness
+    splines = []
+    
+    for i in range(nbins+1):
+        
+        # perform interpolation to make spline
+        splines.append(interp1d(y[i], z[i], kind=kind, \
+        bounds_error=bounds_error, fill_value=fill_value, \
+        assume_sorted=assume_sorted))
+        
+    # Define the callable interplation function to return
+    def meshspline(x1, y1):
+        """
+        Callable interpolation function, interoplates the value of z at
+        points (x1, y1)
+        
+        Parameters
+        ----------
+        
+        x1, y1 : array
+            x and y points to evaluate z at.  Must be the same shape.  ie,
+            x1[i], y1[i] define a point (x, y).
+            If @x1 or @y1 have no units, they are assumed to have the units of
+            the nodes used to make the interpolator.  Otherwise they are
+            converted to the proper units
+            
+        Returns
+        -------
+        
+        z(x1, y1) : array
+            z evaluated at @x1, @y1
+        """
+        # Handle units
+        x1 = strip_units(match_units(x1, units[0])[0])
+        y1 = strip_units(match_units(y1, units[1])[0])
+        
+        # Setup x and y points to estimate z at
+        x1 = np.asarray(x1).copy()
+        y1 = np.asarray(y1)
+        
+        if len(x1.shape) < 1:
+            
+            x1 = x1[None]
+            
+        if len(y1.shape) < 1:
+            
+            y1 = y1[None]
+            
+        # Flatten arrays
+        shape = x1.shape
+        nElements = np.prod(shape)
+        x1 = np.reshape(x1, [nElements])
+        y1 = np.reshape(y1, [nElements])
+            
+        # Deal with xs outside of boundaries
+        x1[x1 < xmin] = xmin
+        x1[x1 > xmax] = xmax
+        # Find bin indices
+        ind = np.digitize(x1, xedges) - 1
+        ind[ind < 0] = 0
+        ind[ind > nbins - 1] = nbins - 1
+        
+        # Get bin info for every point
+        xlo = xedges[ind]
+        xhi = xedges[ind + 1]
+        dx = binsize[ind]
+        
+        # Get weights for bins (distance from bin edges)
+        wlo = (xhi - x1)/dx
+        whi = (x1 - xlo)/dx
+        
+        # Get function values at left and right xedges
+        flo = np.zeros(x1.shape)
+        fhi = np.zeros(x1.shape)
+        
+        for i in range(nbins):
+            
+            # Select everything in bin i
+            mask = (ind == i)
+            
+            if np.any(mask):
+                
+                # Retrieve function values
+                flo[mask] = splines[i](y1[mask])
+                fhi[mask] = splines[i+1](y1[mask])
+        
+        # Take a weighted average of the function values at left and right
+        # bin edges
+        fout = wlo*flo + whi*fhi
+        
+        # Unflatten fout:
+        fout = np.reshape(fout, shape)
+        
+        return SimArray(fout, units[2])
+    
+    return meshspline
     
 def smoothstep(x,degree=5,rescale=False):
     """

@@ -13,13 +13,66 @@ import numpy as np
 import pynbody
 SimArray = pynbody.array.SimArray
 import os
+import sys
 import re
+import cPickle as pickle
 
 # ICgen modules
 from ICglobal_settings import global_settings
 
 import isaac
 
+def pickle_import(fname, moduledir=None):
+    """
+    Performs a cPickle.load on fname
+    If an ImportError is raised, moduledir is temporarily added to sys.path
+    to try and find the module
+    
+    Parameters
+    ----------
+    
+    fname : filename
+        filename of a file to open
+    moduledir : str or list of strings
+        The directory or directories to temporarily add to sys.path
+        IF None, a normal cPickle.load is performed
+    """
+    
+    if moduledir is None:
+        
+        data = pickle.load(open(fname, 'r'))
+        return data
+    
+    if isinstance(moduledir, str):
+        
+        moduledir = [moduledir]
+        
+    try:
+            
+        # Just try to unpickle
+        data = pickle.load(open(fname, 'r'))
+        
+    except ImportError as err:
+            
+        # Add directories to sys.path (PYTHONPATH)
+        for directory in reversed(moduledir):
+            
+            sys.path.insert(0, directory)
+        
+        try:
+            
+            # unpickle if possible
+            data = pickle.load(open(fname, 'r'))
+        
+        finally:
+            
+            # Remove directory
+            for directory in reversed(moduledir):
+                
+                sys.path.remove(directory)
+            
+    return data
+    
 def Qeff(ICobj, bins=None):
     
     if bins is None:

@@ -9,6 +9,7 @@ Created on Mon Jan 27 13:00:52 2014
 """
 # ICgen packages
 import isaac
+from diskpy.utils import match_units
 
 # External packages
 import pynbody
@@ -16,7 +17,8 @@ SimArray = pynbody.array.SimArray
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.integrate import quad
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
+from scipy.integrate import quad, cumtrapz
 from scipy.integrate import simps
 import copy as copier
 
@@ -65,7 +67,7 @@ class sigma_gen:
         Generates a spline interpolation of sigma vs r from the file
         defined by settings.filenames.sigmaFileName.  Returns sigma vs r as
         an cubic spline interpolation object
-        (see scipy.interpolation.interp1d)
+        (see scipy.interpolation.InterpolatedUnivariateSpline)
         
         sigma_input should be a pickled dictionary with the entries:
         'sigma': <sigma evaluated at r>
@@ -79,9 +81,10 @@ class sigma_gen:
         # Convert r_bins to default units of 'au'
         r_bins = isaac.match_units(r_bins, 'au')[0]
         # Calculate spline interpolation
-        print 'Calculating spline interpolation (slow for many data points)'
-        sigspline = interp1d(r_bins,sigmaBinned,kind='cubic',fill_value=0.0,\
-        bounds_error=False)
+        sigspline = spline(r_bins, sigmaBinned, k=3, ext='zeros')
+#        print 'Calculating spline interpolation (slow for many data points)'
+#        sigspline = interp1d(r_bins,sigmaBinned,kind='cubic',fill_value=0.0,\
+#        bounds_error=False)
         
         def sigout(r):
             """
@@ -122,9 +125,10 @@ class sigma_gen:
         integral = simps(pdfBinned,self.r_bins)
         pdfBinned /= integral
         # Calculate a spline interpolation
-        print 'Calculating spline interpolation (slow for many data points)'
-        pdfSpline = interp1d(self.r_bins, pdfBinned, kind='cubic',\
-        fill_value=0.0, bounds_error=False)
+        pdfSpline = spline(self.r_bins, pdfBinned, k=3, ext='zeros')
+#        print 'Calculating spline interpolation (slow for many data points)'
+#        pdfSpline = interp1d(self.r_bins, pdfBinned, kind='cubic',\
+#        fill_value=0.0, bounds_error=False)
         
         def pdf_fcn(r_in):
             """
@@ -149,8 +153,53 @@ class sigma_gen:
             return pdf_vals
             
         self.pdf = pdf_fcn
-            
+        
     def _make_cdf_inv(self, f=None):
+        """
+        Calculates the inverse of the CDF (cumulative distribution function).
+        This can be use for generating particle positions.  Generates a 
+        callable method and saves to self.cdf_inv
+        
+        The CDF_inv is made by cumulatively integrating the PDF over the radial
+        bins defined in self.r_bins
+        
+        The optional argument, f, is ignored
+            
+        """
+        
+        # calculate the binned PDF
+        r = self.r_bins
+        pdf = self.pdf(r)
+        # Calculate the (normalized) CDF
+        cdf = cumtrapz(abs(pdf), r, initial=0)
+        cdf /= cdf.max()
+        # For compatability, save cdf
+        self._CDF = cdf
+        
+        # Make a callable, interpolate function for the CDF
+        cdfinv_spl = interp1d(cdf, r, kind='linear')
+        
+        def finv_fcn(m):
+            """
+            The inverse CDF for sigma(r).
+            
+            input:
+            
+            0 <= m_in < 1
+            
+            returns:
+            
+            r (radius), the inverse CDF evaluated at m_in
+            
+            Uses a linear spline interpolation.
+            """
+            rout = cdfinv_spl(m)
+            return SimArray(rout, r.units)
+            
+        self.cdf_inv = finv_fcn
+        
+            
+    def _make_cdf_invOLD(self, f=None):
         """
         Calculates the inverse of the CDF (cumulative distribution function).
         This can be use for generating particle positions.  Generates a 

@@ -15,6 +15,7 @@ import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
 import os
+import sys
 import cPickle as pickle
 from warnings import warn
 
@@ -26,10 +27,12 @@ import make_snapshot
 import make_snapshotBinary
 import make_snapshotSType
 import ICgen_settings
+import ICgen_utils
 import make_sigma
 import sigma_profile
 from ICglobal_settings import global_settings
 import isaac
+from rhosolver import rhosolver, loadrho
 
 # Initial stuff
 ICgenDir = os.path.dirname(os.path.realpath(__file__))
@@ -297,7 +300,7 @@ def save(ICobj, filename=None):
 def load(filename):
        
     # Load everything available from filename
-    input_dict = pickle.load(open(filename,'rb'))
+    input_dict = ICgen_utils.pickle_import(filename, ICgenDir)
     
     # Get version/update IC if necessary
     if 'version' in input_dict:
@@ -333,9 +336,8 @@ def load(filename):
         ICobj = IC()
         
     if 'settings' in input_dict:
-
-        print 'loading settings'
-        #ICobj.settings = ICgen_settings.settings()
+        
+        # 'settings' is the settings filename.  load that up
         ICobj.settings.load(input_dict['settings'])
         
     if 'rho' in input_dict:
@@ -446,13 +448,8 @@ class add:
         rho_dict = pickle.load(open('rhofile.p', 'rb')) # Load up a rho dict
         ICobj.add.rho(rho_dict)     # create ICobj.rho
         """
-        # Create rho object (includes a spline interpolation)
-        rho_binned = rho_dict['rho']
-        z_bins = rho_dict['z']
-        r_bins = rho_dict['r']
-        
-        self._parent.rho = calc_rho_zr.rho_from_array(self._parent, rho_binned, z_bins, r_bins)
-        
+        loadrho(self._parent, rho_dict)
+                
         print 'rho stored in <IC instance>.rho'
         
 
@@ -499,13 +496,20 @@ class maker:
         # Copy sigma to the parent (IC) object
         self._parent.sigma = sigma
         
+        
+        # and now, set up the interior temperature profile
+        self._parent.T.setup_interior()
+        
         print 'Sigma stored in <IC instance>.sigma'
         
-    def rho_gen(self):
+    def rho_gen(self, **kwargs):
         """
         A wrapper for calc_rho_zr.
         
         Upon executing, generates rho and rho cdf inverse
+        
+        Optional kwargs can be supplied and passed to the rootfinder used
+        (scipy.optimize.newton_krylov)
         """
         
         # Check that sigma has been generated
@@ -513,11 +517,8 @@ class maker:
             
             raise RuntimeError,'Must load/generate sigma before calculating rho'
             
-        # Numerically calculate rho(z,r) for a given sigma.  rho(z,r)
-        # obeys vertical hydrostatic equilibrium (approximately)
-        rho_array, z, r = calc_rho_zr.rho_zr(self._parent)
-        # Create a complete rho object.  Includes rho spline and CDF inverse
-        rho = calc_rho_zr.rho_from_array(self._parent, rho_array, z, r)
+        rho = rhosolver(self._parent)
+        rho.solve(**kwargs)
         # Save to ICobj
         self._parent.rho = rho
         
@@ -554,8 +555,8 @@ class maker:
         else:
             print "Invalid starMode given in ICobj.  Assuming default single star."
             snapshot, snapshot_param, snapshot_director = make_snapshot.snapshot_gen(self._parent)
-										
-	  # Save to ICobj
+            
+        # Save to ICobj
         self._parent.snapshot = snapshot
         self._parent.snapshot_param = snapshot_param
         self._parent.snapshot_director = snapshot_director

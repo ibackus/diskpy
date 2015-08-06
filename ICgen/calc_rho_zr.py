@@ -180,8 +180,6 @@ class rho_from_array:
         drho_dr_spline = interp.RectBivariateSpline(z, r, drho_dr_binned)
         self._drho_dr = drho_dr_spline
         
-        
-
     def cdf_inv(self,m,r):
         """
         A callable interface for the inverse CDF.

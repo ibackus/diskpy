@@ -7,6 +7,7 @@ Created on Thu Jul 16 11:19:03 2015
 import warnings
 import logging
 import os
+import glob
 import fnmatch
 import numpy as np
 import pynbody as pb
@@ -189,6 +190,8 @@ def strip_units(x):
         x_out = []
 
         for x_i in x:
+            
+            x_i = np.asarray(x_i)
 
             if np.prod(x_i.shape) == 1:
                 # There is only one element in x_i.  Make sure to return it as
@@ -206,7 +209,9 @@ def strip_units(x):
                 x_out.append(np.asarray(x_i.tolist()))
 
     else:
-
+        
+        x = np.asarray(x)
+        
         if np.prod(x.shape) == 1:
             # There is only one element in x_i.  Return as a number
             if np.sum(x.shape) == 0:
@@ -518,3 +523,43 @@ def str2num(string):
             except:
                 pass
     return output
+    
+def get_module_names(fname):
+    """
+    An import utility that returns the module names in the directory of file.  
+    Ignores filenames beginning with an underscore.
+    
+    Parameters
+    ----------
+    
+    fname : str
+        Filename
+    
+    Returns
+    -------
+    
+    modulenames : list
+        A list of the modules
+    """
+    directory = os.path.dirname(os.path.realpath(fname))
+    searchstr = os.path.join(directory, '*.py')
+    fullpaths = glob.glob(searchstr)
+    
+    fnames = []
+    
+    for fullpath in fullpaths:
+        
+        f = os.path.split(fullpath)[-1]
+        
+        if f[0] is not '_':
+            
+            fnames.append(fullpath)
+    
+    modulenames = []
+    
+    for fname in fnames:
+        
+        modulename = os.path.split(os.path.splitext(fname)[0])[-1]
+        modulenames.append(modulename)
+        
+    return modulenames

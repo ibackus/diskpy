@@ -6,7 +6,8 @@ Created on Thu Jul 16 11:18:26 2015
 """
 
 from _utils import configparser, configsave, units_from_param, strip_units, \
-set_units, match_units, findfiles, pbverbosity, str2num
+set_units, match_units, findfiles, pbverbosity, str2num, get_module_names
 
 __all__ = ['configparser', 'configsave', 'units_from_param', 'strip_units', 
-           'set_units', 'match_units', 'findfiles', 'pbverbosity', 'str2num']
+           'set_units', 'match_units', 'findfiles', 'pbverbosity', 'str2num',
+           'get_module_names']

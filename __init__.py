@@ -4,13 +4,13 @@ Created on Thu Jul 16 11:25:15 2015
 
 @author: ibackus
 """
-
+import pdmath
 import ICgen
 import utils
-import pdmath
+
 import disk
 import pychanga
 import plot
 import clumps
 
-__all__ = ['utils', 'pdmath', 'disk']
+__all__ = ['ICgen', 'utils', 'pdmath', 'disk', 'pychanga', 'plot', 'clumps']

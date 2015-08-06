@@ -270,11 +270,8 @@ def MQWS(settings, T):
         
     r = np.linspace(0, rmax, n_points)
     
-    #A = m_disk * np.exp(2 * (rin/rout).in_units('1'))/(rout * np.pi**1.5)
-    
     a = (rin/r).in_units('1')
     b = (r/rout).in_units('1')
-    #sigma = A * np.exp(-a**2 - b**2)/r
     sigma = (np.exp(-a**2 - b**2)/r) * Mstar.units/r.units
     
     # Calculate Q
