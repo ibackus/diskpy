@@ -20,8 +20,6 @@ import numpy as np
 import gc
 import AddBinary
 import ICgen_utils
-import ICglobal_settings
-global_settings = ICglobal_settings.global_settings
 
 from diskpy.utils import match_units, strip_units, configsave
 from diskpy.pychanga import make_param, make_director
