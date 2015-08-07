@@ -18,12 +18,13 @@ import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
 import gc
-import os
 import AddBinary
-import isaac
 import ICgen_utils
 import ICglobal_settings
 global_settings = ICglobal_settings.global_settings
+
+from diskpy.utils import match_units, strip_units, configsave
+from diskpy.pychanga import make_param, make_director
 
 def snapshot_gen(ICobj):
     """
@@ -71,7 +72,7 @@ def snapshot_gen(ICobj):
     
     # disk mass
     m_disk = np.sum(snapshot.gas['mass'])
-    m_disk = isaac.match_units(m_disk, m_star)[0]
+    m_disk = match_units(m_disk, m_star)[0]
     
     # mass of the gas particles
     m_particles = m_disk / float(nParticles)
@@ -110,7 +111,7 @@ def snapshot_gen(ICobj):
     eps = r.min()
     
     # Make param file
-    param = isaac.make_param(snapshot, snapshotName)
+    param = make_param(snapshot, snapshotName)
     param['dMeanMolWeight'] = m
        
     gc.collect()
@@ -124,7 +125,7 @@ def snapshot_gen(ICobj):
     # Estimate time step for changa to use
     # -------------------------------------------------
     # Save param file
-    isaac.configsave(param, paramName, 'param')
+    configsave(param, paramName, 'param')
     # Save snapshot
     snapshot.write(filename=snapshotName, fmt=pynbody.tipsy.TipsySnap)
     # est dDelta
@@ -141,9 +142,9 @@ def snapshot_gen(ICobj):
     # surface density at largest radius
     sigma_max = float(ICobj.sigma.input_dict['sigma'].max())
     # Create director dict
-    director = isaac.make_director(sigma_min, sigma_max, r_director, filename=param['achOutName'])
+    director = make_director(sigma_min, sigma_max, r_director, filename=param['achOutName'])
     ## Save .director file
-    #isaac.configsave(director, directorName, 'director')
+    #configsave(director, directorName, 'director')
     
     """
     Now that the gas disk is initializes around the primary (M=m1), add in the
@@ -171,8 +172,8 @@ def snapshot_gen(ICobj):
 
     #Load Binary system obj to initialize system
     binsys = ICobj.settings.physical.binsys
-    m_disk = isaac.strip_units(np.sum(snapshotBinary.gas['mass']))
-    binsys.m1 = isaac.strip_units(m_star)
+    m_disk = strip_units(np.sum(snapshotBinary.gas['mass']))
+    binsys.m1 = strip_units(m_star)
     binsys.m1 = binsys.m1 + m_disk  
     #Recompute cartesian coords considering primary as m1+m_disk    
     binsys.computeCartesian()
@@ -213,37 +214,3 @@ def snapshot_gen(ICobj):
     param['bDoSinks'] = 1
     
     return snapshotBinary, param, director
-    
-def make_director(ICobj, res=1200):
-    
-    director = {}
-    director['render'] = 'tsc'
-    director['FOV'] = 45.0
-    director['clip'] = [0.0001, 500]
-    director['up'] = [1, 0, 0]
-    director['project'] = 'ortho'
-    director['softgassph'] = 'softgassph'
-    director['physical'] = 'physical'
-    director['size'] = [res, res]
-    
-    sig_set = ICobj.settings.sigma
-    mScale = ICobj.settings.snapshot.mScale
-    snapshot_name = ICobj.settings.filenames.snapshotName
-    f_prefix = os.path.splitext(os.path.basename(snapshot_name))[0]
-    
-    director['file'] = f_prefix
-    
-    
-    if sig_set.kind == 'MQWS':
-        
-        rmax = sig_set.rout + 3*sig_set.rin
-        zmax = float(rmax)
-        director['eye'] = [0, 0, zmax]
-        vmin = float(ICobj.rho(0, rmax))
-        vmax = float(ICobj.rho.rho_binned[0,:].max())
-        vmax *= mScale
-        director['logscale'] = [vmin, 10*vmax]
-        director['colgas'] = [1, 1, 1]
-        
-    return director
-        

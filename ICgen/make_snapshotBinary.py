@@ -16,13 +16,14 @@ SimArray = pynbody.array.SimArray
 import numpy as np
 import math
 import gc
-import os
 import AddBinary
-import isaac
 import calc_velocity
 import ICgen_utils
 import ICglobal_settings
 global_settings = ICglobal_settings.global_settings
+
+from diskpy.utils import match_units, strip_units, configsave
+from diskpy.pychanga import make_param, make_director
 
 def snapshot_gen(ICobj):
     """
@@ -65,7 +66,7 @@ def snapshot_gen(ICobj):
     
     # disk mass
     m_disk = ICobj.sigma.m_disk.copy()
-    m_disk = isaac.match_units(m_disk, m_star)[0]
+    m_disk = match_units(m_disk, m_star)[0]
     
     # mass of the gas particles
     m_particles = m_disk / float(nParticles)
@@ -121,7 +122,7 @@ def snapshot_gen(ICobj):
     #snapshot.star['eps'] = r.min()
     
     # Make param file
-    param = isaac.make_param(snapshot, snapshotName)
+    param = make_param(snapshot, snapshotName)
     param['dMeanMolWeight'] = m
        
     gc.collect()
@@ -139,7 +140,7 @@ def snapshot_gen(ICobj):
     # Estimate time step for changa to use
     # -------------------------------------------------
     # Save param file
-    isaac.configsave(param, paramName, 'param')
+    configsave(param, paramName, 'param')
     # Save snapshot
     snapshot.write(filename=snapshotName, fmt=pynbody.tipsy.TipsySnap)
     # est dDelta
@@ -156,9 +157,9 @@ def snapshot_gen(ICobj):
     # surface density at largest radius
     sigma_max = float(ICobj.sigma.input_dict['sigma'].max())
     # Create director dict
-    director = isaac.make_director(sigma_min, sigma_max, r_director, filename=param['achOutName'])
+    director = make_director(sigma_min, sigma_max, r_director, filename=param['achOutName'])
     ## Save .director file
-    #isaac.configsave(director, directorName, 'director')
+    #configsave(director, directorName, 'director')
 
     #Now that velocities and everything are all initialized for gas particles, create new snapshot to return in which
     #single star particle is replaced by 2, same units as above
@@ -221,46 +222,14 @@ def snapshot_gen(ICobj):
     #Set Sink Radius to be mass-weighted average of Roche lobes of two stars
     r1 = AddBinary.calcRocheLobe(binsys.m1/binsys.m2,binsys.a) 
     r2 = AddBinary.calcRocheLobe(binsys.m2/binsys.m1,binsys.a)
-    p = isaac.strip_units(binsys.m1/(binsys.m1 + binsys.m2))
+    p = strip_units(binsys.m1/(binsys.m1 + binsys.m2))
 
     r_sink = (r1*p) + (r2*(1.0-p))
     param['dSinkBoundOrbitRadius'] = r_sink
     param['dSinkRadius'] = r_sink
-    param['dSinkMassMin'] = 0.9 * isaac.strip_units(secMass)
+    param['dSinkMassMin'] = 0.9 * strip_units(secMass)
     param['bDoSinks'] = 1
     
     return snapshotBinary, param, director
     
-def make_director(ICobj, res=1200):
-    
-    director = {}
-    director['render'] = 'tsc'
-    director['FOV'] = 45.0
-    director['clip'] = [0.0001, 500]
-    director['up'] = [1, 0, 0]
-    director['project'] = 'ortho'
-    director['softgassph'] = 'softgassph'
-    director['physical'] = 'physical'
-    director['size'] = [res, res]
-    
-    sig_set = ICobj.settings.sigma
-    mScale = ICobj.settings.snapshot.mScale
-    snapshot_name = ICobj.settings.filenames.snapshotName
-    f_prefix = os.path.splitext(os.path.basename(snapshot_name))[0]
-    
-    director['file'] = f_prefix
-    
-    
-    if sig_set.kind == 'MQWS':
-        
-        rmax = sig_set.rout + 3*sig_set.rin
-        zmax = float(rmax)
-        director['eye'] = [0, 0, zmax]
-        vmin = float(ICobj.rho(0, rmax))
-        vmax = float(ICobj.rho.rho_binned[0,:].max())
-        vmax *= mScale
-        director['logscale'] = [vmin, 10*vmax]
-        director['colgas'] = [1, 1, 1]
-        
-    return director
         

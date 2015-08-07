@@ -7,10 +7,11 @@ Utilities to process/interact with binary star system in ChaNGa sims
 import numpy as np
 import re
 import AddBinary
-import isaac
 import pynbody
 from scipy import interpolate
 SimArray = pynbody.array.SimArray
+
+from diskpy.utils import strip_units
 
 
 def changaFloatSearch(name,simUnits=False):
@@ -92,12 +93,12 @@ def linearMomentumEffects(x1, x2, v1, v2, m1, m2, accretion):
 			v[i,j-1] = accretion[i,j]
 
 	#Strip units from all inputs, convert all into CGS
-	r1 = np.asarray(isaac.strip_units(x1))*AddBinary.AUCM
-	r2 = np.asarray(isaac.strip_units(x2))*AddBinary.AUCM
-	v1 = np.asarray(isaac.strip_units(v1))*AddBinary.VEL_UNIT*100*1000
-	v2 = np.asarray(isaac.strip_units(v2))*AddBinary.VEL_UNIT*100*1000
-	m1 = np.asarray(isaac.strip_units(m1))*AddBinary.Msol
-	m2 = np.asarray(isaac.strip_units(m2))*AddBinary.Msol
+	r1 = np.asarray(strip_units(x1))*AddBinary.AUCM
+	r2 = np.asarray(strip_units(x2))*AddBinary.AUCM
+	v1 = np.asarray(strip_units(v1))*AddBinary.VEL_UNIT*100*1000
+	v2 = np.asarray(strip_units(v2))*AddBinary.VEL_UNIT*100*1000
+	m1 = np.asarray(strip_units(m1))*AddBinary.Msol
+	m2 = np.asarray(strip_units(m2))*AddBinary.Msol
 	m_g = m_g*AddBinary.Msol
 	v = v * AddBinary.VEL_UNIT*100*1000
 
@@ -477,12 +478,6 @@ def calcDeDt(stars,tau):
     v2 = stars[1]['vel'].in_units('cm s**-1')
     m1 = stars[0]['mass'].in_units('g')
     m2 = stars[1]['mass'].in_units('g')
-    #x1 = np.asarray(isaac.strip_units(stars[0]['pos']))*AddBinary.AUCM
-    #x2 = np.asarray(isaac.strip_units(stars[1]['pos']))*AddBinary.AUCM
-    #v1 = np.asarray(isaac.strip_units(stars[0]['vel']))*1000*100*AddBinary.VEL_UNIT
-    #v2 = np.asarray(isaac.strip_units(stars[1]['vel']))*1000*100*AddBinary.VEL_UNIT
-    #m1 = np.asarray(isaac.strip_units(stars[0]['mass']))*AddBinary.Msol
-    #m2 = np.asarray(isaac.strip_units(stars[1]['mass']))*AddBinary.Msol
 
     #Relative position vector in cgs
     r = x1 - x2
@@ -531,12 +526,12 @@ def estimateCBResonances(s,r_max,m_max=5,l_max=5,bins=2500):
 
 	#Compute binary angular frequency
 	#Strip units from all inputs
-	x1 = np.asarray(isaac.strip_units(stars[0]['pos']))
-	x2 = np.asarray(isaac.strip_units(stars[1]['pos']))
-	v1 = np.asarray(isaac.strip_units(stars[0]['vel']))
-	v2 = np.asarray(isaac.strip_units(stars[1]['vel']))
-	m1 = np.asarray(isaac.strip_units(stars[0]['mass']))
-	m2 = np.asarray(isaac.strip_units(stars[1]['mass']))
+	x1 = np.asarray(strip_units(stars[0]['pos']))
+	x2 = np.asarray(strip_units(stars[1]['pos']))
+	v1 = np.asarray(strip_units(stars[0]['vel']))
+	v2 = np.asarray(strip_units(stars[1]['vel']))
+	m1 = np.asarray(strip_units(stars[0]['mass']))
+	m2 = np.asarray(strip_units(stars[1]['mass']))
 	a = AddBinary.calcSemi(x1, x2, v1, v2, m1, m2)
 	#omega_b = 2.0*np.pi/AddBinary.aToP(a,m1+m2
 
@@ -598,13 +593,6 @@ def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
     l_min = 1 #l >=1 for LRs, CRs
 
     #Compute binary angular frequency
-    #Strip units from all inputs
-    #x1 = np.asarray(isaac.strip_units(stars[0]['pos']))
-    #x2 = np.asarray(isaac.strip_units(stars[1]['pos']))
-    #v1 = np.asarray(isaac.strip_units(stars[0]['vel']))
-    #v2 = np.asarray(isaac.strip_units(stars[1]['vel']))
-    #m1 = np.asarray(isaac.strip_units(stars[0]['mass']))
-    #m2 = np.asarray(isaac.strip_units(stars[1]['mass']))
     x1 = stars[0]['pos']
     x2 = stars[1]['pos']
     v1 = stars[0]['vel']
@@ -612,7 +600,7 @@ def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
     m1 = stars[0]['mass']
     m2 = stars[1]['mass']
      
-    a = isaac.strip_units(AddBinary.calcSemi(x1, x2, v1, v2, m1, m2))
+    a = strip_units(AddBinary.calcSemi(x1, x2, v1, v2, m1, m2))
     omega_b = 2.0*np.pi/AddBinary.aToP(a,m1+m2) #In units 1/day
 
     #Compute omega_disk in units 1/day (like omega_binary)

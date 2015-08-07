@@ -28,9 +28,9 @@ import math
 from scipy import optimize
 import sys
 sys.path.append('/astro/users/dflemin3/Desktop/ICgen')
-import isaac
 import pynbody
 SimArray = pynbody.array.SimArray
+from diskpy.utils import strip_units
 
 # Units/Constants
 Msol = 1.98855e33  # g/Solar mass
@@ -302,12 +302,6 @@ def calcEcc(x1, x2, v1, v2, m1, m2, flag=True):
         v2 = v2.in_units('cm s**-1')
         m1 = m1.in_units('g')
         m2 = m2.in_units('g')
-        #x1 = np.asarray(isaac.strip_units(x1)) * AUCM
-        #x2 = np.asarray(isaac.strip_units(x2)) * AUCM
-        #v1 = np.asarray(isaac.strip_units(v1)) * 1000 * 100 * VEL_UNIT
-        #v2 = np.asarray(isaac.strip_units(v2)) * 1000 * 100 * VEL_UNIT
-        #m1 = np.asarray(isaac.strip_units(m1)) * Msol
-        #m2 = np.asarray(isaac.strip_units(m2)) * Msol
 
     length, ax = computeLenAx(x1)
 
@@ -369,13 +363,6 @@ def calcSemi(x1, x2, v1, v2, m1, m2, flag=True):
         v2 = v2.in_units('cm s**-1')
         m1 = m1.in_units('g')
         m2 = m2.in_units('g')
-        # Remove units since input is pynbody SimArray
-        #x1 = np.asarray(isaac.strip_units(x1)) * AUCM
-        #x2 = np.asarray(isaac.strip_units(x2)) * AUCM
-        #v1 = np.asarray(isaac.strip_units(v1)) * 1000 * 100 * VEL_UNIT
-        #v2 = np.asarray(isaac.strip_units(v2)) * 1000 * 100 * VEL_UNIT
-        #m1 = np.asarray(isaac.strip_units(m1)) * Msol
-        #m2 = np.asarray(isaac.strip_units(m2)) * Msol
 
     length, ax = computeLenAx(x1)
 
@@ -428,11 +415,6 @@ def calcInc(x1=1, x2=0, v1=1, v2=0, flag=True):
         x2 = x2.in_units('cm')
         v1 = v1.in_units('cm s**-1')
         v2 = v2.in_units('cm s**-1')
-        # Strip units from all inputs
-        #x1 = np.asarray(isaac.strip_units(x1)) * AUCM
-        #x2 = np.asarray(isaac.strip_units(x2)) * AUCM
-        #v1 = np.asarray(isaac.strip_units(v1)) * 1000 * 100 * VEL_UNIT
-        #v2 = np.asarray(isaac.strip_units(v2)) * 1000 * 100 * VEL_UNIT
 
     # Compute length of array we're dealing with
     length, ax = computeLenAx(x1)
@@ -494,11 +476,6 @@ def calcLongOfAscNode(x1=1, x2=0, v1=1, v2=0, flag=True):
         x2 = x2.in_units('cm')
         v1 = v1.in_units('cm s**-1')
         v2 = v2.in_units('cm s**-1')
-        # Strip units from all inputs and convert to cgs
-        #x1 = np.asarray(isaac.strip_units(x1)) * AUCM
-        #x2 = np.asarray(isaac.strip_units(x2)) * AUCM
-        #v1 = np.asarray(isaac.strip_units(v1)) * 1000 * 100 * VEL_UNIT
-        #v2 = np.asarray(isaac.strip_units(v2)) * 1000 * 100 * VEL_UNIT
 
     # Define unit vectors pointing along z, x and y axes respectively
     # Also ensure function can handle any number of values
@@ -580,13 +557,6 @@ def calcEccVector(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
         v2 = v2.in_units('cm s**-1')
         m1 = m1.in_units('g')
         m2 = m2.in_units('g')
-        # Remove units in case input is pynbody SimArray
-        #x1 = np.asarray(isaac.strip_units(x1)) * AUCM
-        #x2 = np.asarray(isaac.strip_units(x2)) * AUCM
-        #v1 = np.asarray(isaac.strip_units(v1)) * 1000 * 100 * VEL_UNIT
-        #v2 = np.asarray(isaac.strip_units(v2)) * 1000 * 100 * VEL_UNIT
-        #m1 = np.asarray(isaac.strip_units(m1)) * Msol
-        #m2 = np.asarray(isaac.strip_units(m2)) * Msol
 
     # Determine length of arrays
     length, ax = computeLenAx(x1)
@@ -643,13 +613,6 @@ def calcArgPeri(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
         v2 = v2.in_units('cm s**-1')
         m1 = m1.in_units('g')
         m2 = m2.in_units('g')
-        # Remove units since input is pynbody SimArray
-        #x1 = np.asarray(isaac.strip_units(x1)) * AUCM
-        #x2 = np.asarray(isaac.strip_units(x2)) * AUCM
-        #v1 = np.asarray(isaac.strip_units(v1)) * 1000 * 100 * VEL_UNIT
-        #v2 = np.asarray(isaac.strip_units(v2)) * 1000 * 100 * VEL_UNIT
-        #m1 = np.asarray(isaac.strip_units(m1)) * Msol
-        #m2 = np.asarray(isaac.strip_units(m2)) * Msol
 
     # Compute eccentricity vector
     e = calcEccVector(x1, x2, v1, v2, m1, m2, flag=False)
@@ -731,13 +694,6 @@ def calcTrueAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
         v2 = v2.in_units('cm s**-1')
         m1 = m1.in_units('g')
         m2 = m2.in_units('g')
-        # Remove units since input is pynbody SimArray
-        #x1 = np.asarray(isaac.strip_units(x1)) * AUCM
-        #x2 = np.asarray(isaac.strip_units(x2)) * AUCM
-        #v1 = np.asarray(isaac.strip_units(v1)) * 1000 * 100 * VEL_UNIT
-        #v2 = np.asarray(isaac.strip_units(v2)) * 1000 * 100 * VEL_UNIT
-        #m1 = np.asarray(isaac.strip_units(m1)) * Msol
-        #m2 = np.asarray(isaac.strip_units(m2)) * Msol
 
     # Compute length, correct axis
     length, ax = computeLenAx(x1)
@@ -799,13 +755,6 @@ def calcEccentricAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
         v2 = v2.in_units('cm s**-1')
         m1 = m1.in_units('g')
         m2 = m2.in_units('g')
-        # Remove units since input is pynbody SimArray
-        #x1 = np.asarray(isaac.strip_units(x1)) * AUCM
-        #x2 = np.asarray(isaac.strip_units(x2)) * AUCM
-        #v1 = np.asarray(isaac.strip_units(v1)) * 1000 * 100 * VEL_UNIT
-        #v2 = np.asarray(isaac.strip_units(v2)) * 1000 * 100 * VEL_UNIT
-        #m1 = np.asarray(isaac.strip_units(m1)) * Msol
-        #m2 = np.asarray(isaac.strip_units(m2)) * Msol
         e = calcEcc(x1, x2, v1, v2, m1, m2, flag=False)
         nu = calcTrueAnomaly(x1, x2, v1, v2, m1, m2, flag=False)
     else:
@@ -860,13 +809,6 @@ def calcMeanAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
         v2 = v2.in_units('cm s**-1')
         m1 = m1.in_units('g')
         m2 = m2.in_units('g')
-        # Remove units since input is pynbody SimArray
-        #x1 = np.asarray(isaac.strip_units(x1)) * AUCM
-        #x2 = np.asarray(isaac.strip_units(x2)) * AUCM
-        #v1 = np.asarray(isaac.strip_units(v1)) * 1000 * 100 * VEL_UNIT
-        #v2 = np.asarray(isaac.strip_units(v2)) * 1000 * 100 * VEL_UNIT
-        #m1 = np.asarray(isaac.strip_units(m1)) * Msol
-        #m2 = np.asarray(isaac.strip_units(m2)) * Msol
         e = calcEcc(x1, x2, v1, v2, m1, m2, flag=False)
         E = calcEccentricAnomaly(x1, x2, v1, v2, m1, m2, flag=False)
     else:
@@ -1239,7 +1181,7 @@ def binaryPrecession(s,r_in,r_out):
     r_out = SimArray(r_out,'au').in_units('cm')    
     
     T = 8.0*np.pi*(M_bin/M_disk)*(np.power(r_out,0.5)*np.power(r_in,2.5)/(np.power(a,3)*0.5*n))
-    return isaac.strip_units(T)/YEARSEC
+    return strip_units(T)/YEARSEC
     
 #end function
 
@@ -1276,12 +1218,12 @@ def calcCircularFrequency(x1, x2, v1, v2, m1, m2, flag=True):
     
     if flag:
         # Remove units since input is pynbody SimArray
-        x1 = np.asarray(isaac.strip_units(x1)) * AUCM
-        x2 = np.asarray(isaac.strip_units(x2)) * AUCM
-        v1 = np.asarray(isaac.strip_units(v1)) * 1000 * 100 * VEL_UNIT
-        v2 = np.asarray(isaac.strip_units(v2)) * 1000 * 100 * VEL_UNIT
-        m1 = np.asarray(isaac.strip_units(m1)) * Msol
-        m2 = np.asarray(isaac.strip_units(m2)) * Msol
+        x1 = np.asarray(strip_units(x1)) * AUCM
+        x2 = np.asarray(strip_units(x2)) * AUCM
+        v1 = np.asarray(strip_units(v1)) * 1000 * 100 * VEL_UNIT
+        v2 = np.asarray(strip_units(v2)) * 1000 * 100 * VEL_UNIT
+        m1 = np.asarray(strip_units(m1)) * Msol
+        m2 = np.asarray(strip_units(m2)) * Msol
 
     length, ax = computeLenAx(x1)
 
@@ -1320,10 +1262,10 @@ def calcCOM(m1=0.5, m2=0.5, x1=1, x2=1):
     """
 
     # Strip units from inputs
-    x1 = np.asarray(isaac.strip_units(x1))
-    x2 = np.asarray(isaac.strip_units(x2))
-    m1 = np.asarray(isaac.strip_units(m1))
-    m2 = np.asarray(isaac.strip_units(m2))
+    x1 = np.asarray(strip_units(x1))
+    x2 = np.asarray(strip_units(x2))
+    m1 = np.asarray(strip_units(m1))
+    m2 = np.asarray(strip_units(m2))
 
     # Compute,return CoM
     return (1.0 / (m1 + m2)) * ((m1 * x1) + (m2 * x2))
