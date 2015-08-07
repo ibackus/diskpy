@@ -20,7 +20,6 @@ import cPickle as pickle
 from warnings import warn
 
 # ICgen modules
-import calc_rho_zr
 import calc_temp
 import pos_class
 import make_snapshot
@@ -31,8 +30,11 @@ import ICgen_utils
 import make_sigma
 import sigma_profile
 from ICglobal_settings import global_settings
-import isaac
+
 from rhosolver import rhosolver, loadrho
+
+# diskpy modules
+from diskpy.utils import match_units, configsave
 
 # Initial stuff
 ICgenDir = os.path.dirname(os.path.realpath(__file__))
@@ -196,8 +198,8 @@ def Qest(ICobj, r=None):
     T = ICobj.T(r)
     M = ICobj.settings.physical.M
     m = ICobj.settings.physical.m
-    M = isaac.match_units(M, 'Msol')[0]
-    m = isaac.match_units(m, 'm_p')[0]
+    M = match_units(M, 'Msol')[0]
+    m = match_units(m, 'm_p')[0]
     
     Q = np.sqrt(M*kB*T/(G*m*r**3))/(np.pi*sigma)
     Q.convert_units('1')
@@ -262,14 +264,14 @@ def save(ICobj, filename=None):
         
         save_dict['snapshot_param'] = ICobj.snapshot_param
         param_name = ICobj.settings.filenames.paramName
-        isaac.configsave(ICobj.snapshot_param, param_name)
+        configsave(ICobj.snapshot_param, param_name)
         print 'param file saved to {0}'.format(param_name)
         
     if hasattr(ICobj, 'snapshot_director'):
         
         save_dict['snapshot_director'] = ICobj.snapshot_director
         director_name = ICobj.settings.filenames.directorName
-        isaac.configsave(ICobj.snapshot_director, director_name)
+        configsave(ICobj.snapshot_director, director_name)
         print 'director file saved to {0}'.format(director_name)
         
     # --------------------------------------------------
