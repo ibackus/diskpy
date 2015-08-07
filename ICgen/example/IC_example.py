@@ -8,7 +8,7 @@ Created on Wed Sep 17 11:23:32 2014
 
 @author: ibackus
 """
-import ICgen
+from diskpy import ICgen
 import pynbody
 SimArray = pynbody.array.SimArray
 
@@ -39,27 +39,26 @@ if __name__ == "__main__":
     
     # Lets generate a disk with powerlaw up to 10 au followed by a cutoff
     # And a Q of 1.0
-    # To save time, lets do it at low resolution
     IC.settings.sigma.Qmin = 1.0
-    IC.settings.sigma.n_points = 100
+    IC.settings.sigma.n_points = 1000
     IC.settings.sigma.Rd = SimArray(10.0, 'au')
+    IC.settings.sigma.power = -1
     
     # Lets be careful and save what we've done.  This will save the ICs to
     # IC.p in the current directory
     IC.save()
     
-    # Lets change the settings used for numerically calculating the gas density
+    # Lets look at the settings for calculating density/vertical hydroequilibrum
+    # The defaults should be fine, but if higher resolution is wanted, try
+    # dropping r_bin_tol by a factor of 10
     # Echo defaults:
     IC.settings.rho_calc()
-    # Change the resolution to be lower just to save time
-    IC.settings.rho_calc.nr = 100 # Number of radial points to calculate on
-    IC.settings.rho_calc.nz = 100 # Number of vertical points to calculate on
     
-    # Set the number of particles
+    # Set up the position generation
     IC.settings.pos_gen.nParticles = 50000
+    IC.settings.pos_gen.method = 'grid' # optional 'random'
     
-    # Set up the temperature profile to use.  Available kinds are 'powerlaw'
-    # and 'MQWS'
+    # Set up the temperature profile to use.
     # We'll use something of the form T = T0(r/r0)^Tpower
     IC.settings.physical.kind = 'powerlaw'
     IC.settings.physical.Tpower = -0.5  # exponent
@@ -88,11 +87,11 @@ if __name__ == "__main__":
     # to snapshot.std with a basic .param file saved to snapshot.param
     
     ## 2) Otherwise we can go step by step
-    #IC.maker.sigma_gen() # Generate surface density profile and CDF
-    #IC.maker.rho_gen() # Calculate density according to hydrodynamic equilibrium
-    #IC.maker.pos_gen() # Generate particle positions
-    #IC.maker.snapshot_gen() # Generate the final tipsy snapshot with velocities etc
-    #IC.save()
-    #
-    ## This will run through the whole procedure and save a tipsy snapshot
-    ## to snapshot.std with a basic .param file saved to snapshot.param
+    IC.maker.sigma_gen() # Generate surface density profile and CDF
+    IC.maker.rho_gen() # Calculate density according to hydrodynamic equilibrium
+    IC.maker.pos_gen() # Generate particle positions
+    IC.maker.snapshot_gen() # Generate the final tipsy snapshot with velocities etc
+    IC.save()
+    
+    # This will run through the whole procedure and save a tipsy snapshot
+    # to snapshot.std with a basic .param file saved to snapshot.param
