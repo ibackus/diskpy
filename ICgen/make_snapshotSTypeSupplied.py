@@ -17,12 +17,10 @@ __version__ = "$Revision: 1 $"
 import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
-import binaryUtils
 import gc
 import os
 import AddBinary
 import isaac
-import calc_velocity
 import ICgen_utils
 import ICglobal_settings
 global_settings = ICglobal_settings.global_settings
@@ -53,21 +51,26 @@ def snapshot_gen(ICobj):
     snapshotName = settings.filenames.snapshotName
     paramName = settings.filenames.paramName   
  
+    #Load user supplied snapshot (assumed to be in cwd)
+    path = "/astro/store/scratch/tmp/dflemin3/nbodyshare/9au-Q1.05-129K/"
+    snapshot = pynbody.load(path + snapshotName)
+ 
     # particle positions
-    r = ICobj.pos.r
-    xyz = ICobj.pos.xyz
+    r = snapshot.gas['r']
+    xyz = snapshot.gas['pos']
     
     # Number of particles
-    nParticles = ICobj.pos.nParticles
+    nParticles = len(snapshot.gas)
     
     # molecular mass
     m = settings.physical.m
     
-    # star mass
-    m_star = settings.physical.M.copy()
+    #Pull star mass from user-supplied snapshot
+    ICobj.settings.physical.M = snapshot.star['mass'] #Total stellar mass in solar masses
+    m_star = ICobj.settings.physical.M
     
     # disk mass
-    m_disk = ICobj.sigma.m_disk.copy()
+    m_disk = np.sum(snapshot.gas['mass'])
     m_disk = isaac.match_units(m_disk, m_star)[0]
     
     # mass of the gas particles
@@ -103,23 +106,6 @@ def snapshot_gen(ICobj):
     metals = settings.snapshot.metals
     star_metals = metals
     
-    # Generate snapshot
-    # Note that empty pos, vel, and mass arrays are created in the snapshot
-    snapshot = pynbody.new(star=1,gas=nParticles)
-    snapshot['vel'].units = v_unit
-    snapshot['eps'] = 0.01*SimArray(np.ones(nParticles+1, dtype=np.float32), pos_unit)
-    snapshot['metals'] = SimArray(np.zeros(nParticles+1, dtype=np.float32))
-    snapshot['rho'] = SimArray(np.zeros(nParticles+1, dtype=np.float32))
-    
-    snapshot.gas['pos'] = xyz
-    snapshot.gas['temp'] = ICobj.T(r)
-    snapshot.gas['mass'] = m_particles
-    snapshot.gas['metals'] = metals
-    
-    snapshot.star['pos'] = SimArray([[ 0.,  0.,  0.]],pos_unit)
-    snapshot.star['vel'] = SimArray([[ 0.,  0.,  0.]], v_unit)
-    snapshot.star['mass'] = m_star
-    snapshot.star['metals'] = SimArray(star_metals)
     # Estimate the star's softening length as the closest particle distance
     eps = r.min()
     
@@ -131,12 +117,8 @@ def snapshot_gen(ICobj):
     
     # CALCULATE VELOCITY USING calc_velocity.py.  This also estimates the 
     # gravitational softening length eps
-    print 'Calculating circular velocity'
+
     preset = settings.changa_run.preset
-    max_particles = global_settings['misc']['max_particles']
-    calc_velocity.v_xy(snapshot, param, changa_preset=preset, max_particles=max_particles)
-    
-    gc.collect()
   
 	# -------------------------------------------------
     # Estimate time step for changa to use
@@ -190,6 +172,7 @@ def snapshot_gen(ICobj):
     #Load Binary system obj to initialize system
     binsys = ICobj.settings.physical.binsys
     m_disk = isaac.strip_units(np.sum(snapshotBinary.gas['mass']))
+    binsys.m1 = isaac.strip_units(m_star)
     binsys.m1 = binsys.m1 + m_disk  
     #Recompute cartesian coords considering primary as m1+m_disk    
     binsys.computeCartesian()
@@ -213,15 +196,6 @@ def snapshot_gen(ICobj):
     snapshotBinary.star[0]['mass'] = SimArray(binsys.m1-m_disk,m_unit)
     snapshotBinary.star[1]['mass'] = SimArray(binsys.m2,m_unit)
     snapshotBinary.star['metals'] = SimArray(star_metals)
- 
-    #Now that everything has masses and positions, adjust positions so the 
-    #system center of mass corresponds to the origin
-    """    
-    com = binaryUtils.computeCOM(snapshotBinary.stars,snapshotBinary.gas)
-    print com
-    snapshotBinary.stars['pos'] -= com
-    snapshotBinary.gas['pos'] -= com   
-    """
  
     print 'Wrapping up'
     # Now set the star particle's tform to a negative number.  This allows

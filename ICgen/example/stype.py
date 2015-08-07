@@ -26,18 +26,18 @@ if __name__ == "__main__":
     #Note, m1 + m2 == IC.settings.physical.M 
     #Only need to set if you're considernig a circumbinary system
     m1 = IC.settings.physical.M
-    m2 = SimArray(1.0,'Msol')  #M Dwarf companion
+    m2 = SimArray(0.33, 'Msol')
     
     #Scale the mass of the disk to be some fraction of the star mass
-    IC.settings.snapshot.mScale = 0.1
+    IC.settings.snapshot.mScale = 1.0
     
-    #Define whether the star is a single star or binary
-    IC.settings.physical.starMode = 'stype'
+    #Define whether the star is a single star or binary of some flavor
+    IC.settings.physical.starMode = 'stypeSupplied'
     
     #Set binary system parameters.  If single star, comment this out
     #Define list of orbital elements of the following form:
     #X = [e, a [AU], i, Omega, w, nu] where all angles are in degrees
-    X = [0.0, 58.0, 0.0, 0.0, 0.0, 0.0]
+    X = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0]
     IC.settings.physical.binsys = binary.Binary(X,m1,m2,'kepler')
     
     # Lets generate a disk with powerlaw from [Rin,Rd] au followed by a cutoff

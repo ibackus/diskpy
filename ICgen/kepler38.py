@@ -8,7 +8,7 @@ import ICgen
 import pynbody
 import binary
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     
     SimArray = pynbody.array.SimArray
     
@@ -22,7 +22,7 @@ if __name__ == "__main__":
     #Define masses of primary, secondary as pynbody SimArrays
     #Note, m1 + m2 == IC.settings.physical.M 
     #Only need to set if you're considernig a circumbinary system
-    m1 = SimArray(0.949,'Msol')
+    m1 = SimArray(0.599,'Msol')
     m2 = IC.settings.physical.M - m1
     
     #Scale the mass of the disk to be some fraction of the star mass
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     #Set binary system parameters.  If single star, comment this out
     #Define list of orbital elements of the following form:
     #X = [e, a [AU], i, Omega, w, nu] where all angles are in degrees
-    X = [0.1032, 0.1469, 0.0, 0.0, 0.0, 0.0]
+    X = [0.0, 0.1469, 0.0, 0.0, 0.0, 0.0]
     IC.settings.physical.binsys = binary.Binary(X,m1,m2,'kepler')
     
     # Lets generate a disk with powerlaw from [Rin,Rd] au followed by a cutoff
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     IC.settings.sigma.kind = 'powerlaw'
     IC.settings.sigma.power = -0.5
     IC.settings.sigma.Qmin = 1.5
-    IC.settings.sigma.n_points = 500
+    IC.settings.sigma.n_points = 1000
     
     IC.settings.sigma.Rd = SimArray(2.0,'au') #Outer edge of powerlaw part of disk
     IC.settings.sigma.rmax = 2.0 #Set rmax 
@@ -62,8 +62,8 @@ if __name__ == "__main__":
     IC.save()
     
     # Change the settings used for numerically calculating the gas density
-    IC.settings.rho_calc.nr = 500 # Number of radial points to calculate on
-    IC.settings.rho_calc.nz = 100 # Number of vertical points to calculate on
+    IC.settings.rho_calc.nr = 1000 # Number of radial points to calculate on
+    IC.settings.rho_calc.nz = 250 # Number of vertical points to calculate on
     
     # Set the number of gas particles
     IC.settings.pos_gen.nParticles = 100000

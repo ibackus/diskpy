@@ -8,8 +8,8 @@ import numpy as np
 
 # Import my binary star module that continue relevant routines
 import AddBinary
-import isaac
-
+import pynbody
+SimArray = pynbody.array.SimArray
 
 class Binary(object):
 
@@ -44,7 +44,6 @@ class Binary(object):
             assert (len(
                 X) == 2), "Improper input. len(Input Array) != 2. len = %d.  State should be cartesian." % len(X)
             self.state = state
-
             self.r = X[0]
             self.v = X[1]
             self.m1 = m1
@@ -57,7 +56,6 @@ class Binary(object):
             assert (len(
                 X) == 6), "Improper input. len(Input Array) != 6. len = %d.  State should be kepler" % len(X)
             self.state = state
-
             self.assignOrbElems(X)
             self.m1 = m1
             self.m2 = m2
@@ -71,12 +69,12 @@ class Binary(object):
             self.state = state
 
             # Extract data from snapshot
-            x1 = isaac.strip_units(X.stars[0]['pos'])
-            x2 = isaac.strip_units(X.stars[1]['pos'])
-            v1 = isaac.strip_units(X.stars[0]['vel'])
-            v2 = isaac.strip_units(X.stars[1]['vel'])
-            self.m1 = isaac.strip_units(X.stars[0]['mass'])
-            self.m2 = isaac.strip_units(X.stars[1]['mass'])
+            x1 = X.stars[0]['pos']
+            x2 = X.stars[1]['pos']
+            v1 = X.stars[0]['vel']
+            v2 = X.stars[1]['vel']
+            self.m1 = X.stars[0]['mass']
+            self.m2 = X.stars[1]['mass']
 
             # Compute position, velocity in center of mass frame then orbital
             # elements
@@ -103,7 +101,7 @@ class Binary(object):
 
     def __repr__(self):
         """
-        When invoked, return the orbital elements.
+        Return the orbital elements and the masses of the primary and secondary.
         """
         return "(%s,%s,%s,%s,%s,%s), mass: (%s,%s)" % (self.e,
                                                        self.a,
@@ -130,7 +128,6 @@ class Binary(object):
         Output:
         None
         """
-        # Only assign data if it doesn't exist
         self.e = float(X[0])
         self.a = float(X[1])
         self.i = float(X[2])
@@ -146,8 +143,8 @@ class Binary(object):
         This is useful because sometimes they come in as a list, a (1,3) numpy array or a (3,) numpy array.
         Much easier to clean up upon initialization then have many checks in later functions.
         """
-        self.r = np.asarray(self.r).reshape((1, 3))
-        self.v = np.asarray(self.v).reshape((1, 3))
+        self.r = self.r.reshape((1, 3))
+        self.v = self.v.reshape((1, 3))
 
     # end function
 
@@ -161,12 +158,15 @@ class Binary(object):
         """
         # Compute orbital elements from binary center of mass frame Cartesian
         # coordinates
-        zero = np.asarray([0, 0, 0])
+        assert (self.state != 'Kepler' or self.state != 'kepler'), "Already have orbital elements."        
+        
+        zeroR = SimArray([[0.0, 0.0, 0.0]],'cm')
+        zeroV = SimArray([[0.0, 0.0, 0.0]],'cm s**-1')
         oe = AddBinary.calcOrbitalElements(
             self.r,
-            zero,
+            zeroR,
             self.v,
-            zero,
+            zeroV,
             self.m1,
             self.m2)
 
@@ -181,7 +181,7 @@ class Binary(object):
         Compute the Cartesian position and velocity in the reduced mass frame.
         """
         assert (self.state == "Kepler" or self.state ==
-                "kepler"), "Already have cartesian coords!"
+                "kepler"), "Already have cartesian coordinates."
         M = AddBinary.trueToMean(self.nu, self.e)
         self.r, self.v = AddBinary.keplerToCartesian(
             self.a, self.e, self.i, self.Omega, self.w, M, self.m1, self.m2)

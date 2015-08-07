@@ -21,8 +21,8 @@ import AddBinary
 import isaac
 import calc_velocity
 import ICgen_utils
-
-from diskpy import global_settings
+import ICglobal_settings
+global_settings = ICglobal_settings.global_settings
 
 def snapshot_gen(ICobj):
     """
@@ -208,7 +208,7 @@ def snapshot_gen(ICobj):
     snapshotBinary.star['metals'] = SimArray(star_metals)
 
     #Estimate stars' softening length as fraction of distance to COM
-    d = np.linalg.norm(x1) - np.linalg.norm(x2)
+    d = np.sqrt(AddBinary.dotProduct(x1-x2,x1-x2))
 
     snapshotBinary.star[0]['eps'] = SimArray(math.fabs(d)/4.0,pos_unit)
     snapshotBinary.star[1]['eps'] = SimArray(math.fabs(d)/4.0,pos_unit)
