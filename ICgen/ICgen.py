@@ -29,12 +29,12 @@ import ICgen_settings
 import ICgen_utils
 import make_sigma
 import sigma_profile
-from ICglobal_settings import global_settings
 
 from rhosolver import rhosolver, loadrho
 
 # diskpy modules
 from diskpy.utils import match_units, configsave
+from diskpy import global_settings
 
 # Initial stuff
 ICgenDir = os.path.dirname(os.path.realpath(__file__))

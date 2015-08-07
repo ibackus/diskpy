@@ -3,6 +3,7 @@
 doc/
 *.nfs*
 *.orig
+.spyder*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

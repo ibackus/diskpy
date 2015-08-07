@@ -18,7 +18,7 @@ import re
 import cPickle as pickle
 
 # diskpy modules
-from ICglobal_settings import global_settings
+from diskpy import global_settings
 from diskpy.pdmath import binned_mean, extrap1d
 from diskpy.disk import height
 
@@ -282,7 +282,7 @@ def est_time_step(param_name, preset='default', dDelta0=100, changa_args='', run
         Filename for a ChaNGa .param file which defines parameters for the
         snapshot.  The snapshot must already be saved to disk
     preset : str
-        changa_runner preset to use.  See ICglobal_settings.global_settings
+        changa_runner preset to use.  See diskpy.global_settings
     dDelta0 : int or float
         Some large time step that should place all the particles at higher
         rungs.

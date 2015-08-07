@@ -21,8 +21,8 @@ import AddBinary
 import isaac
 import calc_velocity
 import ICgen_utils
-import ICglobal_settings
-global_settings = ICglobal_settings.global_settings
+
+from diskpy import global_settings
 
 def snapshot_gen(ICobj):
     """

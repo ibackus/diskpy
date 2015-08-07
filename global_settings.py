@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-This is the global settings module for ICgen.  To access the global settings,
+This is the global settings module for diskpy.  To access the global settings,
 simply import them:
 
-    from ICglobal_settings import global_settings
+    from diskpy import global_settings
 
 Changing/accessing settings is the same as for a dict, ie:
     global_settings[key] = val
@@ -215,4 +215,3 @@ class settings(dict):
 # --------------------------------------------------------------
 
 global_settings = settings()
-

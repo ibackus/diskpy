@@ -14,12 +14,11 @@ import numpy as np
 import gc
 
 # diskpy packages
+from diskpy import global_settings
 from diskpy.utils import match_units, configsave, strip_units
 from diskpy.pychanga import make_director, make_param
 import calc_velocity
 import ICgen_utils
-import ICglobal_settings
-global_settings = ICglobal_settings.global_settings
 
 def snapshot_gen(ICobj):
     """
