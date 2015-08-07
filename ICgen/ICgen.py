@@ -15,7 +15,6 @@ import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
 import os
-import sys
 import cPickle as pickle
 from warnings import warn
 

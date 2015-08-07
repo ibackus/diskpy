@@ -19,8 +19,8 @@ import matplotlib.pyplot as plt
 import re
 
 # 'Internal' packages
-import isaac
 from diskpy import utils
+from diskpy.clumps import loadhalos
 
 def clump_tracker(fprefix, param=None, directory=None, nsmooth=32, verbose=True):
     """
@@ -926,7 +926,7 @@ def find_clumps(f, n_smooth=32, param=None, arg_string=None, seed=None, verbose=
     p.wait()
     
     # Load clumps
-    clumps = isaac.loadhalos(f_prefix + '.grp')
+    clumps = loadhalos(f_prefix + '.grp')
     
     # Cleanup
     for name in glob.glob(f_prefix + '*'):

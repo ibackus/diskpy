@@ -4,7 +4,6 @@ Created on Wed Jul 15 23:25:44 2015
 
 @author: ibackus
 """
-import warnings
 import numpy as np
 import os
 import copy
@@ -17,16 +16,13 @@ from diskpy.utils import configparser
 _dir = os.path.dirname(os.path.realpath(__file__))
 _paramdefault = os.path.join(_dir, 'default.param')
 _directordefault = os.path.join(_dir, 'default.director')
-
-# NEEDED:
-# str2num
     
 def make_director(sigma_min, sigma_max, r, resolution=1200, filename='snapshot'):
     """
     Makes a director dictionary for ChaNGa runs based on the min/max surface
     density, maximum image radius, and image resolution for a gaseous
     protoplanetary disk.  The created dictionary can be saved with
-    isaac.configsave
+    diskpy.utils.configsave
 
     The method is to use an example director file (saved as default.director)
     which works for one simulation and scale the various parameters accordingly.
@@ -53,7 +49,7 @@ def make_director(sigma_min, sigma_max, r, resolution=1200, filename='snapshot')
     **RETURNS**
 
     director : dict
-        A .director dictionary.  Can be saved with isaac.configsave
+        A .director dictionary.  Can be saved with diskpy.utils.configsave
     """
     # -----------------------------------------------------------
     # Parse defaults to get scale factor for c
@@ -92,13 +88,14 @@ def make_director(sigma_min, sigma_max, r, resolution=1200, filename='snapshot')
 
 def make_param(snapshot, filename=None):
     """
-    Generates a default param dictionary.  Can be saved using isaac.configsave
+    Generates a default param dictionary.  Can be saved using 
+    diskpy.utils.configsave
 
     EXAMPLE
 
     snapshot = pynbody.load('snapshot.std')  # Load snapshot
-    param_dict = isaac.make_param(snapshot)  # Make default param dict
-    isaac.configsave(param_dict, 'snapshot.param', ftype='param') # Save
+    param_dict = make_param(snapshot)  # Make default param dict
+    diskpy.utils.configsave(param_dict, 'snapshot.param', ftype='param') # Save
 
     Optionally, the user can set the snapshot filename manually
     """
@@ -197,7 +194,7 @@ n_check=None):
 
     **ARGUMENTS**
 
-    param : str or param_dict (see isaac.configparser, configsave)
+    param : str or param_dict (see diskpy.utils.configparser, configsave)
         parameter file for the simulation, must already have dDelta and units
         set properly
         IF a str, assumed to be a filename
