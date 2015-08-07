@@ -11,9 +11,8 @@ Created on Wed Jan 29 13:20:04 2014
 import numpy as np
 import pynbody
 SimArray = pynbody.array.SimArray
-import isaac
 
-from diskpy.utils import strip_units
+from diskpy.utils import strip_units, match_units
 
 class T:
     """
@@ -202,9 +201,9 @@ class T:
         kind = params.kind
         
         # Calculate T(r)
-        r = isaac.match_units(r, r0)[0]
+        r = match_units(r, r0)[0]
         a = (r/r0)
-        a = isaac.match_units(a, '1')[0]
+        a = match_units(a, '1')[0]
         
         # Powerlaw temperature (default)
         if kind == 'powerlaw':
@@ -283,7 +282,7 @@ class T:
 #        A = self.Tscale
 #        print A
 #        
-#        r = isaac.match_units(r, 'au')[0]
+#        r = match_units(r, 'au')[0]
 #        sigma = self._parent.sigma(r)
 #        sigma.convert_units('Msol au**-2')
 #        sigma = strip_units(sigma)
@@ -294,7 +293,7 @@ class T:
         
         sigma = self._parent.sigma(r)
         r_a = self.r_a
-        r = isaac.match_units(r, r_a.units)[0]
+        r = match_units(r, r_a.units)[0]
         x = (r/r_a).in_units('1')
         sigma_a = self.sigma_a
         y = (sigma/sigma_a).in_units('1')
@@ -311,6 +310,6 @@ class T:
         
         return T
         
-#        r = strip_units(isaac.match_units(r,'au')[0])
+#        r = strip_units(match_units(r,'au')[0])
 #        
 #        return A * (r**2)

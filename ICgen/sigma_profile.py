@@ -5,10 +5,15 @@ Created on Mon Jun 23 10:17:53 2014
 @author: ibackus
 """
 
+# External modules
 import numpy as np
 import pynbody
 SimArray = pynbody.array.SimArray
-import isaac
+
+# diskpy modules
+from diskpy.pdmath import smoothstep
+from diskpy.utils import match_units
+
 
 def make_profile(ICobj):
     """
@@ -134,7 +139,7 @@ def viscous(settings):
     cut_mask = R < Rin
     if np.any(cut_mask):
         
-        sigma[cut_mask] *= isaac.smoothstep(r[cut_mask],degree=21,rescale=True)
+        sigma[cut_mask] *= smoothstep(r[cut_mask],degree=21,rescale=True)
     
     
     return R, sigma
@@ -181,10 +186,10 @@ def powerlaw(settings, T = None):
             
             return T0 * np.power((x/R0).in_units('1'),-q)
         
-    Rd = isaac.match_units(pynbody.units.au, Rd)[1]
-    Mstar = isaac.match_units(pynbody.units.Msol, Mstar)[1]
+    Rd = match_units(pynbody.units.au, Rd)[1]
+    Mstar = match_units(pynbody.units.Msol, Mstar)[1]
     # Molecular weight
-    m = isaac.match_units(m, pynbody.units.m_p)[0]
+    m = match_units(m, pynbody.units.m_p)[0]
     # Maximum R to calculate sigma at (needed for the exponential cutoff region)
     Rmax = rmax*Rd
     
@@ -206,7 +211,7 @@ def powerlaw(settings, T = None):
     # Exterior cutoff
     sigma[r>1] *= np.exp(-(r[r>1] - 1)**2 / (2*cutlength**2))
     # Interior cutoff
-    sigma[r<rin] *= isaac.smoothstep(r[r<rin],degree=21,rescale=True)
+    sigma[r<rin] *= smoothstep(r[r<rin],degree=21,rescale=True)
     
     # Calculate Q
     Q = np.sqrt(Mstar*kB*T(R)/(G*m*R**3))/(np.pi*sigma)
@@ -256,9 +261,9 @@ def MQWS(settings, T):
     Mstar = settings.physical.M
     #m_disk = settings.sigma.m_disk
     
-    rin = isaac.match_units(pynbody.units.au, rin)[1]
-    rout = isaac.match_units(pynbody.units.au, rout)[1]
-    #m_disk = isaac.match_units(pynbody.units.Msol, m_disk)[1]
+    rin = match_units(pynbody.units.au, rin)[1]
+    rout = match_units(pynbody.units.au, rout)[1]
+    #m_disk = match_units(pynbody.units.Msol, m_disk)[1]
     
     if rmax is None:
         
@@ -266,7 +271,7 @@ def MQWS(settings, T):
         
     else:
         
-        rmax = isaac.match_units(pynbody.units.au, rmax)[1]
+        rmax = match_units(pynbody.units.au, rmax)[1]
         
     r = np.linspace(0, rmax, n_points)
     

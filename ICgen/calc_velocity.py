@@ -8,16 +8,19 @@ Created on Wed Apr  9 15:39:28 2014
 __version__ = "$Revision: 1 $"
 # $Source$
 
+# External packages
 import numpy as np
 import pynbody
 SimArray = pynbody.array.SimArray
-
-import isaac
-import ICgen_utils
-
 import os
 import glob
 import gc
+
+# diskpy packages
+import ICgen_utils
+from diskpy.utils import configsave
+from diskpy.pdmath import extrap1d, digitize_threshold, binned_mean
+from diskpy.pychanga import load_acc
 
 def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None, \
 max_particles=None, est_eps=True):
@@ -35,7 +38,7 @@ max_particles=None, est_eps=True):
     f : tipsy snapshot
         For a gaseous disk
     param : dict
-        a dictionary containing params for changa. (see isaac.configparser)
+        a dictionary containing params for changa. (see configparser)
     changbin : str  (OPTIONAL)  
         If set, should be the full path to the ChaNGa executable.  If None, 
         an attempt to find ChaNGa is made
@@ -113,7 +116,7 @@ max_particles=None, est_eps=True):
     for iGrav in range(2):
         # Save files
         f.write(filename=f_name, fmt = pynbody.tipsy.TipsySnap)
-        isaac.configsave(p_temp, p_name, ftype='param')
+        configsave(p_temp, p_name, ftype='param')
         
         if iGrav == 0:
             # Run ChaNGa calculating all forces (for initial run)
@@ -136,7 +139,7 @@ max_particles=None, est_eps=True):
         acc_name = f_prefix + '.000000.acc2'
         del a
         gc.collect()
-        a = isaac.load_acc(acc_name, low_mem=True)
+        a = load_acc(acc_name, low_mem=True)
         gc.collect()
         
         # Clean-up
@@ -149,11 +152,11 @@ max_particles=None, est_eps=True):
         
         # Bin the data
         r_edges = np.linspace(r.min(), (1+np.spacing(2))*r.max(), nr + 1)
-        ind, r_edges = isaac.digitize_threshold(r, min_per_bin, r_edges)
+        ind, r_edges = digitize_threshold(r, min_per_bin, r_edges)
         ind -= 1
         nr = len(r_edges) - 1
         
-        r_bins, ar2_mean, err = isaac.binned_mean(r, ar2, binedges=r_edges, \
+        r_bins, ar2_mean, err = binned_mean(r, ar2, binedges=r_edges, \
         weighted_bins=True)
         
         gc.collect()
@@ -170,8 +173,8 @@ max_particles=None, est_eps=True):
             b[i] = p[1]
             
         # Interpolate the line fits
-        m_spline = isaac.extrap1d(r_bins, m)
-        b_spline = isaac.extrap1d(r_bins, b)
+        m_spline = extrap1d(r_bins, m)
+        b_spline = extrap1d(r_bins, b)
         
         # Calculate circular velocity
         ar2 = SimArray(m_spline(r)*cos + b_spline(r), ar2.units)
@@ -189,7 +192,7 @@ max_particles=None, est_eps=True):
     
     # Save files
     f.write(filename=f_name, fmt = pynbody.tipsy.TipsySnap)
-    isaac.configsave(p_temp, p_name, ftype='param')
+    configsave(p_temp, p_name, ftype='param')
     
     # Run ChaNGa, including SPH
     command = ICgen_utils.changa_command(p_name, changa_preset, changbin, '+gas -n 0')
@@ -198,7 +201,7 @@ max_particles=None, est_eps=True):
         
     # Load accelerations
     acc_name = f_prefix + '.000000.acc2'
-    a_total = isaac.load_acc(acc_name, low_mem=True)
+    a_total = load_acc(acc_name, low_mem=True)
     gc.collect()
     
     # Clean-up
@@ -212,12 +215,12 @@ max_particles=None, est_eps=True):
     del a_gas
     gc.collect()
     
-    logr_bins, ratio, err = isaac.binned_mean(np.log(r), ar2_gas/ar2, nbins=nr,\
+    logr_bins, ratio, err = binned_mean(np.log(r), ar2_gas/ar2, nbins=nr,\
     weighted_bins=True)
     r_bins = np.exp(logr_bins)
     del ar2_gas
     gc.collect()
-    ratio_spline = isaac.extrap1d(r_bins, ratio)
+    ratio_spline = extrap1d(r_bins, ratio)
     
     # If not all the particles were used for calculating velocity,
     # Make sure to use them now

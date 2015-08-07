@@ -12,9 +12,10 @@ import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
 import gc
-import os
 
-import isaac
+# diskpy packages
+from diskpy.utils import match_units, configsave, strip_units
+from diskpy.pychanga import make_director, make_param
 import calc_velocity
 import ICgen_utils
 import ICglobal_settings
@@ -53,7 +54,7 @@ def snapshot_gen(ICobj):
     m_star = settings.physical.M.copy()
     # disk mass
     m_disk = ICobj.sigma.m_disk.copy()
-    m_disk = isaac.match_units(m_disk, m_star)[0]
+    m_disk = match_units(m_disk, m_star)[0]
     # mass of the gas particles
     m_particles = m_disk / float(nParticles)
     # re-scale the particles (allows making of lo-mass disk)
@@ -105,7 +106,7 @@ def snapshot_gen(ICobj):
     snapshot.star['eps'] = r.min()
     
     # Make param file
-    param = isaac.make_param(snapshot, snapshotName)
+    param = make_param(snapshot, snapshotName)
     param['dMeanMolWeight'] = m
     eos = (settings.physical.eos).lower()
     
@@ -133,7 +134,7 @@ def snapshot_gen(ICobj):
     # Estimate time step for changa to use
     # -------------------------------------------------
     # Save param file
-    isaac.configsave(param, paramName, 'param')
+    configsave(param, paramName, 'param')
     # Save snapshot
     snapshot.write(filename=snapshotName, fmt=pynbody.tipsy.TipsySnap)
     # est dDelta
@@ -150,9 +151,9 @@ def snapshot_gen(ICobj):
     # surface density at largest radius
     sigma_max = float(ICobj.sigma.input_dict['sigma'].max())
     # Create director dict
-    director = isaac.make_director(sigma_min, sigma_max, r_director, filename=param['achOutName'])
+    director = make_director(sigma_min, sigma_max, r_director, filename=param['achOutName'])
     ## Save .director file
-    #isaac.configsave(director, directorName, 'director')
+    #configsave(director, directorName, 'director')
     
     # -------------------------------------------------
     # Wrap up
@@ -163,10 +164,10 @@ def snapshot_gen(ICobj):
     snapshot.star['tform'] = -1.0
     
     # Update params
-    r_sink = isaac.strip_units(r.min())
+    r_sink = strip_units(r.min())
     param['dSinkBoundOrbitRadius'] = r_sink
     param['dSinkRadius'] = r_sink
-    param['dSinkMassMin'] = 0.9 * isaac.strip_units(m_star)
+    param['dSinkMassMin'] = 0.9 * strip_units(m_star)
     param['bDoSinks'] = 1
     
     return snapshot, param, director

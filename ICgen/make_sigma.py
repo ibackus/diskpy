@@ -8,7 +8,6 @@ Created on Mon Jan 27 13:00:52 2014
 @author: ibackus
 """
 # ICgen packages
-import isaac
 from diskpy.utils import match_units
 
 # External packages
@@ -77,9 +76,9 @@ class sigma_gen:
         of Msol/au^2
         """       
         # Convert to default units of Msol/au^2.  If no units, assign default
-        sigmaBinned = isaac.match_units(sigmaBinned, 'Msol au**-2')[0]
+        sigmaBinned = match_units(sigmaBinned, 'Msol au**-2')[0]
         # Convert r_bins to default units of 'au'
-        r_bins = isaac.match_units(r_bins, 'au')[0]
+        r_bins = match_units(r_bins, 'au')[0]
         # Calculate spline interpolation
         sigspline = spline(r_bins, sigmaBinned, k=3, ext='zeros')
 #        print 'Calculating spline interpolation (slow for many data points)'
@@ -100,7 +99,7 @@ class sigma_gen:
             """
             
             # Try to convert r to the units used to make sigspline ('au')
-            r = isaac.match_units(r, 'au')[0]
+            r = match_units(r, 'au')[0]
             
             return SimArray(sigspline(r), 'Msol au**-2')
         
@@ -144,11 +143,11 @@ class sigma_gen:
             probability density function from sigma(r) evaluated at r_in
             """
             # Put r_in into the units used in generating the pdf
-            r_in = isaac.match_units(r_in, self.r_bins)[0]
+            r_in = match_units(r_in, self.r_bins)[0]
             # Evaluate the pdf at r_in
             pdf_vals = pdfSpline(r_in)
             # Put the pdf into units of r_in.units**-1
-            pdf_vals = isaac.match_units(pdf_vals, 1/r_in)[0]
+            pdf_vals = match_units(pdf_vals, 1/r_in)[0]
             
             return pdf_vals
             
@@ -260,7 +259,7 @@ class sigma_gen:
             """
             
             r_out = finv(m_in)
-            r_out = isaac.match_units(r_out, r)[0]
+            r_out = match_units(r_out, r)[0]
             return r_out
         
         self.cdf_inv = finv_fcn
@@ -275,7 +274,7 @@ class sigma_gen:
         # Now integrate
         m_disk = simps(2*np.pi*r*sig, r)
         m_units = sig.units * (r.units)**2
-        m_disk = isaac.match_units(m_disk, m_units)[0]
+        m_disk = match_units(m_disk, m_units)[0]
         
         self.m_disk = m_disk
             

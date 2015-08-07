@@ -20,7 +20,7 @@ SimArray = pynbody.array.SimArray
 import numpy as np
 
 # ICgen packages
-import isaac
+from diskpy.utils import strip_units
 import ICgen_utils
 
 class pos:
@@ -164,7 +164,7 @@ class pos:
             r = self.r
             
             dtheta = np.sqrt(2*np.pi*(1 - r[0:-1]/r[1:]))
-            dtheta = isaac.strip_units(dtheta)
+            dtheta = strip_units(dtheta)
             theta = np.zeros(nParticles)
             
             for n in range(nParticles - 1):
