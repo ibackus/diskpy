@@ -1,5 +1,5 @@
 # User added git ignores
-~
+*~
 doc/
 *.nfs*
 *.orig

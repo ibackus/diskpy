@@ -2,6 +2,12 @@
 # Dependencies:
 # sphinx
 # numpydocs
+#
+# DIRECTIONS:
+#	1) cd into directory containing this
+#	2) Build the docs with:
+#		>>> ./builddocs
+#	3) Docs will be stored in docs/_build/html
 rm -rf doc
 mkdir doc
 cp docconf.py doc/conf.py
@@ -9,3 +15,4 @@ sphinx-apidoc -d 4 -A "Isaac Backus" -F -o doc ../diskpy
 cd doc
 make html
 cd ../
+
