@@ -4,12 +4,12 @@ Script for generating disk ICs about a stellar system
 using ibackus's ICgen routines.
 See https://github.com/ibackus/ICgen
 
-This script initializes a tipsy snapshot representing an S-type binary 
+This script initialies a tipsy snapshot representing an S-type binary 
 disk system.
 """
-import ICgen
+from diskpy.ICgen import ICgen, binary
 import pynbody
-import binary
+SimArray = pynbody.array.SimArray
 
 if __name__ == "__main__":
     
@@ -63,11 +63,7 @@ if __name__ == "__main__":
     #This will save the ICs to
     # IC.p in the current directory
     IC.save()
-    
-    # Change the settings used for numerically calculating the gas density
-    IC.settings.rho_calc.nr = 100 # Number of radial points to calculate on
-    IC.settings.rho_calc.nz = 100 # Number of vertical points to calculate on
-    
+        
     # Set the number of gas particles
     IC.settings.pos_gen.nParticles = 10000
     
