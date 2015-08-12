@@ -10,7 +10,7 @@ import copy
 import pynbody
 SimArray = pynbody.array.SimArray
 
-from diskpy.utils import configparser
+from diskpy.utils import configparser, strip_units
 
 # Set up default filenames
 _dir = os.path.dirname(os.path.realpath(__file__))
@@ -54,6 +54,7 @@ def make_director(sigma_min, sigma_max, r, resolution=1200, filename='snapshot')
     # -----------------------------------------------------------
     # Parse defaults to get scale factor for c
     # -----------------------------------------------------------
+    sigma_min, sigma_max, r = strip_units([sigma_min, sigma_max, r])
     defaults = configparser(_directordefault)
     if '#sigma_max' not in defaults:
 
