@@ -16,7 +16,7 @@ from diskpy.utils import configparser, configsave, units_from_param
 
 
 def pbs_script(workdir, param='snapshot.param', nodes=1, ppn=12, walltime=48, \
-jobname='PBS_job', backfill=True, email=None, **kwargs):
+jobname='PBS_job', backfill=True, email=None, changa_preset=None, **kwargs):
     """
     A not very robust function to generate PBS submission scripts for ChaNGa
     jobs on hyak.  Some of the requirements include:
@@ -29,7 +29,8 @@ jobname='PBS_job', backfill=True, email=None, **kwargs):
     If you don't want to just restart a simulation, delete lastcheckpoint from
     the simulation directory!
     
-    **ARGUMENTS**
+    Parameters
+    ----------
     
     *Required*
     
@@ -51,12 +52,16 @@ jobname='PBS_job', backfill=True, email=None, **kwargs):
         Boolean flag for whether to use the backfill (default is TRUE)
     email : str
         Email address for PBS to send updates to
+    changa_preset : str
+        ChaNGa preset to use (see diskpy.global_settings and 
+        diskpy.ICgen.ICgen_utils.changa_command)
         
     **kwargs
     flag pairs.  CAREFUL: these must not conflict with other flags.  Flag,val
     pairs (ie -flag val) are passed as: flag=val
         
-    **RETURN**
+    Returns
+    -------
     
     PBS_script : str
         A string for the PBS script.  Can be saved easily to file
@@ -68,7 +73,11 @@ jobname='PBS_job', backfill=True, email=None, **kwargs):
     fprefix = os.path.splitext(param)[0]
     
     # Get changa preset
-    preset = global_settings['changa_presets']['mpi']
+    if changa_preset is None:
+        
+        changa_preset = global_settings['changa_presets']['default']
+        
+    preset = global_settings['changa_presets'][changa_preset]
     
     # Set up the walltime for PBS
     hours = int(walltime)

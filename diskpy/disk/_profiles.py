@@ -212,7 +212,7 @@ def height(snapshot, bins=100, center_on_star=True):
 
     return r_edges, h
     
-def sigma(snapshot, bins=100):
+def sigma(snapshot, bins=100, cmFlag=True):
     """Calculates surface density vs r (relative to the center of mass)
     
     Parameters
@@ -220,7 +220,9 @@ def sigma(snapshot, bins=100):
     
     snapshot : tipsy snapshot
     bins : int, list, array...
-        Either the number of bins to use or the binedges to use
+        (optional) Either the number of bins to use or the binedges to use
+    cmFlag : bool
+        (optional) Calculate relative to the center of mass
     
     Returns
     -------
@@ -231,10 +233,13 @@ def sigma(snapshot, bins=100):
         Radial bin edges
     
     """
-
-    # Begin by subtracting off the center of mass position
-    cm = (snapshot['mass'][:,None] * snapshot['pos']).sum()/(snapshot['mass'].sum())
-    snapshot['pos'] -= cm
+    
+    if cmFlag:
+        
+        # Begin by subtracting off the center of mass position
+        cm = (snapshot['mass'][:,None] * snapshot['pos']).sum()/(snapshot['mass'].sum())
+        snapshot['pos'] -= cm
+        
     r = snapshot.g['rxy']
     # particle mass
     m_gas = snapshot.gas['mass'][[0]]
@@ -245,8 +250,10 @@ def sigma(snapshot, bins=100):
     dr = r_bins[[1]] - r_bins[[0]]
 
     sig = N*m_gas/(2*np.pi*r_center*dr)
-
-    # Add star position back to positions
-    snapshot['pos'] += cm
+    
+    if cmFlag:
+        
+        # Add star position back to positions
+        snapshot['pos'] += cm
 
     return sig, r_bins

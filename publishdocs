@@ -1,5 +1,7 @@
 #!/bin/bash
-# Before running this, see the directions at:
+# Before running this:
+#   - Set BUILDDIR below
+#   - see:
 #   http://lucasbardella.com/blog/2010/02/hosting-your-sphinx-docs-in-github
 # Dependencies:
 # sphinx
@@ -13,7 +15,7 @@
 #		>>> ./publishdocs
 BUILDDIR=/home/ibackus/docs/diskpy
 HTMLDIR=$BUILDDIR/html
-cd doc
+cd diskpy/doc
 make html BUILDDIR=$BUILDDIR
 cd $HTMLDIR
 echo > .nojekyll

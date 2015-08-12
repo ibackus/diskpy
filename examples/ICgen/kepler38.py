@@ -4,13 +4,10 @@ Script for generating disk ICs about a stellar system
 using ibackus's ICgen routines.
 See https://github.com/ibackus/ICgen
 """
-import ICgen
+from diskpy.ICgen import ICgen, binary
 import pynbody
-import binary
-
+SimArray = pynbody.array.SimArray
 if __name__ == '__main__':
-    
-    SimArray = pynbody.array.SimArray
     
     # Initialize a blank initial conditions (IC) object:
     IC = ICgen.IC()
@@ -61,10 +58,7 @@ if __name__ == '__main__':
     # IC.p in the current directory
     IC.save()
     
-    # Change the settings used for numerically calculating the gas density
-    IC.settings.rho_calc.nr = 1000 # Number of radial points to calculate on
-    IC.settings.rho_calc.nz = 250 # Number of vertical points to calculate on
-    
+    # Change the settings used for numerically calculating the gas density    
     # Set the number of gas particles
     IC.settings.pos_gen.nParticles = 100000
     

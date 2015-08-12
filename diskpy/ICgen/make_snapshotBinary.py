@@ -3,12 +3,9 @@
 Created on Fri Mar 21 15:11:31 2014
 
 @author: ibackus
-@editor: dflemin3
+@editor: dfleming
 -Note: indentation is 4 spaces in this file, not a tab!
 
-This module initializes an S-type binary system in which the gas disk is around
-the primary, not both stars!  Assumes a_bin >> r_disk such that the disk's
-velocity is dominated by the influence of the primary.
 """
 
 __version__ = "$Revision: 1 $"
@@ -17,11 +14,12 @@ __version__ = "$Revision: 1 $"
 import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
+import math
 import gc
 import AddBinary
+import calc_velocity
 import ICgen_utils
-import ICglobal_settings
-global_settings = ICglobal_settings.global_settings
+from diskpy import global_settings
 
 from diskpy.utils import match_units, strip_units, configsave
 from diskpy.pychanga import make_param, make_director
@@ -52,26 +50,21 @@ def snapshot_gen(ICobj):
     snapshotName = settings.filenames.snapshotName
     paramName = settings.filenames.paramName   
  
-    #Load user supplied snapshot (assumed to be in cwd)
-    path = "/astro/store/scratch/tmp/dflemin3/nbodyshare/9au-Q1.05-129K/"
-    snapshot = pynbody.load(path + snapshotName)
- 
     # particle positions
-    r = snapshot.gas['r']
-    xyz = snapshot.gas['pos']
+    r = ICobj.pos.r
+    xyz = ICobj.pos.xyz
     
     # Number of particles
-    nParticles = len(snapshot.gas)
+    nParticles = ICobj.pos.nParticles
     
     # molecular mass
     m = settings.physical.m
     
-    #Pull star mass from user-supplied snapshot
-    ICobj.settings.physical.M = snapshot.star['mass'] #Total stellar mass in solar masses
-    m_star = ICobj.settings.physical.M
+    # star mass
+    m_star = settings.physical.M.copy()
     
     # disk mass
-    m_disk = np.sum(snapshot.gas['mass'])
+    m_disk = ICobj.sigma.m_disk.copy()
     m_disk = match_units(m_disk, m_star)[0]
     
     # mass of the gas particles
@@ -107,8 +100,25 @@ def snapshot_gen(ICobj):
     metals = settings.snapshot.metals
     star_metals = metals
     
+    # Generate snapshot
+    # Note that empty pos, vel, and mass arrays are created in the snapshot
+    snapshot = pynbody.new(star=1,gas=nParticles)
+    snapshot['vel'].units = v_unit
+    snapshot['eps'] = 0.01*SimArray(np.ones(nParticles+1, dtype=np.float32), pos_unit)
+    snapshot['metals'] = SimArray(np.zeros(nParticles+1, dtype=np.float32))
+    snapshot['rho'] = SimArray(np.zeros(nParticles+1, dtype=np.float32))
+    
+    snapshot.gas['pos'] = xyz
+    snapshot.gas['temp'] = ICobj.T(r)
+    snapshot.gas['mass'] = m_particles
+    snapshot.gas['metals'] = metals
+    
+    snapshot.star['pos'] = SimArray([[ 0.,  0.,  0.]],pos_unit)
+    snapshot.star['vel'] = SimArray([[ 0.,  0.,  0.]], v_unit)
+    snapshot.star['mass'] = m_star
+    snapshot.star['metals'] = SimArray(star_metals)
     # Estimate the star's softening length as the closest particle distance
-    eps = r.min()
+    #snapshot.star['eps'] = r.min()
     
     # Make param file
     param = make_param(snapshot, snapshotName)
@@ -118,8 +128,12 @@ def snapshot_gen(ICobj):
     
     # CALCULATE VELOCITY USING calc_velocity.py.  This also estimates the 
     # gravitational softening length eps
-
+    print 'Calculating circular velocity'
     preset = settings.changa_run.preset
+    max_particles = global_settings['misc']['max_particles']
+    calc_velocity.v_xy(snapshot, param, changa_preset=preset, max_particles=max_particles)
+    
+    gc.collect()
   
 	# -------------------------------------------------
     # Estimate time step for changa to use
@@ -145,12 +159,7 @@ def snapshot_gen(ICobj):
     director = make_director(sigma_min, sigma_max, r_director, filename=param['achOutName'])
     ## Save .director file
     #configsave(director, directorName, 'director')
-    
-    """
-    Now that the gas disk is initializes around the primary (M=m1), add in the
-    second star as specified by the user.
-    """    
-    
+
     #Now that velocities and everything are all initialized for gas particles, create new snapshot to return in which
     #single star particle is replaced by 2, same units as above
     snapshotBinary = pynbody.new(star=2,gas=nParticles)
@@ -172,45 +181,54 @@ def snapshot_gen(ICobj):
 
     #Load Binary system obj to initialize system
     binsys = ICobj.settings.physical.binsys
-    m_disk = strip_units(np.sum(snapshotBinary.gas['mass']))
-    binsys.m1 = strip_units(m_star)
-    binsys.m1 = binsys.m1 + m_disk  
-    #Recompute cartesian coords considering primary as m1+m_disk    
-    binsys.computeCartesian()
     
     x1,x2,v1,v2 = binsys.generateICs()
 
+    #Put velocity in sim units
+    #!!! Note: v_unit_vel will always be 29.785598165 km/s when m_unit = Msol and r_unit = 1 AU in kpc!!!
+    #conv = v_unit_vel #km/s in sim units
+    #v1 /= conv
+    #v2 /= conv
+
     #Assign position, velocity assuming CCW orbit
+
     snapshotBinary.star[0]['pos'] = SimArray(x1,pos_unit)
     snapshotBinary.star[0]['vel'] = SimArray(v1,v_unit)
     snapshotBinary.star[1]['pos'] = SimArray(x2,pos_unit)
     snapshotBinary.star[1]['vel'] = SimArray(v2,v_unit)
 
-    """
-    We have the binary positions about their center of mass, (0,0,0), so 
-    shift the position, velocity of the gas disk to be around the primary.
-    """
-    snapshotBinary.gas['pos'] += snapshotBinary.star[0]['pos']
-    snapshotBinary.gas['vel'] += snapshotBinary.star[0]['vel']  
-    
-    #Set stellar masses: Create simArray for mass, convert units to simulation mass units
-    snapshotBinary.star[0]['mass'] = SimArray(binsys.m1-m_disk,m_unit)
-    snapshotBinary.star[1]['mass'] = SimArray(binsys.m2,m_unit)
+    #Set stellar masses
+    #Set Mass units
+    #Create simArray for mass, convert units to simulation mass units
+    priMass = SimArray(binsys.m1,m_unit)
+    secMass = SimArray(binsys.m2,m_unit)
+
+    snapshotBinary.star[0]['mass'] = priMass
+    snapshotBinary.star[1]['mass'] = secMass
     snapshotBinary.star['metals'] = SimArray(star_metals)
+
+    #Estimate stars' softening length as fraction of distance to COM
+    d = np.sqrt(AddBinary.dotProduct(x1-x2,x1-x2))
+
+    snapshotBinary.star[0]['eps'] = SimArray(math.fabs(d)/4.0,pos_unit)
+    snapshotBinary.star[1]['eps'] = SimArray(math.fabs(d)/4.0,pos_unit)
  
     print 'Wrapping up'
     # Now set the star particle's tform to a negative number.  This allows
     # UW ChaNGa treat it as a sink particle.
     snapshotBinary.star['tform'] = -1.0
     
-    #Set sink radius, stellar smoothing length as fraction of distance
-    #from primary to inner edge of the disk
-    r_sink = eps
-    snapshotBinary.star[0]['eps'] = SimArray(r_sink/2.0,pos_unit)
-    snapshotBinary.star[1]['eps'] = SimArray(r_sink/2.0,pos_unit)
+    #Set Sink Radius to be mass-weighted average of Roche lobes of two stars
+    r1 = AddBinary.calcRocheLobe(binsys.m1/binsys.m2,binsys.a) 
+    r2 = AddBinary.calcRocheLobe(binsys.m2/binsys.m1,binsys.a)
+    p = strip_units(binsys.m1/(binsys.m1 + binsys.m2))
+
+    r_sink = (r1*p) + (r2*(1.0-p))
     param['dSinkBoundOrbitRadius'] = r_sink
     param['dSinkRadius'] = r_sink
-    param['dSinkMassMin'] = 0.9 * binsys.m2
+    param['dSinkMassMin'] = 0.9 * strip_units(secMass)
     param['bDoSinks'] = 1
     
     return snapshotBinary, param, director
+    
+        
