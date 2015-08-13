@@ -12,6 +12,7 @@ import fnmatch
 import numpy as np
 import pynbody as pb
 SimArray = pb.array.SimArray
+import logging
 
 def configparser(fname,ftype='auto'):
     """
@@ -429,14 +430,14 @@ def pbverbosity(cmd=None):
     # -----------------------------
     if hasattr(pb, 'logger'):
         # As of v0.30, pynbody uses python's logging to handle verbosity
-        logger = True
-        current_verbosity = pb.logger.getEffectiveLevel()
-        pb.logger.setLevel(logging.ERROR)
+        useLogger = True
+        logger = logging.getLogger('pynbody')
+        current_verbosity = logger.getEffectiveLevel()
 
     else:
 
         # For pynbody version < 0.3, verbosity is handled in the config
-        logger = False
+        useLogger = False
         current_verbosity = pb.config['verbose']
 
     # -----------------------------
@@ -448,9 +449,9 @@ def pbverbosity(cmd=None):
 
     elif cmd == 'off':
         # Toggle verbosity off
-        if logger:
+        if useLogger:
 
-            pb.logger.setLevel(logging.ERROR)
+            logger.setLevel(logging.ERROR)
 
         else:
 
@@ -458,9 +459,9 @@ def pbverbosity(cmd=None):
 
     elif cmd == 'on':
         # Toggle verbosity on
-        if logger:
+        if useLogger:
 
-            pb.logger.setLevel(logging.DEBUG)
+            logger.setLevel(logging.DEBUG)
 
         else:
 
@@ -468,9 +469,9 @@ def pbverbosity(cmd=None):
 
     else:
         # Set verbosity to the verbosity level specified by cmd
-        if logger:
+        if useLogger:
 
-            pb.logger.setLevel(cmd)
+            logger.setLevel(cmd)
 
         else:
 
