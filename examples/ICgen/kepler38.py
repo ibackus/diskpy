@@ -19,7 +19,7 @@ if __name__ == '__main__':
     #Define masses of primary, secondary as pynbody SimArrays
     #Note, m1 + m2 == IC.settings.physical.M 
     #Only need to set if you're considernig a circumbinary system
-    m1 = SimArray(0.599,'Msol')
+    m1 = SimArray(0.949,'Msol')
     m2 = IC.settings.physical.M - m1
     
     #Scale the mass of the disk to be some fraction of the star mass
@@ -50,8 +50,8 @@ if __name__ == '__main__':
     
     IC.settings.sigma.Rd = SimArray(2.0,'au') #Outer edge of powerlaw part of disk
     IC.settings.sigma.rmax = 2.0 #Set rmax 
-    IC.settings.sigma.rin = 0.25 #Set inner disk radius
-    IC.settings.cutlength = 0.01 #Set exp cutoff length scale
+    IC.settings.sigma.rin = 1.0 #0.25 #Set inner disk radius as fraction of Rd
+    IC.settings.cutlength = 0.01 #Set exp cutoff length scale as fraction of Rd
     IC.settings.pos_gen.method = 'random' #Instead of grid sampling, use random
     
     #This will save the ICs to
