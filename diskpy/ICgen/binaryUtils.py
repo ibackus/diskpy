@@ -923,3 +923,26 @@ def diskAverage(s,r_out,bins=50,avgFlag=True):
     return num/denom
     
 #end function
+
+def forcedEccentricity(binary_sys,r):
+    """
+    Given a binary class object and an array of radial points in the disk, 
+    compute the forced eccentricity defined by Moriwaki et al. 2004 
+    eqn 9 to first order.  Extra factor of 2 to give e_pumped instead
+    of e_forced.  Note: This only applies when e_binary != 0 and when
+    m2/(m1 + m2) != 0.5 (i.e. only applies for eccentric, non-equal mass
+    binary)
+    
+    Parameters
+    ----------
+    binary_sys : binary.Binary class object
+    r : array
+        array of radii in AU
+        
+    Returns
+    -------
+        e_forced : array
+            array of len(r)
+    """
+    mu = binary_sys.m2/(binary_sys.m1 + binary_sys.m2)
+    return (5./2.)*(1.0 - 2.0*mu)*binary_sys.e*binary_sys.a/r
