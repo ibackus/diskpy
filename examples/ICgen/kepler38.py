@@ -19,7 +19,7 @@ if __name__ == '__main__':
     #Define masses of primary, secondary as pynbody SimArrays
     #Note, m1 + m2 == IC.settings.physical.M 
     #Only need to set if you're considernig a circumbinary system
-    m1 = SimArray(0.599,'Msol')
+    m1 = SimArray(0.949,'Msol')
     m2 = IC.settings.physical.M - m1
     
     #Scale the mass of the disk to be some fraction of the star mass
