@@ -1,6 +1,8 @@
 """
 David Fleming
 Utilities to process/interact with binary star system in ChaNGa sims
+
+Note on inputs: Most (if not all?) functions are designed to be used with SimArrays as inputs.  
 """
 
 # Imports
@@ -894,7 +896,7 @@ def diskAverage(s,r_out,bins=50,avgFlag=True):
         
     Returns
     -------
-    y: list
+    y : list
         disk-averaged Keplerian orbital elements [e,a,i,Omega,w,nu] in AU, degrees (depending on unit)
     """    
     
@@ -955,3 +957,5 @@ def forcedEccentricity(binary_sys,r):
     """
     mu = binary_sys.m2/(binary_sys.m1 + binary_sys.m2)
     return (5./2.)*(1.0 - 2.0*mu)*binary_sys.e*binary_sys.a/r
+    
+#end function

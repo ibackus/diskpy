@@ -1105,6 +1105,71 @@ def initializeBinary(
 ##########################################################################
 
 
+def compute_L(a, e, m1, m2):
+    """
+    Given an objects semimajor axis a, eccentricity e, and mass around which it
+    is orbiting, M compute it's angular momentum assuming a quasi-Keplerian
+    orbit
+    
+    L = mu*sqrt(G*M*a*(1-e^2))
+    
+    Parameters
+    ----------
+    a : SimArray
+        semimajor axis
+    e : float (or array of float or SimArray with units = "1")
+        eccentricity
+    m1 : SimArray
+        mass of (primary) central body
+    m2 : SimArray
+        mass of secondary body
+        
+    Returns
+    -------
+    L : SimArray
+        Keplerian angular momentum in cgs
+    """
+
+    #Ensure cgs units
+    a = a.in_units("cm")
+    M = (m1+m2).in_units('g')
+    mu = ((m1*m2)/(m1+m2)).in_units('g')
+
+    return mu*np.sqrt(G*M*a*(1.0-e*e))
+
+#end function
+    
+def compute_E(a, m1, m2):
+    """
+    Given an objects semimajor axis a and mass around which it
+    is orbiting, M compute it's total energy assuming a quasi-Keplerian
+    orbit
+    
+    E = -0.5*G*m1*m2/a
+    
+    Parameters
+    ----------
+    a : SimArray
+        semimajor axis
+    m1 : SimArray
+        mass of (primary) central body
+    m2 : SimArray
+        mass of secondary body
+        
+    Returns
+    -------
+    E : SimArray
+        Keplerian total energy in cgs
+    """
+    #Ensure cgs
+    m1 = m1.in_units('g')
+    m2 = m2.in_units('g')
+    a = a.in_units('cm')    
+    
+    return -0.5*G*m1*m2/a
+    
+#end function
+
 def accretionEDot(Binary, M_dot, dt):
     """
     Given a Binary object and an accretion rate (assumed to be in M_sol/yr), compute the theoretical rate of change of the
