@@ -8,12 +8,30 @@ import glob
 import os
 import re
 import warnings
+import subprocess
 import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
 import datetime
 
 from diskpy.utils import configparser
+
+def snapshot_time(f, paramname=None):
+    """
+    Gets the physical time of a snapshot.  t=0 corresponds to the initial
+    conditions.
+    """
+    if isinstance(f, str):
+        
+        f = pynbody.load(f, paramname=paramname)
+        
+    t_unit = SimArray(1, f.infer_original_units('yr'))
+    # Note, for ChaNGa outputs, t0 = t_unit (ie, 1 in simulation units)
+    # To correct for this, we subtract off one time unit from the 
+    # snapshot's time
+    t = f.properties['time'] - t_unit
+    
+    return t
 
 def get_fnames(fprefix, directory=None):
     """
@@ -159,3 +177,41 @@ def walltime(filename):
     print str(walltime_avg)
 
     return wall_per_step
+    
+def read_rung_dist(filename):
+    """
+    Reads the rungdistribution from ChaNGa stdout that has been saved to a disk
+    by grepping the file for "Rung dist" and interpreting the output.
+    
+    Paramters
+    ---------
+    
+    filename : str
+        Filename for the ChaNGa stdout output
+    
+    Returns
+    -------
+    
+    rung_dist : array
+        Rung distribution for all big steps.  An array of integers of shape 
+        (num big steps, num rungs)
+    """
+    filename = 'snapshot.out'
+    command = "grep -i 'rung dist' " + filename
+    output = subprocess.check_output(command, shell=True)
+    output = output.strip('\n').split('\n')
+    
+    for i, line in enumerate(output):
+        # Extract all the numbers from the rung distribution string
+        a = line.split('(')[1].strip().split(',)')[0].split(', ')
+        
+        for j, b in enumerate(a):
+            
+            a[j] = int(b)
+            
+        # Save all numbers back to output
+        output[i] = a
+        
+    rungdist = np.array(output, dtype=int)
+    
+    return rungdist
