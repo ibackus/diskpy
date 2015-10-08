@@ -197,7 +197,7 @@ def read_rung_dist(filename):
         (num big steps, num rungs)
     """
     filename = 'snapshot.out'
-    command = "grep -i 'rung dist' -f " + filename
+    command = "grep -i -e 'rung dist' " + filename
     output = subprocess.check_output(command, shell=True)
     output = output.strip('\n').split('\n')
     
