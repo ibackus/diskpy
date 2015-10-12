@@ -72,6 +72,79 @@ def configparser(fname,ftype='auto'):
         warnings.warn('Still cannot determine filetype.')
     return param
     
+def logparser(fname, verbose=False):
+    """
+    Parses a ChaNGa log file to find run-time parameters.  Also returns the 
+    header under the key 'header'
+    
+    Parameters
+    ----------
+    
+    fname : str
+        Filename of the log file to open
+    verbose : bool
+        (optional) If True, prints all the parameters
+    
+    Returns
+    -------
+    
+    param : dict
+        Dictionary of the parameters
+        
+    See Also
+    --------
+    
+    configparser
+    """
+    header = []
+    with open(fname,'r') as f:
+        
+        # Parse until finding parameters
+        found = False
+        while not found:
+            
+            line = f.readline().strip()
+            if line[0] != '#':
+                
+                raise RuntimeError, 'Could not find parameters'
+                
+            line = line.strip('#').strip()
+            
+            if line == 'Parameters:':
+                
+                found = True
+                
+            else:
+                
+                header.append(line)
+        
+        # Now read in parameters
+        done = False
+        param = {'header': header}
+        while not done:
+            
+            line = f.readline().strip()
+            if line[0] != '#':
+                
+                raise RuntimeError, 'Expected # at beginning of line: ' + line
+                
+            if ':' not in line:
+                
+                done = True
+                
+            else:
+                
+                line = line.strip('#').strip()
+                k, v = line.split(': ')
+                v = str2num(v)
+                param[k] = v
+                
+                if verbose:
+                    
+                    print k, v
+                    
+        return param
+    
 def configsave(param,filename,ftype='auto'):
     """
      --------------------------------------------------
