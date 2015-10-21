@@ -51,8 +51,8 @@ if __name__ == '__main__':
     
     IC.settings.sigma.Rd = SimArray(2.0,'au') #Outer edge of powerlaw part of disk
     IC.settings.sigma.rmax = 2.0 #Set rmax 
-    IC.settings.sigma.rin = 0.25 #Set inner disk radius
-    IC.settings.cutlength = 0.01 #Set exp cutoff length scale
+    IC.settings.sigma.rin = 1.0 #0.25 #Set inner disk radius as fraction of Rd
+    IC.settings.cutlength = 0.01 #Set exp cutoff length scale as fraction of Rd
     IC.settings.pos_gen.method = 'random' #Instead of grid sampling, use random
     
     #This will save the ICs to
