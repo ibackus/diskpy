@@ -1,33 +1,21 @@
 """
-David Fleming
+@dflemin3
+David Fleming 2015
 
+This module is useful when considering a two body system in a Keplerian potential.  Uses include 
+binary stars, a satellite orbit a massive primary (m1 >> m2), a satellite orbiting far from a 
+massive central binary, etc.  Functions included in this module can be used to compute orbital
+elements, convert between Cartersian coordinates and orbital elements and other uses.  
 
-Note:  All functions in the module only interact with the binary system itself.  For functions that work with
-the disk or binary + disk, consult binaryUtils.py
+Note on units:  Functions are optimized to take pynbody.array.SimArray as input types so that
+they may handle all the different, weird units and array types/shapes.  If you don't use 
+SimArrays, they *should* work if your inputs are in cgs, but use at your own peril.
 
-Has all functions and utilities required to initialize/analyze binary star system
-
-Initial input:
--Snapshot with central star of mass M (in Msol) located at (0,0,0)
-in tipsy format (works with pynbody simArray data structure)
--Period (days), eccentricity of binary system
-
-What This does:
-Converts central star into 2 stars 1,2 under following conditions:
-    m1 + m2 = M (divide mass into 2 stars)
-    Center of Mass of stars remains at (0,0,0)
-
-Used to initialize velocites of binary system given Keplerian relations
-Also has additional functions to initialize and analyze binary system
-
-#!!! Note: v_unit_vel will always be 29.785598165 km/s when m_unit = Msol and r_unit = 1 AU in kpc!!!
 """
 #Constants and includes
 import numpy as np
 import math
 from scipy import optimize
-import sys
-sys.path.append('/astro/users/dflemin3/Desktop/ICgen')
 import pynbody
 SimArray = pynbody.array.SimArray
 from diskpy.utils import strip_units
@@ -108,16 +96,18 @@ def calcPositions(M=1, a=1, e=0, p=0.5):
     calculate positions of binary components keep COM at origin
     (ex: If 1Msol system and MPri = Msec = 0.5 -> M =1 -> p = 0.5)
     Assume stars start a perihelion
+    
+    Deprecated
 
     Parameters
     ----------
-    M: float
+    M : float
         Total mass of system (Msol)
-    a: float
+    a : float
         Semimajor axis (au)
-    e: float
+    e : float
         eccentricity
-    p: float
+    p : float
         % of total mass contained in primary (m1)
 
     Returns
@@ -147,19 +137,21 @@ def calcV(m1=0.5, m2=0.5, a=1, e=0):
     """
     Given total mass M, postions of stars at perihelion x1, x2, and eccentricity e, calculate the velocities of the stars
     assuming that they are located at the perihelion and rotate in same direction as disk (CCW)
+    
+    Deprecated
 
     Parameters
     ----------
-    m1, m2: floats
+    m1, m2 : floats
         masses of primary and secondary (Msol)
-    x1, x2: floats
+    x1, x2 : floats
         are semimajor axes of primary and secondary (au)
-    e: float
+    e : float
         eccentricity
 
     Returns
     -------
-    v1, v2: floats
+    v1, v2 : floats
         velocities of m1, m2 in km/s oriented for CCW rotation (in xy plane)
     """
     # Correct units and conversion factors, sqrt of positive numbers
@@ -188,16 +180,16 @@ def calcCriticalRadius(a=1, e=0, m1=0.5, m2=0.5):
 
     Parameters
     ----------
-    a: float
+    a : float
         Semimajor axis a of the binary system (au)
-    e: float
+    e : float
         Eccentricity e of binary system
-    m1, m2: floats
+    m1, m2 : floats
         Masses of binary components m1, m2 (Msol)
 
     Returns
     -------
-    ac, pmac: floats
+    ac, pmac : floats
         Lower bounds for circumbinary planet's distace from binary COM and error terms of the following form:
         ac, pmac (error bounds are symmetric) both in au
     """
@@ -232,30 +224,35 @@ def calcOrbitalElements(x1, x2, v1, v2, m1, m2):
     return the following orbital elements: eccentricity, semimajor axis, inclination, longitude of ascending node,
     argument of periapsis, and true anomaly.  This function is designed to work for a binary star system but is
     general enough to also work for a ~massless gas particle orbiting around a central quasi-Keplerian mass.
+    
+    Note: all params not required to be pynbody.array.SimArray, but it is strongly preferred.  Returns floats
+    to hopefully make this as general as possible
 
     Parameters
     ----------
-    All input assumed to be in simulation units and are converted to desired units internally.
-    x1,x2: position arrays in AU (x2 = 0 for gas particle case)
-    v1,v2: velocity arrays in km/s (v2 = 0 for gas particle case)
-    m1,m2: Central masses in Msol
+    x1, x2 : SimArrays
+        Position arrays of primary and secondary x1, x2 (in AU)
+    v1, v2 : SimArrays
+        Velocity arrays of primary and secondary v1, v2 (in km/s)
+    m1, m2 : SimArrays
+        Masses of primary and secondary m1, m2 (in Msol)
 
     Returns
     -------
-    e: float 
+    e : float 
         Eccentricity (unitless)
-    a: float
+    a : float
         Semimajor Axis in Au
-    i: float
+    i : float
         Inclination in degrees
-    Omega: float
+    Omega : float
         Longitude of Ascending node in degrees
-    w: float
+    w : float
         Argument of Periapsis in degrees
-    nu: float 
+    nu : float 
         True Anomaly in degrees
     """
-    # Compute elements.  All unit conversion/processing done in sub functions
+    # Compute elements.  All unit conversion/processing done in sub functions via SimArrays
     e = calcEcc(x1, x2, v1, v2, m1, m2)
     a = calcSemi(x1, x2, v1, v2, m1, m2)
     i = calcInc(x1, x2, v1, v2)
@@ -278,20 +275,20 @@ def calcEcc(x1, x2, v1, v2, m1, m2, flag=True):
 
     Parameters
     ----------
-    All inputs expected to be pynbody simArrays!!!
+    All inputs expected to be pynbody simArrays
     
-    x1, x2: SimArrays
+    x1, x2 : SimArrays
         Position arrays of primary and secondary x1, x2 (in AU)
-    v1, v2: SimArrays
+    v1, v2 : SimArrays
         Velocity arrays of primary and secondary v1, v2 (in km/s)
-    m1, m2: SimArrays
+    m1, m2 : SimArrays
         Masses of primary and secondary m1, m2 (in Msol)
     Flag: bool 
         Whether or not to internally convert to cgs units
 
     Returns
     -------
-    e: float
+    e : float
         Scalar eccentricity of binary system.
     """
     if flag:
@@ -335,24 +332,23 @@ def calcSemi(x1, x2, v1, v2, m1, m2, flag=True):
     and masses, calculates the binary's semimajor axis.
 
     Calculates a using the following: a = -mu/(2*e)
-    where mu = G*(m1+m2) and e = (v^2)/2 - (mu/|r|)
+    where mu = G*(m1+m2) and e = (v^2)/2 - (mu/|r|) and e != eccentricity
 
     Parameters
     ----------
-    (as pynbody SimArrays!)
     
-    x1,x2: SimArrays
+    x1,x2 : SimArrays
         Primary and secondary position arrays [AU]
-    v1,v2: SimArrays
+    v1,v2 : SimArrays
         Primary and secondary velocity arrays [km/s]
-    m1,m2: SimArrays
+    m1,m2 : SimArrays
         Primary and secondary masses [Msol]
-    Flag: bool
+    Flag : bool
         Whether or not to internally convert to cgs units
 
     Returns
     -------
-    a: float
+    a : float
         semimajor axis of binary orbit in AU
     """
     if flag:
@@ -397,16 +393,16 @@ def calcInc(x1=1, x2=0, v1=1, v2=0, flag=True):
     ----------
     as pynbody SimArrays [preferred units]
     
-    x1,x2: SimArrays
+    x1,x2 : SimArrays
         Primary and secondary position arrays [AU]
-    v1, v2: SimArrays
+    v1, v2 : SimArrays
         Primary and secondary velocity arrays [km/s]
-    Flag: bool
+    Flag : bool
         Whether or not to internally convert to cgs units
 
     Returns
     -------
-    i: float
+    i : float
         Inclination in degrees
     """
     if flag:
@@ -445,7 +441,7 @@ def calcInc(x1=1, x2=0, v1=1, v2=0, flag=True):
 # end function
 
 
-def calcLongOfAscNode(x1=1, x2=0, v1=1, v2=0, flag=True):
+def calcLongOfAscNode(x1, x2, v1, v2, flag=True):
     """
     Given pynbody arrays for positions and velocity of primary and secondary bodies
     and masses, calculates the binary's longitude of the ascending node Omega.
@@ -460,14 +456,16 @@ def calcLongOfAscNode(x1=1, x2=0, v1=1, v2=0, flag=True):
     ----------    
     Assumed as pynbody SimArrays in simulation units (AU, scaled velocity, etc)
     
-    x1,x2: SimArrays
+    x1,x2 : SimArrays
         Primary and secondary position arrays [AU]
-    v1,v2: SimArrays
+    v1,v2 :  SimArrays
         Primary and secondary velocity arrays [km/s]
+    Flag : bool
+        whether or not to convert to cgs.  if false, already in cgs
 
     Returns
     -------
-    Omega: float
+    Omega : float
         longitude of the ascending node in degrees
     """
     if flag:
@@ -526,7 +524,7 @@ def calcLongOfAscNode(x1=1, x2=0, v1=1, v2=0, flag=True):
 # end function
 
 
-def calcEccVector(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
+def calcEccVector(x1, x2, v1, v2, m1, m2, flag=True):
     """
     Given pynbody arrays for positions and velocity of primary and secondary bodies
     and masses, calculates the eccentricity vector in the reduced two body system.
@@ -535,18 +533,18 @@ def calcEccVector(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
 
     Parameters
     ----------
-    x1,x2: SimArrays
+    x1,x2 : SimArrays
         Primary and secondary position arrays [length]
-    v1, v2: SimArrays
+    v1, v2 : SimArrays
         Primary and secondary velocity arrays [velocity]
-    m1,m2: SimArrays
+    m1,m2 : SimArrays
         Primary and secondary masses [mass]
-    Flag: bool
+    Flag : bool
         Whether or not to internally convert to cgs units
 
     Returns
     -------
-    Ecc: array
+    Ecc : SimArray
         Eccentricity vector in cgs
     """
     if flag:
@@ -580,7 +578,7 @@ def calcEccVector(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
 # end function
 
 
-def calcArgPeri(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
+def calcArgPeri(x1, x2, v1, v2, m1, m2, flag=True):
     """
     Given pynbody arrays for positions and velocity of primary and secondary bodies
     and masses, calculates the eccentricity vector in the reduced two body system.
@@ -602,7 +600,7 @@ def calcArgPeri(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
 
     Returns
     -------
-    w: float
+    w : float
         Argument of pericenter in degrees
     """
     if flag:
@@ -661,7 +659,7 @@ def calcArgPeri(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
 # end function
 
 
-def calcTrueAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
+def calcTrueAnomaly(x1, x2, v1, v2, m1, m2, flag=True):
     """
     Given pynbody arrays for positions and velocity of primary and secondary bodies
     and masses, calculates the true anomaly in the reduced two body system.
@@ -672,11 +670,11 @@ def calcTrueAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
     ----------
     Assumed as pynbody SimArrays [preferred units]
     
-    x1,x2: SimArrays
+    x1,x2 : SimArrays
         Primary and secondary position arrays [AU]
-    v1,v2: SimArrays
+    v1,v2 : SimArrays
         Primary and secondary velocity arrays [km/s]
-    m1, m2: SimArrays
+    m1, m2 : SimArrays
         Primary and secondary masses [Msol]
     Flag: bool
         Whether or not to internally convert to cgs units
@@ -721,7 +719,7 @@ def calcTrueAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
 # end function
 
 
-def calcEccentricAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
+def calcEccentricAnomaly(x1, x2, v1, v2, m1, m2, flag=True):
     """
     Given pynbody arrays for positions and velocity of primary and secondary bodies
     and masses, calculates the eccentric anomaly in the reduced two body system.
@@ -732,21 +730,20 @@ def calcEccentricAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
     ----------
     Assumed as pynbody SimArrays [preferred units]
     
-    x1,x2: SimArrays
+    x1,x2 : SimArrays
         Primary and secondary position arrays [AU]
-    v1,v2: SimArrays
+    v1,v2 : SimArrays
         Primary and secondary velocity arrays [km/s]
-    m1, m2: SimArrays
+    m1, m2 : SimArrays
         Primary and secondary masses [Msol]
-    Flag: bool
+    Flag : bool
         Whether or not to internally convert to cgs units
 
     Returns
     -------
-    E: float
+    E : float
         Eccentric anomaly in degrees
     """
-    #This if/else is stupid and I should change it eventually--dflemin3
     if flag:
         #Ensure units are in cgs
         x1 = x1.in_units('cm')
@@ -755,11 +752,9 @@ def calcEccentricAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
         v2 = v2.in_units('cm s**-1')
         m1 = m1.in_units('g')
         m2 = m2.in_units('g')
-        e = calcEcc(x1, x2, v1, v2, m1, m2, flag=False)
-        nu = calcTrueAnomaly(x1, x2, v1, v2, m1, m2, flag=False)
-    else:
-        e = calcEcc(x1, x2, v1, v2, m1, m2, flag=False)
-        nu = calcTrueAnomaly(x1, x2, v1, v2, m1, m2, flag=False)
+            
+    e = calcEcc(x1, x2, v1, v2, m1, m2, flag=False)
+    nu = calcTrueAnomaly(x1, x2, v1, v2, m1, m2, flag=False)
 
     # Calc E
     nu = nu * (np.pi / 180.0)  # convert to radians for numpy functions
@@ -770,7 +765,7 @@ def calcEccentricAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
         if nu > np.pi and nu < 2.0 * np.pi:
             E = 2.0 * np.pi - E
     else:
-        E[np.logical_and(nu > np.pi, nu < 2.0 * np.pi)] = 2.0 * np.pi - E
+        E[np.logical_and(nu > np.pi, nu < 2.0 * np.pi)] = 2.0 * np.pi - E[np.logical_and(nu > np.pi, nu < 2.0 * np.pi)]
 
     # Return E in degrees
     return E * RAD2DEG
@@ -787,18 +782,18 @@ def calcMeanAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
     ----------
     Assumed as pynbody SimArrays [preferred units]
     
-    x1,x2: SimArrays
+    x1,x2 : SimArrays
         Primary and secondary position arrays [AU]
-    v1,v2: SimArrays
+    v1,v2 : SimArrays
         Primary and secondary velocity arrays [km/s]
-    m1, m2: SimArrays
+    m1, m2 : SimArrays
         Primary and secondary masses [Msol]
-    Flag: bool
+    Flag : bool
         Whether or not to internally convert to cgs units
 
     Returns
     -------
-    M: float
+    M : float
         Mean anomaly in degrees
     """
     if flag:
@@ -828,17 +823,18 @@ def calcMeanAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
 def trueToMean(nu, e):
     """
     Given the true anomaly nu in degrees and the eccentricity e, compute the mean anomaly M in degrees.
+    Can take arbitary units.
 
     Parameters
     ----------
-    nu: float
+    nu : float
         True anomaly (degrees)
-    e: float
+    e : float
         eccentricity
 
     Returns
     -------
-    M: float
+    M:  float
         mean anomaly (degrees)
     """
     # Compute eccentric anomaly E
@@ -869,18 +865,18 @@ def calcMeanMotion(x1, x2, v1, v2, m1, m2, flag=True):
     ----------
     Assumed as pynbody SimArrays [preferred units]
     
-    x1,x2: SimArrays
+    x1,x2 : SimArrays
         Primary and secondary position arrays [AU]
-    v1,v2: SimArrays
+    v1,v2 : SimArrays
         Primary and secondary velocity arrays [km/s]
-    m1, m2: SimArrays
+    m1, m2 : SimArrays
         Primary and secondary masses [Msol]
-    Flag: bool
+    Flag : bool
         Whether or not to internally convert to cgs units
 
     Returns
     -------
-    n: SimArray
+    n : SimArray
         Mean motion in 1/s
     """
     if flag:
@@ -918,6 +914,7 @@ def keplerToCartesian(
         angleFlag=True,
         scaleFlag=True):
     """
+    TODO: make SimArray compatible
     Given the Keplerian orbital elements, compute the cartesian coordinates of the object orbiting
     in the reduced mass frame.  Note: Requires all angles in degrees unless noted.
 
@@ -926,28 +923,28 @@ def keplerToCartesian(
 
     Parameters
     ----------
-    a: float
+    a : float
         Semimajor axis (AU)
-    e: float
+    e : float
         Eccentricity
-    i: float
+    i : float
         inclination (degrees)
-    Omega: float
+    Omega : float
         Longitude of Ascending Node (degrees)
-    w: float
+    w : float
         Argument of Pericenter (degrees)
-    M: float
+    M : float
         Mean Anomaly (degrees)
-    m1, m2: float
+    m1, m2 : float
         Masses of central object(s) (Msol)
-    angleFlag, scaleFlag: bools
+    angleFlag, scaleFlag : bools
         Tells code to convert degrees->rad and/or scale velocity to sim units, respectively
 
     Returns
     -------
-    x: numpy array
+    x : numpy array
         Position array of the object in reduced mass frame (AU)
-    v: numpy array
+    v : numpy array
         velocity array (km/s) with VEL_UNIT scaling factor optional
     """
     # Compute length to allow for multiple objects
@@ -1028,18 +1025,18 @@ def reduceToPhysical(r, v, m1, m2):
 
     Parameters
     ----------
-    r: array
+    r : array
         radius vector
-    v: array
+    v : array
         velocity vector
-    m1, m2: floats
+    m1, m2 : floats
         mass of central object
 
     Returns
     --------
-    x1, x2: numpy arrays
+    x1, x2 : arrays
         position vectors of 2 mutually orbiting objects
-    v1, v2:numpy arrays
+    v1, v2 : arrays
         velocity vectors of 2 mutually orbiting objects
     """
     # Compute reduced mass
@@ -1077,20 +1074,20 @@ def initializeBinary(
 
     Parameters
     ----------
-    Keplerian orbital elements: floats
+    Keplerian orbital elements : floats
         in Au, degrees (see above for more details)
-    m1,m2: floats
+    m1,m2 : floats
         Masses of central objects (Msol)
-    angleFlag: bool
+    angleFlag : bool
         whether or not to convert from degrees->radians (True = convert)
-    scaleFlag: bool
+    scaleFlag : bool
         whether or not to put v in sim units (True = do it/default option)
 
     Returns
     -------
-    x1, x2: array
+    x1, x2 : array
         Positions of 2 objects about origin (Au)
-    v1, v2: array
+    v1, v2 : array
         Velocities of 2 objects about origin (km/s in Sim Units)
 
     """
@@ -1107,6 +1104,71 @@ def initializeBinary(
 #                                                                                               #
 ##########################################################################
 
+
+def compute_L(a, e, m1, m2):
+    """
+    Given an objects semimajor axis a, eccentricity e, and mass around which it
+    is orbiting, M compute it's angular momentum assuming a quasi-Keplerian
+    orbit
+    
+    L = mu*sqrt(G*M*a*(1-e^2))
+    
+    Parameters
+    ----------
+    a : SimArray
+        semimajor axis
+    e : float (or array of float or SimArray with units = "1")
+        eccentricity
+    m1 : SimArray
+        mass of (primary) central body
+    m2 : SimArray
+        mass of secondary body
+        
+    Returns
+    -------
+    L : SimArray
+        Keplerian angular momentum in cgs
+    """
+
+    #Ensure cgs units
+    a = a.in_units("cm")
+    M = (m1+m2).in_units('g')
+    mu = ((m1*m2)/(m1+m2)).in_units('g')
+
+    return mu*np.sqrt(G*M*a*(1.0-e*e))
+
+#end function
+    
+def compute_E(a, m1, m2):
+    """
+    Given an objects semimajor axis a and mass around which it
+    is orbiting, M compute it's total energy assuming a quasi-Keplerian
+    orbit
+    
+    E = -0.5*G*m1*m2/a
+    
+    Parameters
+    ----------
+    a : SimArray
+        semimajor axis
+    m1 : SimArray
+        mass of (primary) central body
+    m2 : SimArray
+        mass of secondary body
+        
+    Returns
+    -------
+    E : SimArray
+        Keplerian total energy in cgs
+    """
+    #Ensure cgs
+    m1 = m1.in_units('g')
+    m2 = m2.in_units('g')
+    a = a.in_units('cm')    
+    
+    return -0.5*G*m1*m2/a
+    
+#end function
 
 def accretionEDot(Binary, M_dot, dt):
     """
@@ -1125,7 +1187,7 @@ def accretionEDot(Binary, M_dot, dt):
 
     Returns
     -------    
-    de/dt: float
+    de/dt : float
         change in eccentricity in 1/second
     """
     # Convert relevant quantities into cgs
@@ -1151,7 +1213,7 @@ def accretionEDot(Binary, M_dot, dt):
 
 def binaryPrecession(s,r_in,r_out):
     """
-    Computes the period of the binary precession due to an axisymmetric disk (!!!)
+    Computes the period of the binary precession due to an axisymmetric disk
     given by Rafikov 2013.
 
     Parameters
@@ -1196,17 +1258,19 @@ def calcCircularFrequency(x1, x2, v1, v2, m1, m2, flag=True):
     omega = (L_z)/(R^2) which assumes spherical symmetry (ok assumption here)
     L = sqrt(G*M*a*(1-e^2) for ~Keplerian
 
+    Deprecated (just use sqrt(G*M/a^3))...why did I make this?
+
     Parameters
     ----------
     Assumed as pynbody SimArrays in simulation units (AU, scaled velocity, etc)
     
-    x1,x2: arrays
+    x1,x2 : arrays
         Primary and secondary position arrays (in AU)
-    v1, v2: arrays
+    v1, v2 : arrays
         Primary and secondary velocity arrays (km/s)
-    m1, m2: floats
+    m1, m2 : floats
         Primary and secondary masses (Msol)
-    Flag: Whether or not to internally convert to cgs units
+    Flag : Whether or not to internally convert to cgs units
 
     Returns
     -------
@@ -1245,14 +1309,16 @@ def calcCOM(m1=0.5, m2=0.5, x1=1, x2=1):
     Given pynbody arrays for the mass and position of the two binary stars,
     function calculates the CoM of the two particles in order to check that
     it's still roughly 0.
+    
+    Deprecated
 
     Parameters
     ----------
     
     (as pynbody SimArrays)
-    m1, m2: SimArrays
+    m1, m2 : SimArrays
         Primary and secondary mass arrays (in Msol)
-    x1, x2: SimArrays
+    x1, x2 : SimArrays
         Primary and secondary position arrays (in AU)
 
     Returns
@@ -1280,14 +1346,14 @@ def calcRocheLobe(q, a):
 
     Parameters
     ----------
-    q: float
+    q : float
         Binary mass ratio q = m1/m2
-    a: float
+    a : float
         Binary semimajor axis a (in AU)
 
     Returns
     -------
-    r: float
+    r : float
         Radius of Roche lobe around m1 (in AU)
     """
     num = 0.49 * np.power(q, 2. / 3.)
@@ -1304,11 +1370,11 @@ def dotProduct(a, b):
 
     Parameters
     ----------
-    a,b: nxm numpy array
+    a,b : n x m numpy array
 
     Returns
     -------
-    dot product: numpy array 
+    dot product : numpy array 
         n rows containing dot products
     """
     # Don't trust user, make sure a, b are numpy arrays of same shape

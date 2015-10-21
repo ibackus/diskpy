@@ -8,14 +8,15 @@ from diskpy.ICgen import ICgen, binary
 import pynbody
 SimArray = pynbody.array.SimArray
 if __name__ == '__main__':
-    
+	#!!! NOTE !!!
+	# Modified to simulate a SMBH circumbinary system   
+ 
     # Initialize a blank initial conditions (IC) object:
     IC = ICgen.IC()
     
-    # Let's set the star mass and gas mass assuming H2 = 2 (m_h = 1) and some metals added
     IC.settings.physical.M = SimArray(1.198, 'Msol') #Total stellar mass in solar masses
     IC.settings.physical.m = SimArray(2.35, 'm_p') #mean molecular mass
-    
+
     #Define masses of primary, secondary as pynbody SimArrays
     #Note, m1 + m2 == IC.settings.physical.M 
     #Only need to set if you're considernig a circumbinary system
@@ -23,15 +24,15 @@ if __name__ == '__main__':
     m2 = IC.settings.physical.M - m1
     
     #Scale the mass of the disk to be some fraction of the star mass
-    IC.settings.snapshot.mScale = 0.05
-    
+    IC.settings.snapshot.mScale = 0.05    
+
     #Define whether the star is a single star or binary
     IC.settings.physical.starMode = 'binary'
     
     #Set binary system parameters.  If single star, comment this out
     #Define list of orbital elements of the following form:
     #X = [e, a [AU], i, Omega, w, nu] where all angles are in degrees
-    X = [0.0, 0.1469, 0.0, 0.0, 0.0, 0.0]
+    X = [0.05, 0.1469, 0.0, 0.0, 0.0, 0.0]
     IC.settings.physical.binsys = binary.Binary(X,m1,m2,'kepler')
     
     # Lets generate a disk with powerlaw from [Rin,Rd] au followed by a cutoff

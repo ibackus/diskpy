@@ -1,6 +1,8 @@
 """
 David Fleming
 Utilities to process/interact with binary star system in ChaNGa sims
+
+Note on inputs: Most (if not all?) functions are designed to be used with SimArrays as inputs.  
 """
 
 # Imports
@@ -588,6 +590,7 @@ def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
         for corotation and inner/outer resonances and radii as float and numpy arrays
     """
     stars = s.stars
+    gas = s.gas
 
     m_min = 1 #m >=1 for LRs, CRs
     l_min = 1 #l >=1 for LRs, CRs
@@ -603,8 +606,15 @@ def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
     a = strip_units(AddBinary.calcSemi(x1, x2, v1, v2, m1, m2))
     omega_b = 2.0*np.pi/AddBinary.aToP(a,m1+m2) #In units 1/day
 
+    #Compute mass of disk interior to given r
+    mask = np.zeros((len(gas),len(r)),dtype=bool)
+    m_disk = np.zeros(len(r))
+    for i in range(0,len(r)):
+        mask[:,i] = gas['rxy'] < r[i]
+        m_disk[i] = np.sum(gas['mass'][mask[:,i]])
+
     #Compute omega_disk in units 1/day (like omega_binary)
-    omega_d = 2.0*np.pi/AddBinary.aToP(r,m1+m2)
+    omega_d = 2.0*np.pi/AddBinary.aToP(r,m1+m2+m_disk)
         
     #Compute kappa (radial epicycle frequency = sqrt(r * d(omega^2)/dr + 4*(omega^2))
     o2 = omega_d*omega_d
@@ -799,7 +809,8 @@ def orbElemsVsRadius(s,rBinEdges,average=False):
     for i in range(0,len(rBinEdges)-1):
         if average: #Average over all gas particles in subsection
             rMask = np.logical_and(gas['rxy'].in_units('au') > rBinEdges[i], gas['rxy'].in_units('au') < rBinEdges[i+1])
-            if i > 0:            
+            if i > 0:
+                #Include mass of disk interior to given radius
                 mass = M + np.sum(gas[gas['rxy'] < rBinEdges[i]]['mass'])
             else:
                 mass = M
@@ -885,7 +896,7 @@ def diskAverage(s,r_out,bins=50,avgFlag=True):
         
     Returns
     -------
-    y: list
+    y : list
         disk-averaged Keplerian orbital elements [e,a,i,Omega,w,nu] in AU, degrees (depending on unit)
     """    
     
@@ -921,5 +932,30 @@ def diskAverage(s,r_out,bins=50,avgFlag=True):
     num = np.trapz(sig*r*x[:],r)
 
     return num/denom
+    
+#end function
+
+def forcedEccentricity(binary_sys,r):
+    """
+    Given a binary class object and an array of radial points in the disk, 
+    compute the forced eccentricity defined by Moriwaki et al. 2004 
+    eqn 9 to first order.  Extra factor of 2 to give e_pumped instead
+    of e_forced.  Note: This only applies when e_binary != 0 and when
+    m2/(m1 + m2) != 0.5 (i.e. only applies for eccentric, non-equal mass
+    binary)
+    
+    Parameters
+    ----------
+    binary_sys : binary.Binary class object
+    r : array
+        array of radii in AU
+        
+    Returns
+    -------
+        e_forced : array
+            array of len(r)
+    """
+    mu = binary_sys.m2/(binary_sys.m1 + binary_sys.m2)
+    return (5./2.)*(1.0 - 2.0*mu)*binary_sys.e*binary_sys.a/r
     
 #end function
