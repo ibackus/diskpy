@@ -146,7 +146,7 @@ def viscous(settings):
     
 def powerlaw(settings, T = None):
     """
-    Generates a surface density profile according to a powerlaw sigma ~ 1/r
+    Generates a surface density profile according to a powerlaw sigma ~ r^p
     with a smooth interior cutoff and smooth exterior exponential cutoff.
     
     **ARGUMENTS**

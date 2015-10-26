@@ -22,7 +22,7 @@ if __name__ == '__main__':
     m2 = IC.settings.physical.M - m1
     
     #Scale the mass of the disk to be some fraction of the star mass
-    IC.settings.snapshot.mScale = 0.5    
+    IC.settings.snapshot.mScale = 0.05    
 
     #Define whether the star is a single star or binary
     IC.settings.physical.starMode = 'binary'
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     #Set binary system parameters.  If single star, comment this out
     #Define list of orbital elements of the following form:
     #X = [e, a [AU], i, Omega, w, nu] where all angles are in degrees
-    X = [0.1, 0.1469, 0.0, 0.0, 0.0, 0.0]
+    X = [0.1032, 0.1469, 0.0, 0.0, 0.0, 0.0]
     IC.settings.physical.binsys = binary.Binary(X,m1,m2,'kepler')
     
     # Lets generate a disk with powerlaw from [Rin,Rd] au followed by a cutoff
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     #   n_points : number of radial points to calculate sigma at
     #	power: sigma ~ r^(power)
     IC.settings.sigma.kind = 'powerlaw'
-    IC.settings.sigma.power = -1.5
+    IC.settings.sigma.power = -0.5
     IC.settings.sigma.Qmin = 0.7
     IC.settings.sigma.n_points = 1000
     
