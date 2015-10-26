@@ -453,7 +453,10 @@ def torqueVsRadius(s,rBinEdges):
     #For a given radius, put gas particles in bins where s.gas['r'] is in au and pynbody units are stripped
     for i in range(0,len(rBinEdges)-1):
         rMask = np.logical_and(s.gas['rxy'].in_units('au') > rBinEdges[i], s.gas['rxy'].in_units('au') < rBinEdges[i+1])
-        tau[i] = np.asarray(calcNetTorque(s.stars,s.gas[rMask])) 
+        if len(s.gas[rMask]) > 0: #at least 1 gas particle in bin
+            tau[i] = np.asarray(calcNetTorque(s.stars,s.gas[rMask])) 
+        else:
+            tau[i] = 0
         
     return tau
 
@@ -706,17 +709,20 @@ def calcCoMVsRadius(s,rBinEdges,starFlag=False):
 #end function
 
 def calcPoissonVsRadius(s,rBinEdges):
-	"""
-	Given a tipsy snapshot and radial bins, compute the Poisson noise, r/sqrt(N_particles), in each radial bin.
-	"""	
-	gas = s.gas
-	poisson = np.zeros(len(rBinEdges)-1)	
+    """
+    Given a tipsy snapshot and radial bins, compute the Poisson noise, r/sqrt(N_particles), in each radial bin.
+    """	
+    gas = s.gas
+    poisson = np.zeros(len(rBinEdges)-1)	
 	
-	for i in range(0,len(rBinEdges)-1):
-		rMask = np.logical_and(gas['rxy'].in_units('au') > rBinEdges[i], gas['rxy'].in_units('au') < rBinEdges[i+1])
-		N = len(gas[rMask])
-		r = (rBinEdges[i] + rBinEdges[i+1])/2.0
-		poisson[i] = r/np.sqrt(N)
+    for i in range(0,len(rBinEdges)-1):
+        rMask = np.logical_and(gas['rxy'].in_units('au') > rBinEdges[i], gas['rxy'].in_units('au') < rBinEdges[i+1])
+        N = len(gas[rMask])
+        r = (rBinEdges[i] + rBinEdges[i+1])/2.0
+        if N > 0:      
+            poisson[i] = r/np.sqrt(N)
+        else:
+            poisson[i] = 0.0
 	
 	return poisson
 	
@@ -843,8 +849,8 @@ def orbElemsVsRadius(s,rBinEdges,average=False):
                 mass = M + np.sum(gas[gas['rxy'] < rBinEdges[i]]['mass'])
             else:
                 mass = M
-            N = len(gas[rMask])
             g = gas[rMask]
+            N = len(g)
             if N > 0:
                 orbElems[:,i] = np.sum(AddBinary.calcOrbitalElements(g['pos'],com,g['vel'],zero,mass,g['mass']),axis=-1)/N
             else: #If there are no particles in the bin, set it as a negative number to mask out later
