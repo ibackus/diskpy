@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import copy
 
-def gridplot(nrows, ncols=1):
+def gridplot(nrows, ncols=1, square=False):
     """
     Creates a grid of tightly-packed subplots and returns them as a numpy array,
     shape (nrows,ncols).  If nrows=ncols=1, a single subplot is made.
@@ -39,6 +39,11 @@ def gridplot(nrows, ncols=1):
                 sharey = None
 
             ax[i,j] = plt.subplot(grid[counter], sharex = sharex, sharey = sharey)
+            
+            if square:
+                
+                ax[i,j].set(adjustable='box-forced', aspect='equal')
+                
             counter += 1
 
     # Remove ticklabels inbetween plots
