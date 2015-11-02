@@ -4,6 +4,10 @@ doc/
 *.nfs*
 *.orig
 .spyder*
+*.ppm
+IC.p
+IC_settings.p
+snapshot.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
