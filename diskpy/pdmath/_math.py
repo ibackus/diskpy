@@ -51,6 +51,77 @@ _dir = os.path.dirname(os.path.realpath(__file__))
 _coeffsfile = os.path.join(_dir, 'hermite_spline_coeffs.dat')
 hermite_coeffs = _loadcoeffs(_coeffsfile)
 
+def dA(redges, thetaedges):
+    """
+    Calculates the area of bins in cylindrical coordinates as
+    
+    .. math:: dA = r(\\Delta r) (\\Delta \\theta)
+    
+    on a grid of r, theta values
+    
+    Parameters
+    ----------
+    
+    redges, thetaedges : array like
+        1D arrays of the binedges in r, theta.
+    
+    Returns
+    -------
+    
+    dA : array
+        2D array of dA values over r, theta.  dA[i,j] corresponds to r[i]
+        theta[j]
+    """
+    
+    dr = redges[1:] - redges[0:-1]
+    dtheta = thetaedges[1:] - thetaedges[0:-1]
+    r = (redges[1:] + redges[0:-1])/2.
+    rdr = r * dr
+    return np.dot(rdr[:, None], dtheta[None, :])
+    
+def setupbins(x, bins=10):
+    """
+    Sets up bins for data x (similar to numpy.histogram).  If bins is an 
+    integer, the min/max are set to include all data
+    
+    Parameters
+    ----------
+    
+    x : arraylike
+        Data to be binned
+    bins : int or array-like
+        Number of bins or binedges to use
+    
+    Returns
+    -------
+    
+    binedges : array
+        Bin edges
+    """
+    
+    # If bins is not iterable, it is the number of bins
+    if not hasattr(bins, '__iter__'):
+        
+        dtype = x.dtype
+        if isinstance(dtype, int):
+            
+            xmin = x.min() - 0.5
+            xmax = x.max() + 0.5
+            
+        else:
+            
+            eps = np.finfo(x.dtype).eps
+            xmin = x.min() * (1 - 2*eps)
+            xmax = x.max() * (1 + 2*eps)
+            
+        binedges = np.linspace(xmin, xmax, bins + 1)
+        
+    else:
+        # Bins is already binedges.  do nothing
+        binedges = bins
+    
+    return binedges
+
 def resolvedbins(x, y, minbins=200, ftol=None):
     """
     Generates a sub-view of x that allows y to be resolved up to ftol.  Since
@@ -137,6 +208,83 @@ def resolvedbins(x, y, minbins=200, ftol=None):
     
     binind = np.array(binind)
     return x[binind]
+    
+def bin2dsum(x, y, z, xbins=10, ybins=10):
+    """
+    Bins x,y using bin2d and sums z in those bins
+    
+    Parameters
+    ----------
+    
+    x, y, z: array-like
+        x, y, and z values.  Bins are in x-y, z values are summed
+    xbins, ybins: int or array-like
+        (see bin2d) Number of bins or bin edges
+    
+    Returns
+    -------
+    
+    zbinned : array-like
+        2D array of z-values, summed in the bins.  zbinned[i,j] gives the value
+        of z summed in xbin[i], ybin[j]
+    xedges, yedges : array
+        1D arrays of binedges in x,y
+    """
+    
+    ind, xedges, yedges = bin2d(x, y, xbins, ybins)
+    xind = ind[0]
+    yind = ind[1]
+    nx = len(xedges) - 1
+    ny = len(yedges) - 1
+    
+    zbinned = np.zeros([nx, ny])
+    
+    if pb.units.has_units(z):
+        
+        zbinned = SimArray(zbinned, z.units)
+    
+    for i in range(nx):
+        
+        xmask = (xind == i)
+        for j in range(ny):
+            
+            mask = xmask & (yind == j)
+            zbinned[i, j] = z[mask].sum()
+            
+    return zbinned, xedges, yedges
+            
+
+def bin2d(x, y, xbins=10, ybins=10):
+    """
+    2-dimensional binning of x, y
+    Works as a 2-D extension of numpy.digitize but also automatically sets-up
+    binedges
+    
+    Parameters
+    ----------
+    
+    x, y : array-like
+        x, y values to bin according to
+    xbins, ybins : int OR list/array like
+        Either the number of bins or the binedges to use
+    
+    Returns
+    -------
+    
+    ind : list of arrays
+        The x,y bin indices each entry belongs to.  ind[0][i] gives the x-bin
+        of the ith entry.  ind[1][i] gives the y-bin of the ith entry
+    xedges, yedges: arrays
+        Bin edges used
+    """
+    
+    xedges = setupbins(x, xbins)
+    yedges = setupbins(y, ybins)
+    
+    xind = np.digitize(x, xedges) - 1
+    yind = np.digitize(y, yedges) - 1
+    ind =[xind, yind]
+    return ind, xedges, yedges
 
 def extrap1d(x,y):
     """
