@@ -111,6 +111,7 @@ def sigmacylindrical(f, rbins=50, thetabins=50):
     """
     r = f.g['rxy']
     theta = np.asarray(np.arctan2(f.g['y'], f.g['x']))
+    theta = theta % (2*np.pi)
     # Default theta bin edges are 0 to 2 pi, evenly spaced
     if isinstance(thetabins, int):
         
