@@ -232,24 +232,36 @@ def bin2dsum(x, y, z, xbins=10, ybins=10):
     """
     
     ind, xedges, yedges = bin2d(x, y, xbins, ybins)
-    xind = ind[0]
-    yind = ind[1]
-    nx = len(xedges) - 1
-    ny = len(yedges) - 1
     
-    zbinned = np.zeros([nx, ny])
-    
-    if pb.units.has_units(z):
+    # If all the z values are the same (ie, all particles have same mass),
+    # the summing is much faster if we don't do the for loops below.
+    if np.all(z == z[0]):
         
-        zbinned = SimArray(zbinned, z.units)
-    
-    for i in range(nx):
+        # Sum is equivalent to number in each bin times z
+        N, dummy1, dummy2 = np.histogram2d(x, y, [xedges, yedges])
+        zbinned = z[[0]] * N
         
-        xmask = (xind == i)
-        for j in range(ny):
+    else:
+        
+        # Perform sum
+        xind = ind[0]
+        yind = ind[1]
+        nx = len(xedges) - 1
+        ny = len(yedges) - 1
+        
+        zbinned = np.zeros([nx, ny])
+        
+        if pb.units.has_units(z):
             
-            mask = xmask & (yind == j)
-            zbinned[i, j] = z[mask].sum()
+            zbinned = SimArray(zbinned, z.units)
+        
+        for i in range(nx):
+            
+            xmask = (xind == i)
+            for j in range(ny):
+                
+                mask = xmask & (yind == j)
+                zbinned[i, j] = z[mask].sum()
             
     return zbinned, xedges, yedges
             
