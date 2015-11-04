@@ -465,7 +465,7 @@ def calcLongOfAscNode(x1, x2, v1, v2, flag=True):
 
     Returns
     -------
-    Omega : float
+    Omega : SimArray
         longitude of the ascending node in degrees
     """
     if flag:
@@ -479,9 +479,9 @@ def calcLongOfAscNode(x1, x2, v1, v2, flag=True):
     # Also ensure function can handle any number of values
     length, ax = computeLenAx(x1)
 
-    k = np.zeros((length, 3))
-    i = np.zeros((length, 3))
-    j = np.zeros((length, 3))
+    k = SimArray(np.zeros((length, 3)),'1')
+    i = SimArray(np.zeros((length, 3)),'1')
+    j = SimArray(np.zeros((length, 3)),'1')
 
     if(length > 1):
         j[:, 1] = 1
@@ -499,24 +499,28 @@ def calcLongOfAscNode(x1, x2, v1, v2, flag=True):
     v = (v1 - v2)
 
     # Compute specific angular momentum vector
-    h = np.cross(r, v, axis=ax)
+    h = SimArray(np.cross(r, v, axis=ax),'cm**2 s**-1')
 
     # Compute vector pointing to ascending node
-    n = np.cross(k, h, axis=ax)
-    magN = SimArray(np.linalg.norm(n, axis=ax),'cm**2 s**-1')
-
-    # Ensure no divide by zero errors?
-    #magN[magN < SMALL] = 1.0
+    n = SimArray(np.cross(k, h, axis=ax),'cm**2 s**-1')
+    #magN = np.linalg.norm(n, axis=ax)
+    magN = SimArray(np.linalg.norm(n, axis=ax),'cm**2 s**-1')    
 
     # Compute LoAN
     inc = calcInc(x1, x2, v1, v2)/RAD2DEG
-    Omega = np.arccos(dotProduct(i, n) / magN)
+    Omega = SimArray(np.arccos(dotProduct(i, n) / magN),'1')
+    Omega[np.nan == Omega] = 0.0 #Filter nans
 
     # If inclination is ~0, define LoAN as 0
     Omega[inc < SMALL] = 0.0
 
     # Fix phase due to arccos return range
-    Omega[dotProduct(n, j) < 0] = 2.0 * np.pi - Omega[dotProduct(n, j) < 0]
+    if len(Omega) > 1:
+        mask = dotProduct(n, j) < 0.0
+        Omega[mask] = 2.0 * np.pi - Omega[mask]
+    else:
+        if dotProduct(n, j) < 0.0:
+            Omega = 2.0 * np.pi - Omega
 
     # Convert to degrees, return
     return Omega * RAD2DEG
@@ -597,6 +601,7 @@ def calcArgPeri(x1, x2, v1, v2, m1, m2, flag=True):
         Primary and secondary masses [Msol]
     Flag : bool
         Whether or not to internally convert to cgs units
+        If flag == false, input assumed to be in cgs
 
     Returns
     -------
@@ -614,7 +619,7 @@ def calcArgPeri(x1, x2, v1, v2, m1, m2, flag=True):
 
     # Compute eccentricity vector
     e = calcEccVector(x1, x2, v1, v2, m1, m2, flag=False)
-    magE = SimArray(np.linalg.norm(e, axis=1),'1')
+    magE = np.linalg.norm(e, axis=1)
 
     length, ax = computeLenAx(x1)
 
@@ -633,24 +638,27 @@ def calcArgPeri(x1, x2, v1, v2, m1, m2, flag=True):
     v = (v1 - v2)
 
     # Compute specific angular momentum vector
-    h = SimArray(np.cross(r, v, axis=ax),'cm**2 s**-1')
+    h = np.cross(r, v, axis=ax)
 
     # Compute vector pointing to ascending node
     n = np.cross(k, h, axis=ax)
+    #magN = np.linalg.norm(n, axis=ax)    
     magN = SimArray(np.linalg.norm(n, axis=ax),'cm**3 s**-1')
 
     # Ensure no divide by zero errors?
-    magN[magN < SMALL] = 1.0
+    #magN[magN < SMALL] = 1.0
 
     # Compute argument of periapsis
     inc = calcInc(x1, x2, v1, v2)/RAD2DEG
     arg = dotProduct(n, e) / (magN * magE)
     
-    # Bounds check arg    
-    w = np.arccos(arg)
-    #w[arg < -1.0] = np.pi
-    #w[arg > 1.0] = 0.0
-    w[dotProduct(e, k) < 0] = 2.0 * np.pi - w[dotProduct(e, k) < 0.0]
+    # Bounds check arg, set nans to 0    
+    w = SimArray(np.arccos(arg),'1')
+    w[np.nan == w] = 0.0
+
+    # Fix w because of arccos range
+    mask = dotProduct(e, k) < 0.0
+    w[mask] = 2.0 * np.pi - w[mask]
     w[inc < SMALL] = 0.0  # For orbit in a plane
 
     #Return in degrees
@@ -678,6 +686,7 @@ def calcTrueAnomaly(x1, x2, v1, v2, m1, m2, flag=True):
         Primary and secondary masses [Msol]
     Flag: bool
         Whether or not to internally convert to cgs units
+        if flag is false, input assumed to be in cgs
 
     Returns
     -------
@@ -698,7 +707,7 @@ def calcTrueAnomaly(x1, x2, v1, v2, m1, m2, flag=True):
 
     # Compute eccentricity vector
     e = calcEccVector(x1, x2, v1, v2, m1, m2, flag=False)
-    magE = SimArray(np.linalg.norm(e, axis=ax),'1')
+    magE = np.linalg.norm(e, axis=ax)
 
     # Compute radius vector
     r = (x1 - x2)
@@ -706,12 +715,12 @@ def calcTrueAnomaly(x1, x2, v1, v2, m1, m2, flag=True):
     magR = SimArray(np.linalg.norm(r, axis=ax),'cm')
 
     # Compute true anomaly making sure I can handle single numbers or arrays
-    nu = np.arccos(dotProduct(e, r) / (magE * magR))
-    if isinstance(nu, np.float64):
-        if dotProduct(r, v) < 0.0:
-            nu = 2.0 * np.pi - nu
-    else:
-        nu[dotProduct(r, v) < 0.0] = 2.0 * np.pi - nu[dotProduct(r, v) < 0.0]
+    nu = SimArray(np.arccos(dotProduct(e, r) / (magE * magR)),'1')
+    
+    #Correct results due to arccos range, nans    
+    mask = dotProduct(r, v) < 0.0    
+    nu[mask] = 2.0 * np.pi - nu[mask]
+    nu[np.nan == nu] = 0.0
 
     # Convert to degrees, return
     return nu * RAD2DEG
@@ -738,7 +747,7 @@ def calcEccentricAnomaly(x1, x2, v1, v2, m1, m2, flag=True):
         Primary and secondary masses [Msol]
     Flag : bool
         Whether or not to internally convert to cgs units
-
+        if flag is false, input assumed to be in cgs
     Returns
     -------
     E : float
@@ -811,7 +820,7 @@ def calcMeanAnomaly(x1=1, x2=0, v1=1, v2=0, m1=1, m2=1, flag=True):
         E = calcEccentricAnomaly(x1, x2, v1, v2, m1, m2, flag=False)
 
     # Calculate Mean Anomaly
-    E = E * (np.pi / 180.0)  # Conver E to radians for numpy
+    E = E * (np.pi / 180.0)  # Convert E to radians for numpy
     M = E - e * np.sin(E)
 
     # Return M in degrees
@@ -846,7 +855,7 @@ def trueToMean(nu, e):
         if nu > np.pi and nu < 2.0 * np.pi:
             E = 2.0 * np.pi - E
     else:
-        E[np.logical_and(nu > np.pi, nu < 2.0 * np.pi)] = 2.0 * np.pi - E
+        E[np.logical_and(nu > np.pi, nu < 2.0 * np.pi)] = 2.0 * np.pi - E[np.logical_and(nu > np.pi, nu < 2.0 * np.pi)]
 
     # Compute, return M
     M = E - e * np.sin(E)
