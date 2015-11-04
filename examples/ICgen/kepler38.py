@@ -24,7 +24,7 @@ if __name__ == '__main__':
     m2 = IC.settings.physical.M - m1
     
     #Scale the mass of the disk to be some fraction of the star mass
-    IC.settings.snapshot.mScale = 0.5 #0.05    
+    IC.settings.snapshot.mScale = 1.0 #0.05    
 
     #Define whether the star is a single star or binary
     IC.settings.physical.starMode = 'binary'
