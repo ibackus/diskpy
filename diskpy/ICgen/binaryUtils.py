@@ -1,6 +1,8 @@
 """
 David Fleming
 Utilities to process/interact with binary star system in ChaNGa sims
+
+Note on inputs: Most (if not all?) functions are designed to be used with SimArrays as inputs.  
 """
 
 # Imports
@@ -9,6 +11,7 @@ import re
 import AddBinary
 import pynbody
 from scipy import interpolate
+from scipy.optimize import fsolve
 SimArray = pynbody.array.SimArray
 
 from diskpy.utils import strip_units
@@ -450,7 +453,10 @@ def torqueVsRadius(s,rBinEdges):
     #For a given radius, put gas particles in bins where s.gas['r'] is in au and pynbody units are stripped
     for i in range(0,len(rBinEdges)-1):
         rMask = np.logical_and(s.gas['rxy'].in_units('au') > rBinEdges[i], s.gas['rxy'].in_units('au') < rBinEdges[i+1])
-        tau[i] = np.asarray(calcNetTorque(s.stars,s.gas[rMask])) 
+        if len(s.gas[rMask]) > 0: #at least 1 gas particle in bin
+            tau[i] = np.asarray(calcNetTorque(s.stars,s.gas[rMask])) 
+        else:
+            tau[i] = 0
         
     return tau
 
@@ -505,63 +511,6 @@ def calcDeDt(stars,tau):
 
 #end function
 
-def estimateCBResonances(s,r_max,m_max=5,l_max=5,bins=2500):
-	"""
-	Given pynbody snapshot star and gas SimArrays, computes the resonances of disk on binary as a function of period.
-	Disk radius, in au, is convered to angular frequency which will then be used to compute corotation and inner/outer Lindblad resonances.
-	Assumption: Assumes m_disk << m_bin which holds in general for simulations considered
-	For reference: Kappa, omega computed in ~ 1/day intermediate units.
-	Uses approximations from Artymowicz 1994
-
-	Inputs:
-	stars,gas: Pynbody snapshot .star and .gas SimArrays (in au, Msol, etc)
-	r_max: maximum disk radius for calculations (au)
-	bins: number of radial bins to calculate over
-
-	Output:
-	Orbital frequency for corotation and inner/outer resonances as float and 2 arrays
-	"""
-	stars = s.stars
-	#gas = s.gas
-
-	#Compute binary angular frequency
-	#Strip units from all inputs
-	x1 = np.asarray(strip_units(stars[0]['pos']))
-	x2 = np.asarray(strip_units(stars[1]['pos']))
-	v1 = np.asarray(strip_units(stars[0]['vel']))
-	v2 = np.asarray(strip_units(stars[1]['vel']))
-	m1 = np.asarray(strip_units(stars[0]['mass']))
-	m2 = np.asarray(strip_units(stars[1]['mass']))
-	a = AddBinary.calcSemi(x1, x2, v1, v2, m1, m2)
-	#omega_b = 2.0*np.pi/AddBinary.aToP(a,m1+m2
-
-	#Find corotation resonance where omega_d ~ omega_b
-	r_c = a #m=1 case
-	o_c = 2.0*np.pi/AddBinary.aToP(r_c,m1+m2)
-        
-	#Find inner lindblad resonances for m = [m_min,m_max]
-	#Lindblad resonance: omega = omega_pattern +/- kappa/m for int m > 1
-	m_min = 1
-	l_min = 1    
-
-	omega_Lo = np.zeros((m_max-m_min,l_max-l_min))
-	omega_Li = np.zeros((m_max-m_min,l_max-l_min))
-   
-	#Find resonance radii, convert to angular frequency
-	for m in range(m_min,m_max):
-		for l in range(l_min,l_max):
-		#oTmp = find_crit_radius(r,omega_d-(kappa/(float(m))),omega_b,bins) #outer LR
-			oTmp = np.power(float(m+1)/l,2./3.)*a
-			omega_Lo[m-m_min,l-l_min] = 2.0*np.pi/AddBinary.aToP(oTmp,m1+m2)
-		
-		#iTmp = find_crit_radius(r,omega_d+(kappa/(float(m))),omega_b,bins) #inner LR
-			iTmp = np.power(float(m-1)/l,2./3.)*a
-			omega_Li[m-m_min,l-l_min] = 2.0*np.pi/AddBinary.aToP(iTmp,m1+m2)
-
-	return omega_Li, omega_Lo, o_c #return inner, outer, co angular frequencies
-
-#end function
-
 def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
     """
     Given Tipsy snapshot, computes the resonances of disk on binary as a function of orbital angular frequency omega.
@@ -569,6 +518,8 @@ def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
     and inner/outer Lindblad resonances.
    
    Note: r given MUST correspond to r over which de/dt was calculated.  Otherwise, scale gets all messed up
+   
+   !!! NOTE: This function is awful and deprecated --- do NOT use it.  Instead, use calc_LB_resonance !!!
  
      Parameters
      ----------
@@ -588,6 +539,7 @@ def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
         for corotation and inner/outer resonances and radii as float and numpy arrays
     """
     stars = s.stars
+    gas = s.gas
 
     m_min = 1 #m >=1 for LRs, CRs
     l_min = 1 #l >=1 for LRs, CRs
@@ -603,14 +555,25 @@ def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
     a = strip_units(AddBinary.calcSemi(x1, x2, v1, v2, m1, m2))
     omega_b = 2.0*np.pi/AddBinary.aToP(a,m1+m2) #In units 1/day
 
+    #Make r steps smaller for higher accuracy
+    r_arr = np.linspace(r.min(),r.max(),len(r)*10)
+
+    #Compute mass of disk interior to given r
+    mask = np.zeros((len(gas),len(r_arr)),dtype=bool)
+    m_disk = np.zeros(len(r_arr))
+    for i in range(0,len(r_arr)):
+        mask[:,i] = gas['rxy'] < r_arr[i]
+        m_disk[i] = np.sum(gas['mass'][mask[:,i]])
+
     #Compute omega_disk in units 1/day (like omega_binary)
-    omega_d = 2.0*np.pi/AddBinary.aToP(r,m1+m2)
+    omega_d = 2.0*np.pi/AddBinary.aToP(r_arr,m1+m2+m_disk)
         
     #Compute kappa (radial epicycle frequency = sqrt(r * d(omega^2)/dr + 4*(omega^2))
     o2 = omega_d*omega_d
-    dr = (r.max()-r.min())/float(bins) #Assuming r has evenly spaced bins!
+    dr = r_arr[1] - r_arr[0]
+    #dr = (r.max()-r.min())/float(bins) #Assuming r has evenly spaced bins!
     drdo2 = np.gradient(o2,dr) #I mean d/dr(omega^2)
-    kappa = np.sqrt(r*drdo2 + 4.0*o2)
+    kappa = np.sqrt(r_arr*drdo2 + 4.0*o2)
    
     #Allocate arrays for output 
     omega_Lo = np.zeros((m_max,l_max))
@@ -628,8 +591,87 @@ def findCBResonances(s,r,r_min,r_max,m_max=4,l_max=4,bins=50):
             #Find corotation resonance where omega_d ~ omega_b
             o_c[l-l_min] = omega_d[np.argmin(np.fabs(omega_d-omega_b/float(l)))]
 
+    #Rescale omega_d, kappa to be of length bins again
+    omega_d = np.linspace(omega_d.min(),omega_d.max(),bins)
+    kappa = np.linspace(kappa.min(),kappa.max(),bins)
     return omega_Li, omega_Lo, o_c, omega_d, kappa
 
+#end function
+
+def calc_LB_resonance(s,m_min=1,m_max=3,l_min=1,l_max=3):
+    """
+    Computes the locations of various Lindblad Resonances in the disk as a 
+    function of binary pattern speed.
+    
+     Parameters
+     ----------
+     s : Tipsy-format snapshot
+     m_min, l_min : ints
+         minimum orders of (m,l) LR
+     m_max,l_max : ints
+         maximum orders of (m,l) LR
+
+    Returns
+    -------
+    OLR, ILR, CR: numpy arrays
+        location in AU of (m,l)th order Lindblad resonances
+    """
+
+    #Compute binary angular frequency in 1/day
+    x1 = s.stars[0]['pos']
+    x2 = s.stars[1]['pos']
+    v1 = s.stars[0]['vel']
+    v2 = s.stars[1]['vel']
+    m1 = s.stars[0]['mass']
+    m2 = s.stars[1]['mass']
+    omega_b = 2.0*np.pi/AddBinary.aToP(AddBinary.calcSemi(x1,x2,v1,v2,m1,m2),m1+m2)
+    guess = 0.05 #fsolve initial guess parameter
+
+    #Allocate space for arrays
+    OLR = np.zeros((m_max,l_max))
+    ILR = np.zeros((m_max,l_max))
+    CR = np.zeros(l_max)
+
+    #Define resonance functions
+    def OLR_func(omega_d, *args):
+        m = args[0]
+        l = args[1]
+        omega_b = args[2]
+        
+        return omega_d*(1.0 + float(l)/m) - omega_b
+        
+    #end function        
+        
+    def ILR_func(omega_d, *args):
+        m = args[0]
+        l = args[1]
+        omega_b = args[2]
+        
+        return omega_d*(1.0 - float(l)/m) - omega_b        
+        
+    #end function
+
+    def CR_func(omega_d, *args):
+        l = args[0]
+        omega_b = args[1]
+        
+        return omega_d - omega_b/float(l)
+
+    #end function
+
+    for m in range(m_min,m_max+1):
+        for l in range(l_min,l_max+1):
+            OLR[m-m_min,l-l_min] = fsolve(OLR_func,guess,args=(m,l,omega_b)) 
+            ILR[m-m_min,l-l_min] = fsolve(ILR_func,guess,args=(m,l,omega_b))
+            CR[l-l_min] = fsolve(CR_func,guess,args=(l,omega_b))
+            
+    #Convert from 1/day -> au
+    OLR = AddBinary.pToA(2.0*np.pi/OLR,m1+m2)
+    ILR = AddBinary.pToA(2.0*np.pi/ILR,m1+m2)
+    CR = AddBinary.pToA(2.0*np.pi/CR,m1+m2)        
+    
+    return OLR, ILR, CR
+    
 #end function
 
 def calcCoMVsRadius(s,rBinEdges,starFlag=False):
@@ -667,17 +709,20 @@ def calcCoMVsRadius(s,rBinEdges,starFlag=False):
 #end function
 
 def calcPoissonVsRadius(s,rBinEdges):
-	"""
-	Given a tipsy snapshot and radial bins, compute the Poisson noise, r/sqrt(N_particles), in each radial bin.
-	"""	
-	gas = s.gas
-	poisson = np.zeros(len(rBinEdges)-1)	
+    """
+    Given a tipsy snapshot and radial bins, compute the Poisson noise, r/sqrt(N_particles), in each radial bin.
+    """	
+    gas = s.gas
+    poisson = np.zeros(len(rBinEdges)-1)	
 	
-	for i in range(0,len(rBinEdges)-1):
-		rMask = np.logical_and(gas['rxy'].in_units('au') > rBinEdges[i], gas['rxy'].in_units('au') < rBinEdges[i+1])
-		N = len(gas[rMask])
-		r = (rBinEdges[i] + rBinEdges[i+1])/2.0
-		poisson[i] = r/np.sqrt(N)
+    for i in range(0,len(rBinEdges)-1):
+        rMask = np.logical_and(gas['rxy'].in_units('au') > rBinEdges[i], gas['rxy'].in_units('au') < rBinEdges[i+1])
+        N = len(gas[rMask])
+        r = (rBinEdges[i] + rBinEdges[i+1])/2.0
+        if N > 0:      
+            poisson[i] = r/np.sqrt(N)
+        else:
+            poisson[i] = 0.0
 	
 	return poisson
 	
@@ -799,12 +844,13 @@ def orbElemsVsRadius(s,rBinEdges,average=False):
     for i in range(0,len(rBinEdges)-1):
         if average: #Average over all gas particles in subsection
             rMask = np.logical_and(gas['rxy'].in_units('au') > rBinEdges[i], gas['rxy'].in_units('au') < rBinEdges[i+1])
-            if i > 0:            
+            if i > 0:
+                #Include mass of disk interior to given radius
                 mass = M + np.sum(gas[gas['rxy'] < rBinEdges[i]]['mass'])
             else:
                 mass = M
-            N = len(gas[rMask])
             g = gas[rMask]
+            N = len(g)
             if N > 0:
                 orbElems[:,i] = np.sum(AddBinary.calcOrbitalElements(g['pos'],com,g['vel'],zero,mass,g['mass']),axis=-1)/N
             else: #If there are no particles in the bin, set it as a negative number to mask out later
@@ -885,7 +931,7 @@ def diskAverage(s,r_out,bins=50,avgFlag=True):
         
     Returns
     -------
-    y: list
+    y : list
         disk-averaged Keplerian orbital elements [e,a,i,Omega,w,nu] in AU, degrees (depending on unit)
     """    
     
@@ -921,5 +967,30 @@ def diskAverage(s,r_out,bins=50,avgFlag=True):
     num = np.trapz(sig*r*x[:],r)
 
     return num/denom
+    
+#end function
+
+def forcedEccentricity(binary_sys,r):
+    """
+    Given a binary class object and an array of radial points in the disk, 
+    compute the forced eccentricity defined by Moriwaki et al. 2004 
+    eqn 9 to first order.  Extra factor of 2 to give e_pumped instead
+    of e_forced.  Note: This only applies when e_binary != 0 and when
+    m2/(m1 + m2) != 0.5 (i.e. only applies for eccentric, non-equal mass
+    binary)
+    
+    Parameters
+    ----------
+    binary_sys : binary.Binary class object
+    r : array
+        array of radii in AU
+        
+    Returns
+    -------
+        e_forced : array
+            array of len(r)
+    """
+    mu = binary_sys.m2/(binary_sys.m1 + binary_sys.m2)
+    return (5./2.)*(1.0 - 2.0*mu)*binary_sys.e*binary_sys.a/r
     
 #end function

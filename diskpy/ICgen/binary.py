@@ -39,7 +39,7 @@ class Binary(object):
         associated Keplerian orbital elements for the binary system.
         """
 
-        if state == "Cartesian" or state == "cartesian":
+        if state.lower() == "cartesian":
             # Ensure input is proper
             assert (len(
                 X) == 2), "Improper input. len(Input Array) != 2. len = %d.  State should be cartesian." % len(X)
@@ -51,7 +51,7 @@ class Binary(object):
             self.reshapeData()
             self.computeOrbElems()
 
-        elif state == "Kepler" or state == "kepler":
+        elif state.lower() == "kepler":
             # Ensure input is proper
             assert (len(
                 X) == 6), "Improper input. len(Input Array) != 6. len = %d.  State should be kepler" % len(X)
@@ -62,7 +62,7 @@ class Binary(object):
             self.computeCartesian()
             self.reshapeData()
 
-        elif state == "Snapshot" or state == "snapshot":
+        elif state.lower() == "snapshot":
             # Ensure input is indeed a tipsy snapshot of a binary system
             assert(len(
                 X.stars) == 2), "Improper input.  Is this a tipsy snapshot of a circumbinary system?"
@@ -85,12 +85,12 @@ class Binary(object):
 
         else:
             print "Default Binary init"
-            self.r = np.zeros((1, 3))
-            self.v = np.zeros((1, 3))
-            self.m1 = 0.0
-            self.m2 = 0.0
+            self.r = SimArray(np.zeros((1, 3)),'au')
+            self.v = SimArray(np.zeros((1, 3)),'km s**-1')
+            self.m1 = SimArray(0.0,'Msol')
+            self.m2 = SimArray(0.0,'Msol')
             self.e = 0.0
-            self.a = 0.0
+            self.a = SimArray(0.0,'au')
             self.i = 0.0
             self.Omega = 0.0
             self.w = 0.0
@@ -123,13 +123,18 @@ class Binary(object):
         Input:
         X is e, a, i, Omega, w, nu which are the eccentricity, semimajor axis (AU),
         inclination (degrees), Longitude of Ascending Node (degrees), argument of periapsis (degrees), and
-        the true anomaly (degrees).  Convert all values to float for consistency and as a sanity check.
+        the true anomaly (degrees).  Convert all values to float for consistency and as a sanity check
+        except for semimajor axis since that gets units we're interested in, au.
 
         Output:
         None
         """
+        
         self.e = float(X[0])
-        self.a = float(X[1])
+        if type(X[1]) != pynbody.array.SimArray:
+            self.a = SimArray(X[1],'au') #Assumes it's in au
+        else:
+            self.a = X[1]
         self.i = float(X[2])
         self.Omega = float(X[3])
         self.w = float(X[4])
@@ -139,12 +144,19 @@ class Binary(object):
 
     def reshapeData(self):
         """
-        Ensure data, specifically r and v arrays, are of the proper shape for further manipulation.
+        Ensure data, specifically r and v arrays, are of the proper shape for further manipulation.  
+        Also ensure data has proper units
         This is useful because sometimes they come in as a list, a (1,3) numpy array or a (3,) numpy array.
         Much easier to clean up upon initialization then have many checks in later functions.
         """
         self.r = self.r.reshape((1, 3))
         self.v = self.v.reshape((1, 3))
+        
+        #If masses aren't SimArrays in units M_sol, make that so
+        if type(self.m1) != pynbody.array.SimArray:
+            self.m1 = SimArray(self.m1,'Msol')
+        if type(self.m2) != pynbody.array.SimArray:
+            self.m2 = SimArray(self.m2,'Msol')
 
     # end function
 

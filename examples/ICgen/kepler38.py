@@ -8,30 +8,31 @@ from diskpy.ICgen import ICgen, binary
 import pynbody
 SimArray = pynbody.array.SimArray
 if __name__ == '__main__':
-    
+	# Note !!! Modified to be crazy unstable for movie purposes !!!
+	# Normal parameters are behind comments on same line 
+
     # Initialize a blank initial conditions (IC) object:
     IC = ICgen.IC()
     
-    # Let's set the star mass and gas mass assuming H2 = 2 (m_h = 1) and some metals added
     IC.settings.physical.M = SimArray(1.198, 'Msol') #Total stellar mass in solar masses
     IC.settings.physical.m = SimArray(2.35, 'm_p') #mean molecular mass
-    
+
     #Define masses of primary, secondary as pynbody SimArrays
     #Note, m1 + m2 == IC.settings.physical.M 
     #Only need to set if you're considernig a circumbinary system
-    m1 = SimArray(0.599,'Msol')
+    m1 = SimArray(0.949,'Msol')
     m2 = IC.settings.physical.M - m1
     
     #Scale the mass of the disk to be some fraction of the star mass
-    IC.settings.snapshot.mScale = 0.05
-    
+    IC.settings.snapshot.mScale = 1.0 #0.05    
+
     #Define whether the star is a single star or binary
     IC.settings.physical.starMode = 'binary'
     
     #Set binary system parameters.  If single star, comment this out
     #Define list of orbital elements of the following form:
     #X = [e, a [AU], i, Omega, w, nu] where all angles are in degrees
-    X = [0.0, 0.1469, 0.0, 0.0, 0.0, 0.0]
+    X = [0.00, 0.1469, 0.0, 0.0, 0.0, 0.0]
     IC.settings.physical.binsys = binary.Binary(X,m1,m2,'kepler')
     
     # Lets generate a disk with powerlaw from [Rin,Rd] au followed by a cutoff
@@ -45,13 +46,13 @@ if __name__ == '__main__':
     #	power: sigma ~ r^(power)
     IC.settings.sigma.kind = 'powerlaw'
     IC.settings.sigma.power = -0.5
-    IC.settings.sigma.Qmin = 1.5
+    IC.settings.sigma.Qmin = 0.7#1.5
     IC.settings.sigma.n_points = 1000
     
     IC.settings.sigma.Rd = SimArray(2.0,'au') #Outer edge of powerlaw part of disk
     IC.settings.sigma.rmax = 2.0 #Set rmax 
-    IC.settings.sigma.rin = 0.25 #Set inner disk radius
-    IC.settings.cutlength = 0.01 #Set exp cutoff length scale
+    IC.settings.sigma.rin = 0.25 #Set inner disk radius as fraction of Rd
+    IC.settings.cutlength = 0.01 #Set exp cutoff length scale as fraction of Rd
     IC.settings.pos_gen.method = 'random' #Instead of grid sampling, use random
     
     #This will save the ICs to
@@ -67,8 +68,8 @@ if __name__ == '__main__':
     # We'll use something of the form T = T0(r/r0)^Tpower
     IC.settings.physical.kind = 'powerlaw'
     IC.settings.physical.Tpower = -1  # exponent
-    IC.settings.physical.T0 = SimArray(750, 'K')  # temperature at r0
-    IC.settings.physical.Tmin = SimArray(150.0, 'K') # Minimum temperature
+    IC.settings.physical.T0 = SimArray(150, 'K') #SimArray(750, 'K')  # temperature at r0
+    IC.settings.physical.Tmin = SimArray(25, 'K')  #SimArray(150.0, 'K') # Minimum temperature
     IC.settings.physical.r0 = SimArray(1.0, 'au')
     
     # Lets have changa run on the local preset

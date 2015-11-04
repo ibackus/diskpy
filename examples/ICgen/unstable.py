@@ -7,16 +7,14 @@ See https://github.com/ibackus/ICgen
 from diskpy.ICgen import ICgen, binary
 import pynbody
 SimArray = pynbody.array.SimArray
-
 if __name__ == '__main__':
-    
+ 
     # Initialize a blank initial conditions (IC) object:
     IC = ICgen.IC()
     
-    # Let's set the star mass and gas mass assuming H2 = 2 (m_h = 1) and some metals added
-    IC.settings.physical.M = SimArray(1.198, 'Msol') #Total stellar mass in solar masses
+    IC.settings.physical.M = SimArray(1.2, 'Msol') #Total stellar mass in solar masses
     IC.settings.physical.m = SimArray(2.35, 'm_p') #mean molecular mass
-    
+
     #Define masses of primary, secondary as pynbody SimArrays
     #Note, m1 + m2 == IC.settings.physical.M 
     #Only need to set if you're considernig a circumbinary system
@@ -24,8 +22,8 @@ if __name__ == '__main__':
     m2 = IC.settings.physical.M - m1
     
     #Scale the mass of the disk to be some fraction of the star mass
-    IC.settings.snapshot.mScale = 4.0
-    
+    IC.settings.snapshot.mScale = 0.05    
+
     #Define whether the star is a single star or binary
     IC.settings.physical.starMode = 'binary'
     
@@ -45,8 +43,8 @@ if __name__ == '__main__':
     #   n_points : number of radial points to calculate sigma at
     #	power: sigma ~ r^(power)
     IC.settings.sigma.kind = 'powerlaw'
-    IC.settings.sigma.power = -1
-    IC.settings.sigma.Qmin = 1.0
+    IC.settings.sigma.power = -0.5
+    IC.settings.sigma.Qmin = 0.7
     IC.settings.sigma.n_points = 1000
     
     IC.settings.sigma.Rd = SimArray(2.0,'au') #Outer edge of powerlaw part of disk
@@ -58,17 +56,18 @@ if __name__ == '__main__':
     #This will save the ICs to
     # IC.p in the current directory
     IC.save()
-        
+    
+    # Change the settings used for numerically calculating the gas density    
     # Set the number of gas particles
-    IC.settings.pos_gen.nParticles = 100000
+    IC.settings.pos_gen.nParticles = 50000
     
     # Set up the temperature profile to use.  Available kinds are 'powerlaw'
     # and 'MQWS'
     # We'll use something of the form T = T0(r/r0)^Tpower
     IC.settings.physical.kind = 'powerlaw'
-    IC.settings.physical.Tpower = -0.5  # exponent
+    IC.settings.physical.Tpower = -1  # exponent
     IC.settings.physical.T0 = SimArray(300.0, 'K')  # temperature at r0
-    IC.settings.physical.Tmin = SimArray(50.0, 'K') # Minimum temperature
+    IC.settings.physical.Tmin = SimArray(25.0, 'K') # Minimum temperature
     IC.settings.physical.r0 = SimArray(1.0, 'au')
     
     # Lets have changa run on the local preset

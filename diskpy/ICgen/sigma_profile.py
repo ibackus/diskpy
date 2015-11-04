@@ -146,7 +146,7 @@ def viscous(settings):
     
 def powerlaw(settings, T = None):
     """
-    Generates a surface density profile according to a powerlaw sigma ~ 1/r
+    Generates a surface density profile according to a powerlaw sigma ~ r^p
     with a smooth interior cutoff and smooth exterior exponential cutoff.
     
     **ARGUMENTS**
@@ -201,6 +201,11 @@ def powerlaw(settings, T = None):
     A = SimArray(1.0,'Msol')/(2*np.pi*np.power(Rd,2))
     R = np.linspace(0,Rmax,n_points)
     r = np.array((R/Rd).in_units('1'))
+    # dflemin3 Nov. 4, 2015
+    # Made units more explicit via SimArrays
+    #r_units = Rd.units
+    #R = SimArray(np.linspace(0,Rmax,n_points),r_units)
+    #r = R/Rd
     
     # Calculate sigma
     # Powerlaw
