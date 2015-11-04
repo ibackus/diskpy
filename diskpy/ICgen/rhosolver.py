@@ -141,11 +141,11 @@ def setup_r_bins(IC, r=None):
         # Setup the initial r bins
         rmax = IC.sigma.r_bins[[-1]]
         nr = len(IC.sigma.r_bins) * 10
-        r = np.linspace(0, rmax, nr)
+        #r = np.linspace(0, rmax, nr)
         # dflemin3 Nov 4, 2015: made units more explicit
         # via SimArrays
-        #r_units = IC.sigma.r_bins.units
-        #r = SimArray(np.linspace(0, rmax, nr),r_units)        
+        r_units = IC.sigma.r_bins.units
+        r = SimArray(np.linspace(0, rmax, nr),r_units)        
         
     bin_error_tol = IC.settings.rho_calc.r_bin_tol
     minbins = IC.settings.rho_calc.min_r_bins
