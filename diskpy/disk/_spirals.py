@@ -13,6 +13,14 @@ import numpy as np
 
 from diskpy.pdmath import bin2dsum, dA
 
+def spiralpower(f, rbins=50, thetabins=50):
+    
+    rmesh, thetamesh, sigma = sigmacylindrical(f, rbins, thetabins)
+    power = np.std(sigma, -1)
+    r = rmesh[:,0]
+    
+    return power, r
+
 def powerspectrum(f, mMax=30, rbins=50):
     """
     The density power spectrum along the angular direction, summed along the
