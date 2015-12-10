@@ -79,18 +79,21 @@ def dA(redges, thetaedges):
     rdr = r * dr
     return np.dot(rdr[:, None], dtheta[None, :])
     
-def setupbins(x, bins=10):
+def setupbins(x, bins=10, spacing='linear'):
     """
     Sets up bins for data x (similar to numpy.histogram).  If bins is an 
-    integer, the min/max are set to include all data
+    integer, the min/max are set to include all data and bins are spaced 
+    according to spacing ('linear' or 'log')
     
     Parameters
     ----------
     
     x : arraylike
-        Data to be binned
+        Data to be binned or [xmin, xmax]
     bins : int or array-like
         Number of bins or binedges to use
+    spacing : str
+        'linear' or 'log'.  The spacing to use
     
     Returns
     -------
@@ -114,7 +117,18 @@ def setupbins(x, bins=10):
             xmin = x.min() * (1 - 2*eps)
             xmax = x.max() * (1 + 2*eps)
             
-        binedges = np.linspace(xmin, xmax, bins + 1)
+        if spacing is 'linear':
+            
+            binedges = np.linspace(xmin, xmax, bins + 1)
+            
+        elif spacing is 'log':
+            
+            binedges = \
+            np.exp(np.linspace(np.log(xmin), np.log(xmax), bins + 1))
+            
+        else:
+            
+            raise ValueError, "Unrecognized spacing {0}".format(spacing)
         
     else:
         # Bins is already binedges.  do nothing
