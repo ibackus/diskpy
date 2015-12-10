@@ -13,7 +13,124 @@ import numpy as np
 
 from diskpy.pdmath import bin2dsum, dA
 
+def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None, 
+                  paramname=None):
+    """
+    Estimates the spiral power as a function of r and t for a whole simulation.
+    Calculated using spiralpower
+    
+    Parameters
+    ----------
+    
+    flist : list
+        List of SimSnaps or a filelist
+    rbins, thetabins : int or arraylike
+        Number of bins OR bins to use
+    binspacing : str
+        'log' or 'linear'.  Spacing of radial bins to use
+    rlim : list or array
+        If rbins is an int, sets the min and max to consider
+    paramname : str
+        Optional filename of the param file, used for pynbody.load
+    
+    Returns
+    -------
+    
+    power : SimArray
+        power as a function of t and r.  power[i] gives power vs r at time i
+    redges : SimArray
+        Radial binedges used
+    """
+    
+    # Check to see if flist is a list of filenames
+    do_load = False
+    if isinstance(flist[0], str):
+        
+        do_load = True
+    
+    # ----------------------------------------------------
+    # If radial bins have not been supplied, set them up
+    # ----------------------------------------------------
+    if isinstance(rbins, int):
+        # rbins is the number of bins to use
+    
+        if rlim is None:
+            
+            # Limits have not been set
+            if do_load:
+                f = pynbody.load(flist[0], paramname=paramname)
+            else:
+                f = flist[0]
+            rmin = f.g['rxy'].min()
+            rmax = f.g['rxy'].max()
+            
+        else:
+            
+            # the limits are set
+            rmin = rlim[0]
+            rmax = rlim[1]
+            
+        # Now set up the bins
+        if binspacing == 'log':
+            
+            rbins = np.exp(np.linspace(np.log(rmin), np.log(rmax), rbins+1))
+            
+        elif binspacing == 'linear':
+            
+            rbins = np.linspace(rmin, rmax, rbins+1)
+            
+        else:
+            
+            raise ValueError, 'Unrecognized binspacing {0}'.format(binspacing)
+            
+    # ----------------------------------------------------
+    # Calculate power vs time
+    # ----------------------------------------------------
+    power = []
+    for i, f in enumerate(flist):
+        
+        if do_load:
+            
+            f = pynbody.load(f, paramname=paramname)
+        
+        p, r = spiralpower(f, rbins, thetabins)
+        power.append(p)
+        
+    # Re-format power as a SimArray (or array if no units)
+    if pynbody.units.has_units(power[0]):
+        
+        units = power[0].units
+        power = SimArray(power, units)
+        
+    else:
+        
+        power = np.asarray(power)
+        
+    return power, rbins
+    
+
 def spiralpower(f, rbins=50, thetabins=50):
+    """
+    Estimates the spiral power (non-axisymmetric power) as a function of radius
+    Power is calculated as the standard deviation of the surface density 
+    along the angular direction.
+    
+    Parameters
+    ----------
+    
+    f : SimSnap
+        Simulation snapshot
+    rbins, thetabins : int or arraylike
+        Number of bins OR the bins
+        
+    Returns
+    -------
+    
+    power : SimArray
+        Non-axisymmetric power as a function of r
+    r : SimArray
+        Radial binedges used
+    """
     
     rmesh, thetamesh, sigma = sigmacylindrical(f, rbins, thetabins)
     power = np.std(sigma, -1)
@@ -84,6 +201,9 @@ def sigmafft(f, rbins=50, thetabins=50):
     rmesh, thetamesh, sigma = sigmacylindrical(f, rbins, thetabins)
     sigfft = SimArray(np.fft.rfft(sigma), sigma.units)
     nm = sigfft.shape[1]
+    # Normalize sigma
+    sigfft /= (nm-1.0)
+    # Make r, m meshes
     m = np.arange(0, nm)
     rmesh2, mmesh = np.meshgrid(rmesh[:,0], m)
     
@@ -99,7 +219,7 @@ def sigmacylindrical(f, rbins=50, thetabins=50):
     f : SimSnap (see pynbody)
         Snapshot of a disk
     rbins, thetabins : int or arraylike
-        Number of bins or binedges
+        Number of bins or binedges.  Theta is calculated between 0 and 2 pi
     
     Returns
     -------
