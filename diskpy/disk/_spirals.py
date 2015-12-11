@@ -91,6 +91,7 @@ def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None,
         
         if do_load:
             
+            print i
             f = pynbody.load(f, paramname=paramname)
         
         p, r = spiralpower(f, rbins, thetabins)
