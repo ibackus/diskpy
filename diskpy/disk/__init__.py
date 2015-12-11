@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+init for diskpy.disk
+
 Created on Thu Jul 16 15:42:44 2015
 
 @author: ibackus

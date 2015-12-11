@@ -6,8 +6,10 @@ Created on Thu Jul 16 15:15:23 2015
 """
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib import animation
 import numpy as np
 import copy
+import os
 
 def gridplot(nrows, ncols=1, square=False):
     """
@@ -60,6 +62,110 @@ def gridplot(nrows, ncols=1, square=False):
         ax = ax.flatten()
 
     return ax
+
+def lineanimate(x, y, *args, **kwargs):
+    """
+    Makes an animation of a line vs time and saves as .mp4 file.  Uses 
+    matplotlib.animation.
+    
+    Parameters
+    ----------
+    
+    x : 1D array like
+        x points (same at every time step)
+    y : 2D array like
+        y points (change at each time step).  y[i] is plotted at frame i
+    *args
+        Optional additional arguments passed to matplotlib.plot
+    **kwargs
+        Optional keyword args.  The Some are used in movieplot, all others
+        are passed to matplotlib
+        
+    Keyword-arguments
+    -----------------
+    
+    fname : str
+        Filename to save movie to
+    xlim : list, arraylike
+        x limits of the plot
+    ylim : list, arraylike
+        y limits of the plot
+    fps : int
+        Frames per second
+    ax : matplotlib axes instance
+        axes instace to plot to.  Can be used to set up the plot beforehand 
+        (log scale, plot labels, title, etc)
+    verbose : bool
+        verbosity (true or false)
+    
+    Returns
+    -------
+    
+    None
+    """
+    
+    # Parse kwargs and set defaults
+    keys = ['fname', 'xlim', 'ylim', 'fps', 'ax','verbose']
+    filename = kwargs.get('fname', 'movie.mp4')
+    fps = kwargs.get('fps', 25)
+    verbose = kwargs.get('verbose', False)
+    
+    xlim = kwargs.get('xlim')
+    ylim = kwargs.get('ylim')
+    ax = kwargs.get('ax')
+    
+    if ax is None:
+        
+        ax = plt.gca()
+        
+    if xlim is None:
+        
+        xlim = [x.min(), x.max()]
+        
+    if ylim is None:
+        
+        ylim = [y.min(), y.max()]
+        
+    # Ignore keys not meant for plot calls
+    for key in keys:
+        if key in kwargs:
+            del kwargs[key]
+            
+    # Set up axes    
+    fig = ax.figure
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+    
+    # Draw an empty line to update
+    line, = ax.plot([], [], *args, **kwargs)
+    
+    # Initialization function for matplotlib animate.  Makes line empty
+    def init():
+        line.set_data([],[])
+        
+    # Frame drawing function
+    def animate(i):
+        
+        line.set_data(x, y[i])
+        plt.title(i)
+        
+        if verbose:
+            
+            print i
+            
+        return line, 
+    
+    iMax = len(y)
+    # Make animation
+    anim = animation.FuncAnimation(fig, animate, init_func=init, frames=iMax,\
+    interval=10, blit=True)
+    # Render frames and save
+    if os.path.exists(filename):
+        
+        os.remove(filename)
+        
+    anim.save(filename, fps=fps)
+    print 'Movie saved to ' + filename
     
 def heatmap(x, y, z, bins=10, plot=True, output=False):
     """
