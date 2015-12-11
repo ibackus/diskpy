@@ -12,9 +12,10 @@ SimArray = pynbody.array.SimArray
 import numpy as np
 
 from diskpy.pdmath import bin2dsum, dA
+from diskpy.disk import centerdisk
 
 def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None, 
-                  paramname=None):
+                  paramname=None, center=True):
     """
     Estimates the spiral power as a function of r and t for a whole simulation.
     Calculated using spiralpower
@@ -32,6 +33,8 @@ def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None,
         If rbins is an int, sets the min and max to consider
     paramname : str
         Optional filename of the param file, used for pynbody.load
+    center : bool
+        Shift snapshot center of mass to origin and place it in rest frame
     
     Returns
     -------
@@ -94,6 +97,9 @@ def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None,
             print i
             f = pynbody.load(f, paramname=paramname)
         
+        if center:
+            
+            centerdisk(f)
         p, r = spiralpower(f, rbins, thetabins)
         power.append(p)
         
