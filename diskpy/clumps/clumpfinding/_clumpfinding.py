@@ -791,6 +791,8 @@ def find_clumps(f, n_smooth=32, param=None, arg_string=None, seed=None, verbose=
     """
     Uses skid (https://github.com/N-BodyShop/skid) to find clumps in a gaseous
     protoplanetary disk.  
+    Also requires tipsy tools (https://github.com/N-BodyShop/tipsy_tools),
+    specifically totipnat
     
     The linking length used is equal to the gravitational softening length of
     the gas particles.
@@ -836,6 +838,26 @@ def find_clumps(f, n_smooth=32, param=None, arg_string=None, seed=None, verbose=
         particles coming after gas particles.  A zero means the particle belongs
         to no groups
     """
+    # Check for skid and totipnat
+    err = []
+    skid_path = utils.which('skid')
+    
+    if skid_path is None:
+        
+        err.append('<skid not found : https://github.com/N-BodyShop/skid>')
+        
+    totipnat_path = utils.which('totipnat')
+    
+    if totipnat_path is None:
+        
+        err.append('<totipnat (part of tipsy tools) not found : '
+        'https://github.com/N-BodyShop/tipsy_tools>')
+        
+    if len(err) > 0:
+        
+        err = '\n'.join(err)
+        raise RuntimeError, err
+        
     # Parse areguments
     if isinstance(f, str):
         
