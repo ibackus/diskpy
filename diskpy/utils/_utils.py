@@ -637,3 +637,34 @@ def get_module_names(fname):
         modulenames.append(modulename)
         
     return modulenames
+    
+def which(cmd):
+    """
+    Pythonic equivalent of UNIX which
+    
+    Parameters
+    ----------
+    
+    cmd : str
+        Command to find
+    
+    Returns
+    -------
+    
+    path : str -or- None
+        Full path to command which would be executed in current shell by cmd
+        If the command cannot be found, None is returned
+    """
+    
+    cmd_loc = None
+    for path in os.getenv('PATH').split(os.path.pathsep):
+        
+        fullpath = os.path.join(path, cmd)
+        if os.path.exists(fullpath):
+            
+            cmd_loc = fullpath
+            break
+        
+    return cmd_loc
+        
+    
