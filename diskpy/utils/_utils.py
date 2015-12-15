@@ -666,5 +666,52 @@ def which(cmd):
             break
         
     return cmd_loc
+
+def deepreload(module):
+    """
+    Convenience package for reloading diskpy modules when working.
+    
+    Parameters
+    ----------
+    
+    module : str
+        Module to reload
+    
+    Returns
+    -------
+    
+    command : str
+        Command to exec which will reload the module and its parents
         
+    Examples
+    --------
+    
+    >>> command = deepreload('diskpy.disk._spirals')
+    >>> exec(command)
+    
+    Or, equivalently:
+    
+    >>> exec(deepreload('diskpy.disk._spirals'))
+    
+    This is equivalent to:
+    
+    >>> reload(diskpy.disk._spirals)
+    >>> reload(diskpy.disk)
+    >>> reload(diskpy)
+    """
+    
+    if not isinstance(module, str):
+        
+        raise ValueError('module must be a str')
+        
+    modules = module.split('.')
+    nLevels = len(modules)
+    
+    command = ''
+    for i in reversed(range(nLevels)):
+        
+        x = '.'.join(modules[0:i+1])
+        command += 'reload(' + x + '); '
+    
+    return command
     

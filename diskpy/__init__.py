@@ -9,6 +9,7 @@ from global_settings import global_settings
 import pdmath
 import ICgen
 import utils
+from utils import deepreload as _deepreload
 
 import disk
 import pychanga
