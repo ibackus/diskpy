@@ -10,8 +10,9 @@ Created on Mon Nov  2 13:11:22 2015
 import pynbody
 SimArray = pynbody.array.SimArray
 import numpy as np
+from multiprocessing import Pool, cpu_count
 
-from diskpy.pdmath import bin2dsum, dA
+from diskpy.pdmath import bin2dsum, dA, setupbins
 from diskpy.disk import centerdisk
 
 def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None, 
@@ -144,16 +145,102 @@ def spiralpower(f, rbins=50, thetabins=50):
     r = rmesh[:,0]
     
     return power, r
+    
+def powerspectrum_t(flist, mMax=30, rbins=50, paramname=None, parallel=True,
+                    spacing='linear'):
+    """
+    Calculates the power spectrum along the angular direction for a whole
+    simulation (see powerspectrum).
+    
+    Loops through snapshots in a simulation, in parallel.  Uses the same radial
+    and angular bins for every timestep
+    
+    Parameters
+    ----------
+    
+    flist : list
+        A list of filenames OR of SimSnaps for a simulation
+    mMax : int
+        Maximum fourier mode to calculate
+    rbins : int or array
+        Number of radial bins or the binedges to use
+    paramname : str
+        Filename of .param file.  Used for loading if flist is a list of 
+        filenames
+    parallel : bool
+        Flag to perform this in parallel or not
+    spacing : str
+        If rbins is an int, this defines whether to use 'log' or 'linear' 
+        binspacing
+    
+    Returns
+    -------
+    
+    m : array
+        Number of the fourier modes
+    power : SimArray
+        Power spectrum vs time along the angular direction
+    """
+    # Set-up radial bins (use the same ones at all time steps)
+    f = flist[0]
+    if isinstance(f, str):
+        
+        f = pynbody.load(f, paramname=paramname)
+        
+    r = f.g['rxy']
+    rbins = setupbins(r, rbins, spacing)
+    
+    # Prepare arguments
+    nFiles = len(flist)
+    mMax = [mMax] * nFiles
+    rbins = [rbins] * nFiles
+    paramname = [paramname] * nFiles
+    
+    args = zip(flist, mMax, rbins, paramname)
+    
+    # Calculate power
+    if parallel:
+        
+        pool = Pool(cpu_count())
+        
+        try:
+            results = pool.map(_powerspectrum, args, chunksize=1)
+        finally:
+            pool.close()
+            pool.join()
+        
+    else:
+        
+        results = []
+        for f in flist:
+            
+            results.append(powerspectrum(f, mMax, rbins, paramname))
+            
+    # Format returns
+    m = results[0][0]
+    power_units = results[0][1].units
+    nr = len(results[0][1])
+    power = SimArray(np.zeros([nFiles, nr]), power_units)
+    
+    for i, result in enumerate(results):
+        
+        power[i] = result[1]
+        
+    return m, power
 
-def powerspectrum(f, mMax=30, rbins=50):
+def _powerspectrum(args):
+    
+    return powerspectrum(*args)
+
+def powerspectrum(f, mMax=30, rbins=50, paramname=None):
     """
     The density power spectrum along the angular direction, summed along the
     radial direction.
     
     Parameters
     ----------
-    f : SimSnap
-        Snapshot of a disk
+    f : SimSnap or str
+        Snapshot of a disk OR filename for snapshot
     mMax : int
         Maximum fourier mode to calculate
     rbins : int or array
@@ -168,6 +255,9 @@ def powerspectrum(f, mMax=30, rbins=50):
         Power in the fourier modes, summed along radial direction.  Power is
         take to be the square of the surface density fourier transform
     """
+    if isinstance(f, str):
+        
+        f = pynbody.load(f, paramname=paramname)
         
     r, m, sigtransform = sigmafft(f, rbins, 2*mMax + 1)
     m = m[0,:]
