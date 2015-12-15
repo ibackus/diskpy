@@ -243,6 +243,18 @@ def units_from_param(param):
         # Not iterable
         return _load_units(param)
         
+def get_units(x):
+    """
+    Returns units of x. Returns None if x has no units
+    """
+    if pb.units.has_units(x):
+        
+        return x.units
+        
+    else:
+        
+        return None
+    
 def strip_units(x):
     """
     Removes the units from a SimArray and returns as a numpy array.  Note
