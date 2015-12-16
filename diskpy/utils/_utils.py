@@ -245,7 +245,7 @@ def units_from_param(param):
         
 def get_units(x):
     """
-    Returns units of x. Returns None if x has no units
+    Returns units of x. Returns Unit('1.') if x has no units
     """
     if pb.units.has_units(x):
         
@@ -253,7 +253,7 @@ def get_units(x):
         
     else:
         
-        return None
+        return pb.units.Unit('')
     
 def strip_units(x):
     """

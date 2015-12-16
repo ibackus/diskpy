@@ -7,9 +7,13 @@ Created on Thu Jul 16 15:15:23 2015
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from matplotlib.colors import LogNorm
 import numpy as np
 import copy
 import os
+
+from diskpy.disk import powerspectrum_t
+from diskpy.utils import get_units
 
 def gridplot(nrows, ncols=1, square=False):
     """
@@ -215,3 +219,98 @@ def heatmap(x, y, z, bins=10, plot=True, output=False):
     if output:
 
         return x_mesh, y_mesh, z_binned
+        
+def waterfall(power, t=None, m=None, log=True, normalize=True, 
+              cmap='cubehelix', vmin=None, vmax=None, colorbar=True):
+    """
+    Generates a waterfall plot for power spectrum vs time for a simulation
+    
+    Parameters
+    ----------
+    
+    power : array, SimArray
+        2D shape (nt, nm) array of power spectrum
+    t : array, SimArray
+        (optional) time points.  1D array
+    m : array, SimArray
+        (optional) Fourier mode numbers.  1D array
+    log: bool
+        logscale the colors
+    normalize : bool
+        Normalize by the DC component at each time step
+    cmap : str or colormap
+        colormap to use
+    vmin, vmax : float
+        limits
+    colorbar : bool
+        Display colorbar
+    
+    Examples
+    --------
+    
+    >>> flist = diskpy.pychanga.get_fnames('snapshot')
+    >>> m, power = diskpy.disk.powerspectrum_t(flist, spacing='log')
+    >>> waterfall(power)
+    
+    """
+    # Initialize m and t
+    nt, nm = power.shape
+    
+    if m is None:
+        
+        m = np.arange(nm)
+        
+    if t is None:
+        
+        t = np.arange(nt)
+        
+    mMesh, tMesh = np.meshgrid(m, t)
+    
+    # Normalize
+    if normalize:
+        
+        # Power in DC component
+        p0 = power[:, 0, None]
+        # Make a 2D array (same shape as power)
+        p0 = np.dot(p0, np.ones([1, nm]))
+        # normalize
+        power = power/p0
+    
+    # Set up log-scale for plot
+    if log:
+        
+        norm = LogNorm(vmin, vmax)
+        
+    else:
+        
+        norm = None
+        
+    plt.pcolormesh(tMesh[:, 1:], mMesh[:, 1:], power[:, 1:], norm=norm, \
+    cmap = cmap)
+    
+    plt.ylim(m[1], m[-1])
+    plt.ylabel('m')
+    
+    tUnits = get_units(t)
+    if tUnits == 1:
+        
+        plt.xlabel('time step')
+        
+    else:
+        
+        plt.xlabel(' time $(' + tUnits.latex() + ')$')
+    
+    if colorbar:
+        
+        cbar = plt.colorbar()
+        if normalize:
+            
+            text = r'$A_m/A_0$'
+            
+        else:
+            
+            units = get_units(power)
+            text = r'$A_m (' + units.latex() + r') $'
+            
+        cbar.set_label(text)
+
