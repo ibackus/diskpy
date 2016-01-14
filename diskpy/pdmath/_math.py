@@ -432,8 +432,13 @@ def meshinterp(xedges, y, z, kind='linear', bounds_error=False, fill_value=0,
         
         # perform interpolation to make spline
         splines.append(interp1d(y[i], z[i], kind=kind, \
-        bounds_error=bounds_error, fill_value=fill_value, \
-        assume_sorted=assume_sorted))
+        bounds_error=bounds_error, fill_value=fill_value))
+        
+        # Assume_sorted doesn't work in older scipy versions
+#        # perform interpolation to make spline
+#        splines.append(interp1d(y[i], z[i], kind=kind, \
+#        bounds_error=bounds_error, fill_value=fill_value, \
+#        assume_sorted=assume_sorted))
         
     # Define the callable interplation function to return
     def meshspline(x1, y1):
