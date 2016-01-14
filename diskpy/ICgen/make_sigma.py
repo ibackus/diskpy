@@ -16,7 +16,8 @@ SimArray = pynbody.array.SimArray
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
+#from scipy.interpolate import InterpolatedUnivariateSpline as spline
+from _compatible_spline import spline
 from scipy.integrate import quad, cumtrapz
 from scipy.integrate import simps
 import copy as copier
