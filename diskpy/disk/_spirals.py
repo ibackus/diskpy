@@ -14,6 +14,7 @@ from multiprocessing import Pool, cpu_count
 
 from diskpy.pdmath import bin2dsum, dA, setupbins
 from diskpy.disk import centerdisk
+from diskpy.pychanga import snapshot_time
 
 def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None, 
                   paramname=None, center=True):
@@ -42,10 +43,12 @@ def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None,
     
     power : SimArray
         power as a function of t and r.  power[i] gives power vs r at time i
+    t : SimArray
+        Time of each snapshot in years
     redges : SimArray
         Radial binedges used
     """
-    
+    nSim = len(flist)
     # Check to see if flist is a list of filenames
     do_load = False
     if isinstance(flist[0], str):
@@ -91,6 +94,7 @@ def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None,
     # Calculate power vs time
     # ----------------------------------------------------
     power = []
+    t = SimArray(np.zeros(nSim), 'yr')
     for i, f in enumerate(flist):
         
         if do_load:
@@ -103,6 +107,7 @@ def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None,
             centerdisk(f)
         p, r = spiralpower(f, rbins, thetabins)
         power.append(p)
+        t[i] = snapshot_time(f, paramname=paramname).in_units('yr')
         
     # Re-format power as a SimArray (or array if no units)
     if pynbody.units.has_units(power[0]):
@@ -114,7 +119,7 @@ def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None,
         
         power = np.asarray(power)
         
-    return power, rbins
+    return power, t, rbins
     
 
 def spiralpower(f, rbins=50, thetabins=50):
