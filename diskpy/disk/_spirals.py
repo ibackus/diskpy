@@ -95,19 +95,31 @@ def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None,
     # ----------------------------------------------------
     power = []
     t = SimArray(np.zeros(nSim), 'yr')
+    
+    # Loop through simulation
     for i, f in enumerate(flist):
         
-        if do_load:
+        try:
             
-            print i
-            f = pynbody.load(f, paramname=paramname)
-        
-        if center:
+            if do_load:
+                
+                print i
+                f = pynbody.load(f, paramname=paramname)
             
-            centerdisk(f)
-        p, r = spiralpower(f, rbins, thetabins)
-        power.append(p)
-        t[i] = snapshot_time(f, paramname=paramname).in_units('yr')
+            if center:
+                
+                centerdisk(f)
+            p, r = spiralpower(f, rbins, thetabins)
+            power.append(p)
+            t[i] = snapshot_time(f, paramname=paramname).in_units('yr')
+            
+        except IOError as e:
+            
+            # Couldn't load the file for some reason
+            print 'Could not load file...setting power and t to NaN'
+            p = np.ones(len(rbins) - 1) * np.nan
+            power.append(p)
+            t[i] = np.nan
         
     # Re-format power as a SimArray (or array if no units)
     if pynbody.units.has_units(power[0]):
