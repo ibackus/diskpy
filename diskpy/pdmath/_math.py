@@ -89,7 +89,7 @@ def setupbins(x, bins=10, spacing='linear'):
     ----------
     
     x : arraylike
-        Data to be binned or [xmin, xmax]
+        Data to be binned or [xmin, xmax] if x has two elements
     bins : int or array-like
         Number of bins or binedges to use
     spacing : str
@@ -101,21 +101,25 @@ def setupbins(x, bins=10, spacing='linear'):
     binedges : array
         Bin edges
     """
-    
     # If bins is not iterable, it is the number of bins
     if not hasattr(bins, '__iter__'):
         
-        dtype = x.dtype
-        if isinstance(dtype, int):
-            
-            xmin = x.min() - 0.5
-            xmax = x.max() + 0.5
-            
+        if len(x) == 2:
+            # x is [xmin, xmax]
+            xmin, xmax = x
         else:
-            
-            eps = np.finfo(x.dtype).eps
-            xmin = x.min() * (1 - 2*eps)
-            xmax = x.max() * (1 + 2*eps)
+            # x is the data to be binned
+            dtype = x.dtype
+            if isinstance(dtype, int):
+                
+                xmin = x.min() - 0.5
+                xmax = x.max() + 0.5
+                
+            else:
+                
+                eps = np.finfo(x.dtype).eps
+                xmin = x.min() * (1 - 2*eps)
+                xmax = x.max() * (1 + 2*eps)
             
         if spacing is 'linear':
             
