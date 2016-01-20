@@ -14,9 +14,72 @@ from multiprocessing import Pool, cpu_count
 
 from diskpy.pdmath import bin2dsum, dA, setupbins
 from diskpy.disk import centerdisk
-from diskpy.pychanga import snapshot_time
+from diskpy.pychanga import snapshot_time, get_fnames
 
-def spiralpower_t(flist, rbins=50, thetabins=50, binspacing='log', rlim=None, 
+def _spiralpower_t(args):
+    return spiralpower_t(*args)
+    
+def pSpiralpower_t(simdirs, fprefix, rbins=100, thetabins=100, binspacing='log', \
+rlim=None, paramnames=None, center=True):
+    """
+    Parallel implementation of spiralpower_t for looping over simulation 
+    diretories.  Assumes simulation outputs are standard ChaNGa format.  
+    Only simdirs and paramnames
+    can change from simulation to simulation.  See spiralpower_t for other
+    parameters
+    
+    Parameters
+    ----------
+    
+    Returns
+    -------
+    
+    """
+    nSim = len(simdirs)
+    if not hasattr(paramnames, '__iter__'):
+        
+        paramnames = nSim*[paramnames]
+        
+    if not hasattr(fprefix, '__iter__'):
+        
+        fprefix = nSim * [fprefix]
+        
+    
+    # Generate the list of arguments for each simulation
+    arglist = []
+    
+    for i in range(nSim):
+        
+        flist = get_fnames(fprefix[i], simdirs[i])
+        paramname = paramnames[i]
+        arglist.append([flist, rbins, thetabins, binspacing, rlim, paramname, \
+        center])
+        
+    pool = Pool(cpu_count())
+    
+    try:
+        
+        results = pool.map(_spiralpower_t, arglist, chunksize=1)
+        
+    finally:
+        
+        pool.close()
+        pool.join()
+        
+    power = []
+    t = []
+    r = []
+    
+    for result in results:
+        
+        power.append(result[0])
+        t.append(result[1])
+        r.append(result[2])
+        
+    return power, t, r
+    
+
+def spiralpower_t(flist, rbins=100, thetabins=100, binspacing='log', rlim=None, 
                   paramname=None, center=True):
     """
     Estimates the spiral power as a function of r and t for a whole simulation.
