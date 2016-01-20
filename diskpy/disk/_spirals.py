@@ -31,8 +31,18 @@ rlim=None, paramnames=None, center=True):
     Parameters
     ----------
     
+    simdirs : list or arraylike
+        list of simulation directories (strings)
+    fprefix : str or list
+        prefix or prefixes of simulation snapshots (see pychanga.get_fnames)
+    **kwargs
+        See spiralpower_t for other parameters
+    
     Returns
     -------
+    
+    output : dict
+        Output for every simulation (see spiralpower_t)
     
     """
     nSim = len(simdirs)
@@ -76,8 +86,8 @@ rlim=None, paramnames=None, center=True):
         t.append(result[1])
         r.append(result[2])
         
-    return power, t, r
-    
+    output = {'power':power, 't': t, 'r': r}
+    return output
 
 def spiralpower_t(flist, rbins=100, thetabins=100, binspacing='log', rlim=None, 
                   paramname=None, center=True):
