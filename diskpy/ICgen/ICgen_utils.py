@@ -422,7 +422,7 @@ def changa_run(command, verbose = True, logfile_name=None, force_wait=False):
         
     return p
     
-def changa_command(param_name, preset=None, changa_bin=None, changa_args='', runner_args=''):
+def changa_command(param_name, preset='default', changa_bin=None, changa_args='', runner_args=''):
     """
     A utility for created command line commands for running ChaNGa
     
@@ -431,7 +431,7 @@ def changa_command(param_name, preset=None, changa_bin=None, changa_args='', run
     param_name : str
         Filename of the .param file used for ChaNGa
     preset : str
-        if None, the default preset is used
+        if None or 'default', the default preset is used
         Presets are defined in global_settings
     changa_bin : str
         Path to the ChaNGa binary to use.  If None, defaults are used
@@ -451,7 +451,7 @@ def changa_command(param_name, preset=None, changa_bin=None, changa_args='', run
     preset_dict = global_settings['changa_presets']
     
     # Load the preset    
-    if preset is None:
+    if (preset is None) or (preset is 'default'):
         
         preset = preset_dict['default']
         
