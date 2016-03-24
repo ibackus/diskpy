@@ -245,8 +245,12 @@ def units_from_param(param):
         
 def get_units(x):
     """
-    Retrieves the units of x if x has units or is a unit.  Otherwise returns
-    None
+    Retrieves the units of x if:
+        * x has a unit
+        * x is a unit
+        * x is a unit string (see pynbody)
+    
+    Else, returns None
     """
     
     if pb.units.is_unit(x):
@@ -256,6 +260,10 @@ def get_units(x):
     elif pb.units.has_unit(x):
         
         unit = x.units
+        
+    elif isinstance(x, str):
+        
+        unit = pb.units.Unit(x)
         
     else:
         
