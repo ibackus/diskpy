@@ -245,15 +245,23 @@ def units_from_param(param):
         
 def get_units(x):
     """
-    Returns units of x. Returns Unit('1.') if x has no units
+    Retrieves the units of x if x has units or is a unit.  Otherwise returns
+    None
     """
-    if pb.units.has_units(x):
+    
+    if pb.units.is_unit(x):
         
-        return x.units
+        unit = x
+        
+    elif pb.units.has_unit(x):
+        
+        unit = x.units
         
     else:
         
-        return pb.units.Unit('')
+        unit = None
+        
+    return unit
     
 def strip_units(x):
     """
