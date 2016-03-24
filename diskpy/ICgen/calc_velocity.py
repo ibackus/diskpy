@@ -5,7 +5,7 @@ Created on Wed Apr  9 15:39:28 2014
 @author: ibackus
 """
 
-__version__ = "$Revision: 1 $"
+__version__ = "$Revision: 2 $"
 # $Source$
 
 # External packages
@@ -27,14 +27,14 @@ max_particles=None, est_eps=True):
     """
     Attempts to calculate the circular velocities for particles in a thin
     (not flat) keplerian disk.  Also estimates gravitational softening (eps)
-    for the gas particles
+    for the gas particles and a reasonable time step (dDelta)
     
     Requires ChaNGa
     
     Note that this will change the velocities IN f
     
-    **ARGUMENTS**
-    
+    Parameters
+    ----------
     f : tipsy snapshot
         For a gaseous disk
     param : dict
@@ -60,9 +60,11 @@ max_particles=None, est_eps=True):
         Estimate eps (gravitational softening length).  Default is True.
         If False, it is assumed eps has already been estimated
         
-    **RETURNS**
-    
-    Nothing.  Velocities are updated within f as is eps
+    Returns
+    -------
+    dDelta : float
+        A reasonable time step for the simulation (in code units).  Velocties
+        and eps are updated in the snapshot.
     """
     # If the snapshot has too many particles, randomly select gas particles
     # To use for calculating velocity and make a view of the snapshot
@@ -204,11 +206,9 @@ max_particles=None, est_eps=True):
     a_total = load_acc(acc_name, low_mem=True)
     gc.collect()
     
-    # Clean-up
-    for fname in glob.glob(f_prefix + '*'): os.remove(fname)
-    
     # Estimate the accelerations due to pressure gradients/gas dynamics
     a_gas = a_total - a
+    absa = np.sqrt((a_total**2).sum(1)) # magnitude of the acceleration
     del a_total, a
     gc.collect()
     ar2_gas = (a_gas[:,0]*cosine + a_gas[:,1]*sine)*r**2
@@ -222,6 +222,17 @@ max_particles=None, est_eps=True):
     gc.collect()
     ratio_spline = extrap1d(r_bins, ratio)
     
+    # Calculate time stepping parameters
+    f0 = pynbody.load(f_prefix + '.000000')
+    etaGrav = param.get('dEta', 0.2)
+    dtGrav = etaGrav * np.sqrt(f0.g['eps']/absa)
+    etaCourant = param.get('dEtaCourant', 0.4)
+    mumax = f0.g['mumax']
+    mumax[mumax < 0] = 0
+    h = f0.g['smoothlength']
+    dtCourant = etaCourant * h/(1.6*f0.g['c'] + 1.2*mumax)
+    
+    
     # If not all the particles were used for calculating velocity,
     # Make sure to use them now
     if subview:
@@ -231,6 +242,9 @@ max_particles=None, est_eps=True):
         # Scale eps appropriately
         f.g['eps'] /= m_scale**(1.0/3)
         complete_snapshot.g['eps'] = f.g['eps'][[0]]
+        # Re-scale time steps
+        dtGrav /= m_scale**(1.0/6)
+        dtCourant /= m_scale**(1.0/3)
         
         # Rename complete snapshot
         f = complete_snapshot
@@ -242,7 +256,9 @@ max_particles=None, est_eps=True):
         cosine = (f.g['x']/r).in_units('1').astype(np.float32)
         sine = (f.g['y']/r).in_units('1').astype(np.float32)
         vel = f.g['vel']
-        
+    
+    dt = np.array([dtGrav, dtCourant]).min(0)
+    dDelta = np.median(dt)    
     
     ar2_calc = ar2*(1 + ratio_spline(r))
     del ar2
@@ -256,4 +272,7 @@ max_particles=None, est_eps=True):
     vel[:,0] = -v*sine
     vel[:,1] = v*cosine
     
-    return
+    # Clean-up
+    for fname in glob.glob(f_prefix + '*'): os.remove(fname)
+    
+    return dDelta

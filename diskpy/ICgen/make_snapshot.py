@@ -5,7 +5,7 @@ Created on Fri Mar 21 15:11:31 2014
 @author: ibackus
 """
 
-__version__ = "$Revision: 1 $"
+__version__ = "$Revision: 2 $"
 # $Source$
 
 import pynbody
@@ -15,10 +15,9 @@ import gc
 
 # diskpy packages
 from diskpy import global_settings
-from diskpy.utils import match_units, configsave, strip_units
+from diskpy.utils import match_units, strip_units
 from diskpy.pychanga import make_director, make_param
 import calc_velocity
-import ICgen_utils
 
 def snapshot_gen(ICobj):
     """
@@ -40,7 +39,6 @@ def snapshot_gen(ICobj):
     settings = ICobj.settings
     # filenames
     snapshotName = settings.filenames.snapshotName
-    paramName = settings.filenames.paramName
         
     # particle positions
     r = ICobj.pos.r
@@ -120,25 +118,15 @@ def snapshot_gen(ICobj):
     
     # -------------------------------------------------
     # CALCULATE VELOCITY USING calc_velocity.py.  This also estimates the 
-    # gravitational softening length eps
+    # gravitational softening length eps and a good timestep
     # -------------------------------------------------
     print 'Calculating circular velocity'
     preset = settings.changa_run.preset
     max_particles = global_settings['misc']['max_particles']
-    calc_velocity.v_xy(snapshot, param, changa_preset=preset, max_particles=max_particles)
-    
+    dDelta = calc_velocity.v_xy(snapshot, param, changa_preset=preset, max_particles=max_particles)
+    param['dDelta'] = dDelta    
+    print 'Calculated time step.  dDelta = ', dDelta
     gc.collect()
-    
-    # -------------------------------------------------
-    # Estimate time step for changa to use
-    # -------------------------------------------------
-    # Save param file
-    configsave(param, paramName, 'param')
-    # Save snapshot
-    snapshot.write(filename=snapshotName, fmt=pynbody.tipsy.TipsySnap)
-    # est dDelta
-    dDelta = ICgen_utils.est_time_step(paramName, preset)
-    param['dDelta'] = dDelta
     
     # -------------------------------------------------
     # Create director file
