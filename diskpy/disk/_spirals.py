@@ -438,4 +438,6 @@ def sigmacylindrical(f, rbins=50, thetabins=50):
     sigma = msum / dA(redges, thetaedges)
     # Do mesh grid
     rmesh, thetamesh = np.meshgrid(redges, thetaedges)
+    if pynbody.units.has_units(r):
+        rmesh = SimArray(rmesh, r.units)
     return rmesh.T, thetamesh.T, sigma
