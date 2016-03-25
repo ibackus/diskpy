@@ -15,6 +15,7 @@ __version__ = "$Revision: 2 $"
 import pynbody
 SimArray = pynbody.array.SimArray
 import gc
+import numpy as np
 
 # diskpy packages
 import diskpy
@@ -22,6 +23,7 @@ from diskpy import global_settings
 from diskpy.utils import match_units, strip_units
 from diskpy.pychanga import make_director, make_param, setup_units
 import calc_velocity
+import AddBinary
 
 # Constants
 G = SimArray(1.0,'G')
@@ -64,11 +66,62 @@ def snapshot_gen(IC):
     
     # Create director file
     director = init_director(IC, param)
+    # Handle binaries
+    starMode = IC.settings.physical.starMode.lower()
+    if starMode is 'binary':
+        
+        snapshot = make_binary(IC, snapshot)
+        
     # Finalize
     print 'Wrapping up'
-    setup_sinks(snapshot, param, r_sink = IC.pos.r.min())
+    setup_sinks(IC, snapshot, param)
     
     return snapshot, param, director
+    
+def make_binary(IC, snapshot):
+    """
+    Turns a snapshot for a single star into a snapshot of a binary system
+    
+    Parameters
+    ----------
+    IC : IC object
+    snapshot : SimSnap
+        Single star system to turn into a binary
+    
+    Returns
+    -------
+    snapshotBinary : SimSnap
+        A binary version of the simulation snapshot
+    """
+    snapshotBinary = pynbody.new(star=2, gas=len(snapshot.g))
+    # Copy gas particles over
+    for key in snapshot.gas.keys():
+        
+        snapshotBinary.gas[key] = snapshot.gas[key]
+        
+    # Load Binary system obj to initialize system
+    binsys = IC.settings.physical.binsys
+    x1,x2,v1,v2 = binsys.generateICs()
+    
+    #Assign star parameters assuming CCW orbit
+    snapshotBinary.star[0]['pos'] = x1
+    snapshotBinary.star[0]['vel'] = v1
+    snapshotBinary.star[1]['pos'] = x2
+    snapshotBinary.star[1]['vel'] = v2
+    
+    #Set stellar masses
+    priMass = binsys.m1
+    secMass = binsys.m2    
+    snapshotBinary.star[0]['mass'] = priMass
+    snapshotBinary.star[1]['mass'] = secMass
+    snapshotBinary.star['metals'] = snapshot.s['metals']
+    
+    # Estimate stars' softening length as fraction of distance to COM
+    d = np.sqrt(AddBinary.dotProduct(x1-x2,x1-x2))
+    pos_unit = snapshotBinary['pos'].units
+    snapshotBinary.star['eps'] = SimArray(abs(d)/4.0,pos_unit)
+    
+    return snapshotBinary
 
 def init_director(IC, param=None):
     """
@@ -96,39 +149,67 @@ def init_director(IC, param=None):
     
     return director
     
-def setup_sinks(snapshot, param, r_sink=None):
+def sink_radius(IC):
+    """
+    Determine a reasonable sink radius for the star particles depending on 
+    the star system type (e.g., single star, binary, etc...)
+    
+    Parameters
+    ----------
+    IC : IC object
+    
+    Returns
+    -------
+    r_sink : SimArray
+        Sink radius for star particles
+    """
+    
+    # Set up the sink radius
+    starMode = IC.settings.physical.starMode.lower()
+    
+    if starMode is 'binary':
+        
+        binsys = IC.settings.physical.binsys
+        #Set Sink Radius to be mass-weighted average of Roche lobes of two stars
+        r1 = AddBinary.calcRocheLobe(binsys.m1/binsys.m2,binsys.a) 
+        r2 = AddBinary.calcRocheLobe(binsys.m2/binsys.m1,binsys.a)
+        p = strip_units(binsys.m1/(binsys.m1 + binsys.m2))
+        r_sink = (r1*p) + (r2*(1.0-p))
+    
+    else:
+    
+        r_sink = IC.pos.r.min()
+        
+    return r_sink
+    
+def setup_sinks(IC, snapshot, param):
     """
     Sets up snapshot and param for stars that are sinks.
     
     Parameters
     ----------
+    IC : IC obj
     snapshot : SimSnap
     param : param dict
-    r_sink : SimArray-like
-        If provide, this will be the sink radius.  Otherwise it's taken to be
-        the minimum gas cylindrical radius
     
     Returns
     -------
     None
     """
     units = diskpy.pychanga.units_from_param(param)
-    
-    if r_sink is None:
-        
-        r_sink = snapshot.g['rxy'].min()
-        r_sink.convert_units(units['l_unit'])
-        
-    r_sink = strip_units(r_sink)
     # Set the star tforms to a negative number.  This allows UW ChaNGa treat 
     # stars as sink particles
-    snapshot.star['tform'] = -1.0    
-    # Update params
-    Mstar = snapshot.s['mass'].min()
-    Mstar.convert_units(units['m_unit'])
+    snapshot.star['tform'] = -1.0   
+    # Set sink radius for stars
+    r_sink = sink_radius(IC)
+    r_sink = strip_units(r_sink)
     param['dSinkBoundOrbitRadius'] = r_sink
     param['dSinkRadius'] = r_sink
+    # Set sink mass to be 90% of the smallest star
+    Mstar = snapshot.s['mass'].min()
+    Mstar.convert_units(units['m_unit'])
     param['dSinkMassMin'] = 0.9 * strip_units(Mstar)
+    # Turn sinks on
     param['bDoSinks'] = 1
 
 def init_param(IC, snapshot=None):
