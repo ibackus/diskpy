@@ -10,7 +10,10 @@ import copy
 import pynbody
 SimArray = pynbody.array.SimArray
 
-from diskpy.utils import configparser, strip_units
+from diskpy.utils import configparser, strip_units, get_units
+
+# Constants
+G = SimArray(1.0,'G')
 
 # Set up default filenames
 _dir = os.path.dirname(os.path.realpath(__file__))
@@ -182,6 +185,38 @@ def units_from_param(param):
 
         # Not iterable
         return _load_units(param)
+        
+def setup_units(m, x):
+    """
+    Sets up units for a ChaNGa simulation, defined by position and mass units.
+     * time unit = :math:`\\sqrt{L_{unit}^3/G M_{unit}}`
+     * velocity unit = :math:`L_{unit}/T_{unit}`
+     * temperature units = Kelvin
+    
+    Parameters
+    ----------
+    m, x : Unit, string, or SimArray
+        Define the mass and position units
+    
+    Returns
+    -------
+    units : dict
+        A dictionary containing the units
+    """
+    m_unit = get_units(m)
+    pos_unit = get_units(x)
+        
+    # time units are sqrt(L^3/GM)
+    t_unit = np.sqrt((pos_unit**3)*np.power((G*m_unit), -1)).units
+    # velocity units are L/t
+    v_unit = (pos_unit/t_unit).ratio('km s**-1')
+    # Make it a unit
+    v_unit = pynbody.units.Unit('{0} km s**-1'.format(v_unit))
+    # Temperature (just a hard-coded default)
+    temp_unit = get_units('K')
+    units = {'m': m_unit, 't': t_unit, 'v': v_unit, 'x': pos_unit, 
+    'temp': temp_unit}
+    return units
         
 def setup_param(param, snapshot=None, r_orb=1.0, n_orb=10.0, n_image=None, n_snap=100, \
 n_check=None):
