@@ -170,7 +170,12 @@ def init_param(IC, snapshot=None):
 def init_snapshot(IC):
     """
     Initialize a snapshot for the IC object.  Requires that positions have
-    been created.
+    been created.  Also sets:
+     * pos
+     * metals
+     * temp
+     * mass
+     * star eps
     
     Parameters
     ----------
