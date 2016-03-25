@@ -78,6 +78,7 @@ def snapshot_gen(IC):
     
     return snapshot, param, director
     
+    
 def make_binary(IC, snapshot):
     """
     Turns a snapshot for a single star into a snapshot of a binary system
@@ -93,6 +94,7 @@ def make_binary(IC, snapshot):
     snapshotBinary : SimSnap
         A binary version of the simulation snapshot
     """
+    # Initialize snapshot
     snapshotBinary = pynbody.new(star=2, gas=len(snapshot.g))
     # Copy gas particles over
     for key in snapshot.gas.keys():
@@ -100,7 +102,16 @@ def make_binary(IC, snapshot):
         snapshotBinary.gas[key] = snapshot.gas[key]
         
     # Load Binary system obj to initialize system
+    starMode = IC.settings.physical.starMode.lower()
     binsys = IC.settings.physical.binsys
+    
+    if starMode == 'stype':
+        
+        # Treate the primary as a star of mass mStar + mDisk
+        m_disk = strip_units(np.sum(snapshotBinary.gas['mass']))
+        binsys.m1 += m_disk
+        binsys.computeCartesian()
+        
     x1,x2,v1,v2 = binsys.generateICs()
     
     #Assign star parameters assuming CCW orbit
@@ -113,14 +124,28 @@ def make_binary(IC, snapshot):
     priMass = binsys.m1
     secMass = binsys.m2    
     snapshotBinary.star[0]['mass'] = priMass
-    snapshotBinary.star[1]['mass'] = secMass
+    snapshotBinary.star[1]['mass'] = secMass    
     snapshotBinary.star['metals'] = snapshot.s['metals']
     
-    # Estimate stars' softening length as fraction of distance to COM
-    d = np.sqrt(AddBinary.dotProduct(x1-x2,x1-x2))
-    pos_unit = snapshotBinary['pos'].units
-    snapshotBinary.star['eps'] = SimArray(abs(d)/4.0,pos_unit)
-    
+    if starMode == 'stype':
+        # We have the binary positions about their center of mass, (0,0,0), so 
+        # shift the position, velocity of the gas disk to be around the primary.
+        snapshotBinary.gas['pos'] += snapshotBinary.star[0]['pos']
+        snapshotBinary.gas['vel'] += snapshotBinary.star[0]['vel']  
+        # Remove disk mass from the effective star mass
+        snapshotBinary[0]['mass'] -= m_disk
+        binsys.m1 -= m_disk
+        # Star smoothing
+        snapshotBinary.star['eps'] = snapshot.star['eps']
+
+        
+    elif starMode == 'binary':
+        
+        # Estimate stars' softening length as fraction of distance to COM
+        d = np.sqrt(AddBinary.dotProduct(x1-x2,x1-x2))
+        pos_unit = snapshotBinary['pos'].units
+        snapshotBinary.star['eps'] = SimArray(abs(d)/4.0,pos_unit)
+        
     return snapshotBinary
 
 def init_director(IC, param=None):
@@ -300,7 +325,7 @@ def init_snapshot(IC):
     
     snapshot.star['pos'] = 0.
     snapshot.star['mass'] = m_star
-    # Estimate the star's softening length as the closest particle distance
-    snapshot.star['eps'] = r.min()
+    # Estimate the star's softening length as the closest particle distance/2
+    snapshot.star['eps'] = r.min()/2.
     
     return snapshot

@@ -564,7 +564,9 @@ class maker:
         elif self._parent.settings.physical.starMode == "stype":
             
             snapshot, snapshot_param, snapshot_director = \
-            make_snapshotSType.snapshot_gen(self._parent)
+            make_snapshot.snapshot_gen(self._parent)
+#            snapshot, snapshot_param, snapshot_director = \
+#            make_snapshotSType.snapshot_gen(self._parent)
             
         elif self._parent.settings.physical.starMode == "stypeSupplied":
             
