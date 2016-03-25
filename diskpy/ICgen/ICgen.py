@@ -546,41 +546,10 @@ class maker:
         
         Uses make_snapshot.py
         """
-        
-        # Generate snapshot for either a single star or binary depending on 
-        # IC.settings.physical.starMode
-        if self._parent.settings.physical.starMode == "single":		
-            
-            snapshot, snapshot_param, snapshot_director = \
-            make_snapshot.snapshot_gen(self._parent)
-            
-        elif self._parent.settings.physical.starMode == "binary":
-            
-            snapshot, snapshot_param, snapshot_director = \
-            make_snapshot.snapshot_gen(self._parent)            
-#            snapshot, snapshot_param, snapshot_director = \
-#            make_snapshotBinary.snapshot_gen(self._parent)
-            
-        elif self._parent.settings.physical.starMode == "stype":
-            
-            snapshot, snapshot_param, snapshot_director = \
-            make_snapshot.snapshot_gen(self._parent)
-#            snapshot, snapshot_param, snapshot_director = \
-#            make_snapshotSType.snapshot_gen(self._parent)
-            
-        elif self._parent.settings.physical.starMode == "stypeSupplied":
-            
-            snapshot, snapshot_param, snapshot_director = \
-            make_snapshotSTypeSupplied.snapshot_gen(self._parent)
-            
-        else:
-            
-            print "Invalid starMode given in ICobj.  Assuming default single star."
-            snapshot, snapshot_param, snapshot_director = \
-            make_snapshot.snapshot_gen(self._parent)
-            
+        # Generate snapshot	
+        snapshot, snapshot_param, snapshot_director = \
+        make_snapshot.snapshot_gen(self._parent)
         # Save to ICobj
         self._parent.snapshot = snapshot
         self._parent.snapshot_param = snapshot_param
         self._parent.snapshot_director = snapshot_director
-        
