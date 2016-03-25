@@ -557,7 +557,9 @@ class maker:
         elif self._parent.settings.physical.starMode == "binary":
             
             snapshot, snapshot_param, snapshot_director = \
-            make_snapshotBinary.snapshot_gen(self._parent)
+            make_snapshot.snapshot_gen(self._parent)            
+#            snapshot, snapshot_param, snapshot_director = \
+#            make_snapshotBinary.snapshot_gen(self._parent)
             
         elif self._parent.settings.physical.starMode == "stype":
             

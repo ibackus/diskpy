@@ -68,7 +68,7 @@ def snapshot_gen(IC):
     director = init_director(IC, param)
     # Handle binaries
     starMode = IC.settings.physical.starMode.lower()
-    if starMode is 'binary':
+    if starMode == 'binary':
         
         snapshot = make_binary(IC, snapshot)
         
@@ -167,7 +167,7 @@ def sink_radius(IC):
     # Set up the sink radius
     starMode = IC.settings.physical.starMode.lower()
     
-    if starMode is 'binary':
+    if starMode == 'binary':
         
         binsys = IC.settings.physical.binsys
         #Set Sink Radius to be mass-weighted average of Roche lobes of two stars
@@ -202,7 +202,7 @@ def setup_sinks(IC, snapshot, param):
     snapshot.star['tform'] = -1.0   
     # Set sink radius for stars
     r_sink = sink_radius(IC)
-    r_sink = strip_units(r_sink)
+    r_sink = float(strip_units(r_sink))
     param['dSinkBoundOrbitRadius'] = r_sink
     param['dSinkRadius'] = r_sink
     # Set sink mass to be 90% of the smallest star
