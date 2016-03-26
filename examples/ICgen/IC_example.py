@@ -86,12 +86,12 @@ if __name__ == "__main__":
     # This will run through the whole procedure and save a tipsy snapshot
     # to snapshot.std with a basic .param file saved to snapshot.param
     
-    ## 2) Otherwise we can go step by step
-    IC.maker.sigma_gen() # Generate surface density profile and CDF
-    IC.maker.rho_gen() # Calculate density according to hydrodynamic equilibrium
-    IC.maker.pos_gen() # Generate particle positions
-    IC.maker.snapshot_gen() # Generate the final tipsy snapshot with velocities etc
-    IC.save()
+#    ## 2) Otherwise we can go step by step
+#    IC.maker.sigma_gen() # Generate surface density profile and CDF
+#    IC.maker.rho_gen() # Calculate density according to hydrodynamic equilibrium
+#    IC.maker.pos_gen() # Generate particle positions
+#    IC.maker.snapshot_gen() # Generate the final tipsy snapshot with velocities etc
+#    IC.save()
     
     # This will run through the whole procedure and save a tipsy snapshot
     # to snapshot.std with a basic .param file saved to snapshot.param
