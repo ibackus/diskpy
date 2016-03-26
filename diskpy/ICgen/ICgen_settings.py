@@ -43,7 +43,7 @@ Load (read) settings from disk:
     settings.load('filename')
 """
 
-__version__ = "$Revision: 5 $"
+__version__ = "$Revision: 6 $"
 # $Source$
 __iversion__ = int(filter(str.isdigit,__version__))
 
@@ -63,7 +63,77 @@ SETTINGS
 ALL of these variable names MUST be set!  
 ************************************************** """
 
-class filenames:
+class settingsBase:
+    """
+    
+    """
+    def __init__(self, descr=None):
+        
+        self._description = descr
+    
+    def __call__(self):
+        
+        print_settings(self)
+        
+    def __repr__(self):
+        
+        return repr_settings(self)
+        
+class kindSettingsBase(settingsBase):
+    """
+    
+    """
+    def __init__(self, descr=None, kinds=[]):
+        """
+        
+        """
+        settingsBase.__init__(self, descr)
+        self._header = descr
+        
+        defaults = {}
+        for kind in kinds:
+            defaults[kind] = {}
+        self._defaults = defaults
+        self._globaldefaults = {}
+        
+    def _set_defaults(self):
+        """
+        Deletes all public attributes (except kind) and updates self.__dict__
+        with self._defaults[kind]
+        """        
+        kind = self.kind
+        
+        for key in self.__dict__.keys():
+            
+            if (key != 'kind') and (key[0] != '_') :
+                
+                self.__dict__.pop(key, None)
+                
+        defaults = self._defaults[kind]
+        self.__dict__.update(defaults)
+        self.__dict__.update(self._globaldefaults)
+    
+    def __setattr__(self, attr, value):
+        """
+        Override the default __setattr__ so that changing self.kind causes
+        the defaults to be set for that kind
+        """
+        self.__dict__[attr] = value
+        
+        if attr == 'kind':
+            
+            if value not in self._defaults.keys():
+                
+                raise ValueError, 'Unrecognized kind {0}'.format(value)
+                
+            self._set_defaults()
+            
+        elif attr == '_defaults':
+            
+            self._description = '{0}\nAvailable kinds:\n{1}'.format(
+            self._header, self._defaults.keys())
+    
+class filenames(settingsBase):
     """
     Filenames
     
@@ -75,7 +145,7 @@ class filenames:
     
     def __init__(self):
         
-
+        settingsBase.__init__(self, descr='Filenames')
         # Initial conditions filename
         self.IC_file_name = 'IC.p'
         # Filename to save tipsy snapshot to
@@ -85,12 +155,8 @@ class filenames:
         self.paramName = 'snapshot.param'
         # Default .director filename
         self.directorName = 'snapshot.director'
-        
-    def __call__(self):
-        
-        print_settings(self, 'Filenames:')
             
-class physical:
+class physical(settingsBase):
     """
     Defines default physical parameters
     
@@ -101,7 +167,9 @@ class physical:
     """
     
     def __init__(self, kind=None, binsys=None, starMode = 'single'):
-        #editted by dflemin3 07/10/2015
+        
+        settingsBase.__init__(self, descr='General physical parameters:')
+        
         # Molecular mass of the gass.  If m = None, Assumed to be H2, m = 2.00132 m_p
         self.m = SimArray(2.00132,'m_p')
         # Mass of the star (or total mass of binary system).  If M = None, Assumed to be 0.33 Msol
@@ -128,11 +196,8 @@ class physical:
             
         self.kind = kind # Type of temperature profile.  See calc_temp.py
         
-    def __call__(self):
         
-        print_settings(self, 'General physical parameters:')
-        
-class sigma:
+class sigma(kindSettingsBase):
     """
     Settings for generating a surface density profile
     
@@ -143,79 +208,40 @@ class sigma:
     """
     def __init__(self, kind='powerlaw'):
         
-        # Kind of surface density profile to use.  Options:
-        #   'powerlaw'
-        #   'MQWS'
-        #   'viscous'
-        # Setting self.kind automatically initializes the default settings
-        # for that kind
+        if kind is None:
+            
+            kind = 'none'
+            
+        kindSettingsBase.__init__(self, 'Sigma profile parameters')        
+        # Define the defaults
+        powerlaw = {'Rd': SimArray(1.0,'au'),
+                    'rin': 0.5,
+                    'rmax': 2.3,
+                    'cutlength': 0.3,
+                    'Qmin': 1.5,
+                    'n_points': 1000,
+                    'power': -1.}
+        mqws = {'rin': 4.0,
+                'rout': 20.0,
+                'rmax': None,
+                'power': -1,
+                'm_disk': SimArray(0.1, 'Msol'),
+                'n_points': 1000,
+                'Qmin': 1.5}
+        viscous = {'Rd': SimArray(1.0, 'au'),
+                   'rin': 0.1,
+                   'rmax': 2.0,
+                   'power': -1,
+                   'm_disk': SimArray(0.1, 'Msol'),
+                   'n_points': 1500,
+                   'gamma': 0.9}
+        none = {}
+        self._defaults = {'powerlaw': powerlaw, 'mqws': mqws, 'MQWS': mqws,
+                          'viscous': viscous, 'none': none}
+        self._globaldefaults = {'innercut': None, 'outercut': None}
         self.kind = kind
-        
-    def _set_defaults(self):
-        # Set default attributes:
-        # First delete all attributes but kind
-        kind = self.kind
-        for key in self.__dict__.keys():
-            
-            if key != 'kind':
-                
-                self.__dict__.pop(key, None)
-                
-        # Now set attributes
-        if kind == 'powerlaw':
-            
-            self.Rd = SimArray(1.0,'au')
-            self.rin = 0.5
-            self.rmax = 2.3
-            self.cutlength = 0.3
-            self.Qmin = 1.5
-            self.n_points = 1000
-            self.power = -1 #Power on powerlaw of form sigma ~ r^(power)
-       
-     
-        if (kind == 'mqws') | (kind == 'MQWS'):
-            
-            self.rin = 4.0
-            self.rout = 20.0
-            self.rmax = None
-            self.power = -1
-            self.m_disk = SimArray(0.1, 'Msol')
-            self.n_points = 1000
-            self.Qmin = 1.5
-            
-        if kind == 'viscous':
-            
-            self.Rd = SimArray(1.0, 'au')
-            self.rin = 0.1
-            self.rmax = 2.0
-            self.power = -1
-            self.m_disk = SimArray(0.1, 'Msol')
-            self.n_points = 1500
-            self.gamma = 0.9
-            
-        # innercut and outercut determine where to apply a hard cut to the
-        # surface density (if anywhere).  for example, to set sigma=0 for
-        # R > 2 au, do: outercut = SimArray(2,'au')
-        self.innercut = None
-        self.outercut = None
-            
-    def __setattr__(self, attr, value):
-        """
-        Override the default __setattr__ so that changing self.kind causes
-        the defaults to be set for that kind
-        """
-        self.__dict__[attr] = value
-        
-        if attr == 'kind':
-            
-            self._set_defaults()
-            
-        
-    def __call__(self):
-        
-        print_settings(self, 'Sigma profile parameters:')
 
-class rho_calc:
+class rho_calc(settingsBase):
     """
     Settings for calculating rho(z,r)
     
@@ -227,7 +253,7 @@ class rho_calc:
     
     def __init__(self):
         
-
+        settingsBase.__init__(self, 'Rho calculation settings')
         # The number of radial data points to calculate rho(z,r)
         # If None (default), reasonable r bins are automatically estimated
         self.nr = None
@@ -241,11 +267,8 @@ class rho_calc:
         # Accuracy requirement for r bins
         self.r_bin_tol = 1e-3
         
-    def __call__(self):
         
-        print_settings(self, 'Rho calculation settings:')
-        
-class pos_gen:
+class pos_gen(settingsBase):
     """
     Settings for generating random positions [STEP 2]
     
@@ -257,16 +280,14 @@ class pos_gen:
     
     def __init__(self):
         
+        settingsBase.__init__(self, 'Position generator settings:')
         # Number of random positions to generate:
         self.nParticles = 40411
         # The method for generating positions
         self.method = 'grid'
         
-    def __call__(self):
         
-        print_settings(self, 'Position generator settings:')
-        
-class snapshot:
+class snapshot(settingsBase):
     """
     Settings for generating tipsy files (includes particle mass, temp, and vel.)
     [STEP 3]
@@ -274,6 +295,7 @@ class snapshot:
     
     def __init__(self, nParticles=0):
         
+        settingsBase.__init__(self, 'Tipsy snapshot generator settings')
         # Factor by which to scale the disc mass before time evolving it up to
         # a final mass of Mdisc (see above).  Should be between 0 and 1
         # Default: 1.0 (no scaling done).  Final particle masses are scaled
@@ -282,18 +304,15 @@ class snapshot:
         
         # Other defaults that shouldn't need to be changed
         self.metals = 1.0
-        
-    def __call__(self):
-        
-        print_settings(self, 'Tipsy snapshot generator settings:')
                 
-class changa_run:
+class changa_run(settingsBase):
     """
     Settings for running ChaNGa (needed when calculating velocities, eps, so on)
     """
     
     def __init__(self, preset = 'local'):
         
+        settingsBase.__init__(self, 'ChaNGa run options')
         # Run configuration to use.  See ICgen_utils.changa_command for options
         self.preset = preset
         # Additional arguments for all ChaNGa calls
@@ -305,11 +324,8 @@ class changa_run:
         # Save to log file
         self.logfile_name = None
         
-    def __call__(self):
         
-        print_settings(self, 'ChaNGa run options:')
-        
-class settings:
+class settings(settingsBase):
     """
     settings for ICgen
     
@@ -367,6 +383,8 @@ class settings:
         
         self.__version__ = __iversion__
         
+        settingsBase.__init__(self, descr='IC settings')
+        
         if settings_filename is None:
             # Load the defaults
             self.filenames = filenames()
@@ -380,26 +398,6 @@ class settings:
         else:
             
             self.load(settings_filename)
-        
-    def __call__(self):
-        
-        self.filenames()
-        print ''
-        # Check if sigma is a setting (needed for compatibility)
-        if hasattr(self,'sigma'):
-            
-            self.sigma()
-            print ''
-            
-        self.rho_calc()
-        print ''
-        self.pos_gen()
-        print ''
-        self.snapshot()
-        print ''
-        self.physical()
-        print ''
-        self.changa_run()
         
     def save(self,settings_filename = None):
         """
@@ -462,16 +460,34 @@ class settings:
                 old.__dict__.update(new.__dict__)
                 setattr(self, key, old)
                 
-        
-def print_settings(setting, header=None):
+
+def repr_settings(setting):
     
-    print '------------------------'
-    print header
-    print ''
+    header = getattr(setting, '_description', None)
+    string = '------------------------\n'
+    string += '{0}\n\n'.format(header)
     
     for key,val in setting.__dict__.iteritems():
             
-            if pynbody.units.has_units(val):
-                print '{0} : {1} {2}'.format(key,val,val.units)
+            if key[0] == '_':
+                
+                pass
+            
+            elif isinstance(val, settingsBase):
+                
+                string += '{0}\n'.format(val)
+                
+            elif pynbody.units.has_units(val):
+                
+                string += '{0} : {1} {2}\n'.format(key,val,val.units)
+                
             else:
-                print '{0} : {1}'.format(key,val)
+                
+                string += '{0} : {1}\n'.format(key,val)
+    
+    return string
+
+    
+def print_settings(setting):
+    
+    print repr_settings(setting)
