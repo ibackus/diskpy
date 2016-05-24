@@ -8,6 +8,7 @@ Created on Thu Jul 16 14:26:07 2015
 import os
 import numpy as np
 import scipy.interpolate as interp
+from scipy.integrate import cumtrapz
 interp1d = interp.interp1d
 import pynbody as pb
 SimArray = pb.array.SimArray
@@ -139,6 +140,55 @@ def setupbins(x, bins=10, spacing='linear'):
         binedges = bins
     
     return binedges
+    
+def cdf(x, pdf):
+    """
+    Estimates the cumalitive distribution fuction from the pdf.  The pdf does
+    not need to be normalized.  Sections where the pdf=0 are dropped so that
+    the cdf is monotonically increasing.
+    
+    Parameters
+    ----------
+    x : 1D array-like
+        positions the pdf is evaluated at
+    pdf : 1D array
+        Probability distribution function.  Does not need to be normalized
+    
+    Returns
+    -------
+    x : array-like
+        Positions, potentially shorter than input x or pdf
+    cdf : array-like
+        Cumulative distribution function.  Same shape as output x
+    """
+     # Calculate the CDF from prob
+    nx = len(x)
+    CDF = np.zeros(nx)
+    CDF[1:] = cumtrapz(pdf,x)
+    if CDF.max() <= 0.0:
+        raise ValueError, "PDF maximum is <= 0.  Cannot normalize"
+    CDF /= CDF.max()
+    # Calculate the inverse CDF.
+    # Assume CDF is approximately monotonic and sort to force it to be
+    ind = CDF.argsort()
+    CDF = CDF[ind]
+    x = x[ind]
+    # Drop values where CDF is constant (ie, prob = 0)
+    mask = np.ones(nx,dtype='bool')
+    for n in range(1,nx):
+        if CDF[n] == CDF[n-1]:
+            mask[n] = False
+            
+    nVals = mask.sum()
+    CDF[0:nVals] = CDF[mask]
+    x[0:nVals] = x[mask]
+    
+    if nVals < nx:
+        # Pad the remainder of values
+        x[nVals:] = x.max()
+        CDF[nVals:] = 2.
+    
+    return x, CDF
 
 def resolvedbins(x, y, minbins=200, ftol=None):
     """
