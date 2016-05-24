@@ -6,8 +6,8 @@ Created on Thu Jul 16 14:25:56 2015
 """
 
 from _math import extrap1d, meshinterp, smoothstep, digitize_threshold, \
-binned_mean, kepler_pos, resolvedbins, dA, setupbins, bin2dsum, bin2d
+binned_mean, kepler_pos, resolvedbins, dA, setupbins, bin2dsum, bin2d, cdf
 
 __all__ = ['extrap1d', 'meshinterp', 'smoothstep', 'digitize_threshold', 
 'binned_mean', 'kepler_pos', 'resolvedbins', 'dA', 'setupbins', 'bin2dsum', 
-'bin2d']
+'bin2d', 'cdf']
