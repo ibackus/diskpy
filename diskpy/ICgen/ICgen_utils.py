@@ -359,7 +359,7 @@ def est_time_step(param_name, preset='default', dDelta0=100, changa_args='', run
     return dDelta
             
 
-def changa_run(command, verbose = True, logfile_name=None, force_wait=False):
+def changa_run(command, verbose = True, logfile_name=None, force_wait=True):
     """
     A wrapper for running ChaNGa
     
@@ -375,8 +375,7 @@ def changa_run(command, verbose = True, logfile_name=None, force_wait=False):
     logfile_name : str
         (optional) If set, saves ChaNGa output to file
     force_wait : bool
-        (optional) Default = False
-        If set, forces wait on ChaNGa before completion
+        Deprecated
     
     **RETURNS**
     
@@ -390,35 +389,28 @@ def changa_run(command, verbose = True, logfile_name=None, force_wait=False):
         logfile.close()
         logfile = open(logfile_name, 'a')
     
-    if verbose:
-        
-        output = subprocess.PIPE
-        p = subprocess.Popen(command.split(), stderr=output, stdout=output)
-        
+    output = subprocess.PIPE
+    p = subprocess.Popen(command.split(), stderr=output, stdout=output)
+    
+    try:
+    
         for line in iter(p.stdout.readline, ''):
             
-            print line,
+            if verbose:
+                
+                print line,
+                
             if logfile_name is not None:
                 
                 logfile.write(line)
                 
         p.wait()
         
-    else:
+    finally:
         
         if logfile_name is not None:
             
-            output = logfile
-            
-        else:
-            
-            output = subprocess.PIPE
-            
-        p = subprocess.Popen(command.split(), stderr=output, stdout=output)
-        
-    if force_wait:
-        
-        p.wait()
+            logfile.close()
         
     return p
     
