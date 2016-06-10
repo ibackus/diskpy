@@ -139,6 +139,11 @@ def setupbins(x, bins=10, spacing='linear'):
         # Bins is already binedges.  do nothing
         binedges = bins
     
+    # Set-up units
+    if pb.units.has_units(x):
+        
+        binedges = SimArray(binedges, x.units)
+        
     return binedges
     
 def cdf(x, pdf):
