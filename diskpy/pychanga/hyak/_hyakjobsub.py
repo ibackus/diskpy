@@ -15,8 +15,8 @@ from diskpy import global_settings
 from diskpy.utils import configparser, configsave, units_from_param
 
 
-def pbs_script(workdir, param='snapshot.param', nodes=1, ppn=12, walltime=48, \
-jobname='PBS_job', backfill=True, email=None, changa_preset=None, **kwargs):
+def pbs_script(workdir=None, param='snapshot.param', nodes=1, ppn=12, walltime=48, \
+jobname='PBS_job', backfill=False, email=None, changa_preset=None, **kwargs):
     """
     A not very robust function to generate PBS submission scripts for ChaNGa
     jobs on hyak.  Some of the requirements include:
@@ -35,7 +35,8 @@ jobname='PBS_job', backfill=True, email=None, changa_preset=None, **kwargs):
     *Required*
     
     workdir : str
-        Directory of the simulation
+        (optional) Directory of the simulation.  Default is current working
+        directory
         
     *Optional*
     
@@ -66,10 +67,13 @@ jobname='PBS_job', backfill=True, email=None, changa_preset=None, **kwargs):
     PBS_script : str
         A string for the PBS script.  Can be saved easily to file
     """
-    
+    if workdir is None:
+        
+        workdir = os.getcwd()
+        
     # Setup filenames
-    param_full = os.path.join(workdir, param)
-    outfile = os.path.join(workdir, 'changa.out')
+    param_full = '$workdir/' + param
+    outfile = '$workdir/' + 'changa.out'
     fprefix = os.path.splitext(param)[0]
     
     # Get changa preset
