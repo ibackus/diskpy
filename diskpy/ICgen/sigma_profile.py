@@ -49,6 +49,10 @@ def make_profile(ICobj):
         
         r, sigma = viscous(ICobj.settings)
         
+    elif (kind == 'gaussring'):
+        
+        r, sigma = gaussian_ring(ICobj.settings)
+        
     else:
         
         raise TypeError, 'Could not make profile for kind {0}'.format(kind)
@@ -91,6 +95,46 @@ def _applycut(r, sigma, rcut, outer=True):
         sigma[mask] = 0
         
     return sigma
+
+def gaussian_ring(settings):
+    """
+    Generates a gaussian ring surface density profile according to:
+    
+    .. math::  \\Sigma = \\Sigma_0 exp(-(R-R_d)^2/2a^2)
+    
+    .. math:: \\Sigma_0 = M_d/(2\\pi)^{3/2} a R_d
+    
+    Here we call a the ringwidth.
+    
+    The max radius is determined automatically
+    
+    Parameters
+    ----------
+    settings : IC settings
+        settings like those contained in an IC object (see ICgen_settings.py)
+        
+    Returns
+    -------
+    R : SimArray
+        Radii at which sigma is calculated
+    sigma : SimArray
+        Surface density profile as a function of R
+    
+    """
+    Rd = settings.sigma.Rd
+    ringwidth = settings.sigma.ringwidth
+    n_points = settings.sigma.n_points
+    m_disk = settings.sigma.m_disk
+    
+    Rmax = (Rd + 5*ringwidth).in_units(Rd.units)
+    Rmax = max(Rmax, Rd*2.0)
+    R = SimArray(np.linspace(0, Rmax, n_points), Rd.units)
+    sigma0 = m_disk / (ringwidth * Rd) 
+    sigma0 *= (2*np.pi)**-1.5
+    expArg = -(R-Rd)**2 / (2*ringwidth**2)
+    expArg.convert_units('1')
+    sigma = sigma0 * np.exp(expArg)
+    return R, sigma
     
     
 def viscous(settings):

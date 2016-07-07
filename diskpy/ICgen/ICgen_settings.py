@@ -193,6 +193,13 @@ class sigma:
             self.n_points = 1500
             self.gamma = 0.9
             
+        if kind == 'gaussring':
+            
+            self.Rd = SimArray(1.0, 'au')
+            self.ringwidth = SimArray(0.1, 'au')
+            self.m_disk = SimArray(0.1, 'Msol')
+            self.n_points = 1000
+            
         # innercut and outercut determine where to apply a hard cut to the
         # surface density (if anywhere).  for example, to set sigma=0 for
         # R > 2 au, do: outercut = SimArray(2,'au')
