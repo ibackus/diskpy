@@ -86,7 +86,7 @@ class vertical_solver():
         res = self.residual(rho)
         return (res**2).sum()
         
-    def _fit_h(self, h0=1):
+    def _fit_h(self, h0=0.3):
         """
         Fit a functional form to minimize the sum of the squares of the 
         residual for density of form exp(-z^2/2h^2)
