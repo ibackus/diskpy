@@ -25,6 +25,42 @@ _changadefault = os.path.join(_dir, 'changadefaults.param')
 _paramdefault = configparser(_paramdefault, 'param')
 _directordefault = configparser(_directordefault, 'director')
 _changadefault = configparser(_changadefault, 'param')
+
+def getpar(key, param={}):
+    """
+    Attempts to retrieve the key from param or from the ChaNGa default param 
+    options.  Raises ValueError if key not found in either.
+    
+    Parameters
+    ----------
+    key : object
+    param : str or dict
+        Paramname or param dict (see diskpy.utils.configparser).  If not 
+        supplied, only the ChaNGa defaults are searched
+    
+    Returns
+    -------
+    value 
+        The value, taken from param if present, otherwise taken from the ChaNGa
+        default params
+    """
+    if isinstance(param, str):
+        
+        param = configparser(param, 'param')
+        
+    if key in param:
+        
+        value = param[key]
+        
+    elif key in _changadefault:
+        
+        value = _changadefault[key]
+        
+    else:
+        
+        raise ValueError, "Could not find {0} in param or defaults".format(key)
+        
+    return value
     
 def make_director(sigma_min, sigma_max, r, resolution=1200, filename='snapshot'):
     """
