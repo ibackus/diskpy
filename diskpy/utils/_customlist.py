@@ -13,7 +13,7 @@ class CustomList():
     customlist = CustomList(iterable)
     
     A modified implementation of a python list where all data access (i.e. 
-    retreiving and setting items) takes place via __setitem__ and __getitem__.
+    retreiving and setting items) takes place via _setOneItem and __getOneItem.
     This strategy makes this Class easy to subclass and control the behavior
     of setting/getting items.
     
@@ -22,6 +22,25 @@ class CustomList():
     
     Printing (e.g. __repr__ and __str__) methods are implemented.  A custom
     class name can be printing by setting customlist._className = "class name"
+    
+    Examples
+    --------
+    Create a sub-class to apply some formatting before and after 
+    setting/retrieving data:
+    
+    .. code-block:: python
+
+        Class SubCustomList(CustomList):
+            def __init__(self, iterable=[]):
+                CustomList.__init__(self, iterable)
+                self._className = "SubCustomList"
+            def _setOneItem(ind, value):
+                value = str(value).lower()
+                CustomList._setOneItem(ind, value)
+            def _getOneItem(ind):
+                value = CustomList._getOneItem(ind)
+                value = "{}: {}".format(ind, value)
+                return value
     """
     def __init__(self, iterable=[]):
         
@@ -50,11 +69,28 @@ class CustomList():
         
     def __getitem__(self, ind):
         
-        return self._list[ind]
+        if isinstance(ind, slice):
+            
+            indices = ind.indices(len(self))
+            return CustomList([self._getOneItem(i) for i in range(*indices)])
+            
+        else:
+            
+            return self._getOneItem(ind)
         
     def __setitem__(self, ind, value):
         
-        self._list[ind] = value
+        if isinstance(ind, slice):
+            
+            indices = ind.indices(len(self))
+            
+            for i, v in zip(range(*indices), value):
+                
+                self._setOneItem(i, v)
+            
+        else:
+            
+            self._setOneItem(ind, value)
         
     def __len__(self):
         
@@ -67,6 +103,20 @@ class CustomList():
     def __str__(self):
         
         return repr(self)
+        
+    def _getOneItem(self, ind):
+        """
+        Handles all getting of data from the custom list.  Overwrite this to 
+        change how a subclass handles getting data.
+        """        
+        return self._list[ind]
+        
+    def _setOneItem(self, ind, value):
+        """
+        Handles all setting of data in the custom list.  Overwrite this to 
+        change how a subclass handles setting data.
+        """
+        self._list[ind] = value
         
     def _addEmpty(self):
         
