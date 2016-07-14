@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+__init__.py for diskpy
+
 Created on Thu Jul 16 11:25:15 2015
 
 @author: ibackus
@@ -15,6 +17,7 @@ import disk
 import pychanga
 import plot
 import clumps
+import sim
 
 __all__ = ['global_settings', 'ICgen', 'utils', 'pdmath', 'disk', 'pychanga', 
-           'plot', 'clumps']
+           'plot', 'clumps', 'sim']
