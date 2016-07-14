@@ -19,6 +19,12 @@ G = SimArray(1.0,'G')
 _dir = os.path.dirname(os.path.realpath(__file__))
 _paramdefault = os.path.join(_dir, 'default.param')
 _directordefault = os.path.join(_dir, 'default.director')
+_changadefault = os.path.join(_dir, 'changadefaults.param')
+
+# Load the default parameters
+_paramdefault = configparser(_paramdefault, 'param')
+_directordefault = configparser(_directordefault, 'director')
+_changadefault = configparser(_changadefault, 'param')
     
 def make_director(sigma_min, sigma_max, r, resolution=1200, filename='snapshot'):
     """
@@ -58,7 +64,7 @@ def make_director(sigma_min, sigma_max, r, resolution=1200, filename='snapshot')
     # Parse defaults to get scale factor for c
     # -----------------------------------------------------------
     sigma_min, sigma_max, r = strip_units([sigma_min, sigma_max, r])
-    defaults = configparser(_directordefault)
+    defaults = _directordefault
     if '#sigma_max' not in defaults:
 
         raise KeyError,'Default .director file should have a line e.g. << #sigma_max 0.01 >>'
@@ -103,7 +109,7 @@ def make_param(snapshot, filename=None):
 
     Optionally, the user can set the snapshot filename manually
     """
-    param = configparser(_paramdefault, ftype='param')
+    param = copy.deepcopy(_paramdefault)
 
     if filename is not None:
 
