@@ -15,7 +15,9 @@ class CustomList():
     A modified implementation of a python list where all data access (i.e. 
     retreiving and setting items) takes place via _setOneItem and __getOneItem.
     This strategy makes this Class easy to subclass and control the behavior
-    of setting/getting items.
+    of setting/getting items.  To return a list of the same SubClass type,
+    make sure to override the __getitem__ method (see __getitem__ in the code
+    for CustomList as an example)
     
     All normal public list methods are implemented.  Currently the operands
     + and * are not implemented
@@ -108,7 +110,7 @@ class CustomList():
         """
         Handles all getting of data from the custom list.  Overwrite this to 
         change how a subclass handles getting data.
-        """        
+        """
         return self._list[ind]
         
     def _setOneItem(self, ind, value):
