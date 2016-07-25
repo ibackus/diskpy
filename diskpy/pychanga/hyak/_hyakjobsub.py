@@ -14,9 +14,10 @@ import pynbody
 from diskpy import global_settings
 from diskpy.utils import configparser, configsave, units_from_param
 
+from .. import changa_command
 
 def pbs_script(workdir=None, param='snapshot.param', nodes=1, ppn=12, walltime=48, \
-jobname='PBS_job', backfill=False, email=None, changa_preset=None, **kwargs):
+jobname='PBS_job', backfill=False, email=None, changa_preset='default', **kwargs):
     """
     A not very robust function to generate PBS submission scripts for ChaNGa
     jobs on hyak.  Some of the requirements include:
@@ -75,11 +76,6 @@ jobname='PBS_job', backfill=False, email=None, changa_preset=None, **kwargs):
     param_full = '$workdir/' + param
     outfile = '$workdir/' + 'changa.out'
     fprefix = os.path.splitext(param)[0]
-    
-    # Get changa preset
-    if changa_preset is None:
-        
-        changa_preset = global_settings['changa_presets']['default']
         
     preset = global_settings['changa_presets'][changa_preset]
     
@@ -125,17 +121,22 @@ export MX_RCACHE=0\n\
 workdir={0}\n\
 cd $workdir\n\
 changbin=$(which {1})\n'.format(workdir, preset[2])
+
+    resumeCommand = changa_command(param_full, preset=changa_preset,\
+    changa_args='+restart {0}.chk$last -wall {1}'.format(fprefix, int(walltime*60)))
+    startCommand = changa_command(param_full, preset=changa_preset, \
+    changa_args='-wall {0}'.format(int(walltime*60)))
     
     # Now assume that we want to restart if there is a checkpoint
     script += 'if [ -e "lastcheckpoint" ]\n\
 then\n\
     echo "lastcheckpoint exists -- restarting simulation..."\n\
     last=`cat lastcheckpoint`\n\
-    mpirun --mca mtl mx --mca pml cm $changbin +restart {0}.chk$last +balancer MultistepLB_notopo -wall {1} {2} >> {3} 2>&1\n'.format(fprefix,int(walltime*60), param_full, outfile)
+    {0} >> {1} 2>&1\n'.format(resumeCommand, outfile)
     script += 'else\n\
     echo "lastcheckpoint doesnt exist -- starting new simulation..."\n\
-    mpirun --mca mtl mx --mca pml cm $changbin -D 3 +consph +balancer MultistepLB_notopo -wall {0} {1} >& {2}\n\
-fi\n'.format(int(walltime*60), param_full, outfile)
+    {0} >& {1}\n\
+fi\n'.format(startCommand, outfile)
     
     return script
 
