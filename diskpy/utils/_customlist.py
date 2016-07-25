@@ -104,7 +104,7 @@ class CustomList():
         
     def __str__(self):
         
-        return repr(self)
+        return strIterable(self, self._className)
         
     def _getOneItem(self, ind):
         """
@@ -198,7 +198,7 @@ class CustomList():
         not present
         """
         index = self.index(value)
-        dummy = pop(index)
+        dummy = self.pop(index)
         return
         
     def reverse(self):
@@ -228,23 +228,29 @@ def reprIterable(iterable, classname="iterable"):
     if classname is not None:
         
         reprstr += "<" + classname + ": "
-        
-    reprstr += "["
     
-    nitems = 0
     # print items
-    for item in iterable:
-        
-        reprstr += repr(item) + ", "
-        nitems += 1
-            
-    # Clean up the end of the string
-    if nitems > 0:
-        
-        reprstr = reprstr[0:-2]
-        
-    reprstr += "]>"
+    itemlist = list(iterable)
+    reprstr += repr(itemlist) + ">"
+    
     return reprstr
+    
+def strIterable(iterable, classname="iterable"):
+    """
+    A function which returns a list-like string representation of an interable,
+    with an class name
+    """
+    # Set up class name at beginning of string
+    string = ""
+    if classname is not None:
+        
+        string += "<" + classname + ": "
+    
+    # print items
+    itemlist = list(iterable)
+    string += str(itemlist) + ">"
+    
+    return string
     
 def iterate(x):
     """
