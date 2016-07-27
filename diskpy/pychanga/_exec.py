@@ -169,7 +169,8 @@ def changa_run(command, verbose = True, logfile_name=None, force_wait=False):
         
     return p
 
-def changa_command(param_name, preset='default', changa_bin=None, changa_args='', runner_args=''):
+def changa_command(param_name, preset='default', changa_bin=None, \
+changa_args='', runner_args='',restart_dir=None):
     """
     A utility for created command line commands for running ChaNGa
     
@@ -187,6 +188,9 @@ def changa_command(param_name, preset='default', changa_bin=None, changa_args=''
         Additional user supplied arguments for ChaNGa
     runner_args : str
         Additional user supplied arguments for the runner (ie charmrun or mpirun)
+    restart_dir : str
+        (optional) If set, this will be treated as a restart.  All changa args
+        will be ignored.
         
     **RETURNS**
     
@@ -220,6 +224,10 @@ def changa_command(param_name, preset='default', changa_bin=None, changa_args=''
     changa_args = ' '.join([preset_list[3], changa_args])
     runner = preset_list[0]
     
+    if restart_dir is not None:
+        
+        changa_args = '+restart {0}'.format(restart_dir)
+        
     command = ' '.join([runner, runner_args, changa_bin, changa_args, param_name])
     command = ' '.join(command.split())
     

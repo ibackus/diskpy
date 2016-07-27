@@ -123,7 +123,7 @@ cd $workdir\n\
 changbin=$(which {1})\n'.format(workdir, preset[2])
 
     resumeCommand = changa_command(param_full, preset=changa_preset,\
-    changa_args='+restart {0}.chk$last -wall {1}'.format(fprefix, int(walltime*60)))
+    restart_dir='{0}.chk$last'.format(fprefix))
     startCommand = changa_command(param_full, preset=changa_preset, \
     changa_args='-wall {0}'.format(int(walltime*60)))
     
