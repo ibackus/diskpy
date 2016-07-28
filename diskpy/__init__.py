@@ -9,12 +9,12 @@ Created on Thu Jul 16 11:25:15 2015
 from global_settings import global_settings
 
 import pdmath
+import pychanga
 import ICgen
 import utils
 from utils import deepreload as _deepreload
 
 import disk
-import pychanga
 import plot
 import clumps
 import sim
