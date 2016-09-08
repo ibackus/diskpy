@@ -45,7 +45,7 @@ def configparser(fname,ftype='auto'):
     # Parse param file
     # --------------------------------------------------
     if ftype == 'param':
-        farray = np.genfromtxt(fname,delimiter='=',dtype=None)
+        farray = np.genfromtxt(fname,delimiter='=',dtype='|S256')
         for n in range(len(farray)):
             param[farray[n,0].strip()] = str2num(farray[n,1].strip())
     # --------------------------------------------------
