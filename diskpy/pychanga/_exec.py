@@ -140,7 +140,7 @@ def changa_run(command, verbose = True, force_wait=False, log_file=None,
     status : bool
     """
     output = subprocess.PIPE
-    p = subprocess.Popen(command.split(), stderr=output, stdout=output)
+    p = subprocess.Popen(command.split(), stderr=subprocess.STDOUT, stdout=output)
     printer = logPrinter(verbose, log_file, overwrite=True)
     success = False
         
