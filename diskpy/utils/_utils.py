@@ -770,38 +770,43 @@ class logPrinter():
                 self.logfile = open(filename, 'w')
             else:
                 self.logfile = open(filename, 'a')
+        else:
+            
+            self.savetofile = False
                 
-            if verbose:
-                if self.savetofile:
-                    self.printer = self._print
-                else:
-                    self.printer = self._print_nof
-            elif self.savetofile:
-                self.printer = self._print_nov
+        if verbose:
+            if self.savetofile:
+                self.printer = self._print
             else:
-                self.printer = self._print_nov_nof                
+                self.printer = self._print_screen
+        elif self.savetofile:
+            self.printer = self._print_log
+        else:
+            self.printer = self._pass
                 
 
     def __call__(self, string):
         
         return self.printer(string)
         
-    def _print_nov_nof(string):
+    def _pass(self, string):
         
         pass
     
-    def _print_nov(self, string):
+    def _print_log(self, string):
         
+        if not string.endswith('\n'):
+            string += '\n'
         self.logfile.write(string)
         
-    def _print_nof(string):
+    def _print_screen(self, string):
         
         print string
         
     def _print(self, string):
         
-        print string
-        self.logfile.write(string)
+        self._print_screen(string)
+        self._print_log(string)
                 
     def close(self):
         """

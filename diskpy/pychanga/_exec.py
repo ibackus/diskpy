@@ -11,6 +11,7 @@ import subprocess
 from subprocess import Popen, PIPE
 
 from diskpy import global_settings
+from diskpy.utils import logPrinter
 
 def est_time_step(param_name, preset='default', dDelta0=100, changa_args='', runner_args=''):
     """
@@ -140,15 +141,10 @@ def changa_run(command, verbose = True, force_wait=False, log_file=None,
     """
     output = subprocess.PIPE
     p = subprocess.Popen(command.split(), stderr=output, stdout=output)
+    printer = logPrinter(verbose, log_file, overwrite=True)
     success = False
-    
-    if logfile is not None:
         
-        logfile = open(logfile, 'w')
-    
-    try:
-        
-    if verbose or return_success:
+    if verbose or return_success or (log_file is not None):
         
         for line in iter(p.stdout.readline, ''):
             
@@ -156,9 +152,11 @@ def changa_run(command, verbose = True, force_wait=False, log_file=None,
                 
                 success = True
                 
-            if verbose:
+            if line.endswith('\n'):
                 
-                print line,
+                line = line[0:-1]
+                
+            printer(line)
                 
         p.wait()
         
@@ -166,7 +164,7 @@ def changa_run(command, verbose = True, force_wait=False, log_file=None,
         
         p.wait()
         
-    
+    printer.close()
     if return_success:
         
         return success
