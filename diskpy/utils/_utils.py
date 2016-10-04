@@ -743,3 +743,74 @@ def deepreload(module):
     
     return command
     
+class logPrinter():
+    """
+    A simple class to print both to screen and to a log file
+    
+    logPrinter(verbose=True, filename=None, overwrite=True)
+    
+    Parameters
+    ----------
+    verbose : bool
+        print to screen
+    filename : str
+        File to save to (if None, don't save to file)
+    overwrite : bool
+        Overwrite file if it exists
+        
+    printing can be used via the printer method or by calling the logprinter
+    """    
+    def __init__(self, verbose=True, filename=None, overwrite=True):
+        
+        if filename is not None:
+            
+            self.savetofile = True
+            
+            if overwrite:
+                self.logfile = open(filename, 'w')
+            else:
+                self.logfile = open(filename, 'a')
+                
+            if verbose:
+                if self.savetofile:
+                    self.printer = self._print
+                else:
+                    self.printer = self._print_nof
+            elif self.savetofile:
+                self.printer = self._print_nov
+            else:
+                self.printer = self._print_nov_nof                
+                
+
+    def __call__(self, string):
+        
+        return self.printer(string)
+        
+    def _print_nov_nof(string):
+        
+        pass
+    
+    def _print_nov(self, string):
+        
+        self.logfile.write(string)
+        
+    def _print_nof(string):
+        
+        print string
+        
+    def _print(self, string):
+        
+        print string
+        self.logfile.write(string)
+                
+    def close(self):
+        """
+        close the log file
+        """
+        if self.savetofile:
+            self.logfile.close()
+        
+    def __del__(self):
+        
+        self.close()
+    

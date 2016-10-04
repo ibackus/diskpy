@@ -106,7 +106,8 @@ def est_time_step(param_name, preset='default', dDelta0=100, changa_args='', run
     
     return dDelta
 
-def changa_run(command, verbose = True, force_wait=False, return_success=False):
+def changa_run(command, verbose = True, force_wait=False, log_file=None,
+               return_success=False):
     """
     A wrapper for running ChaNGa
     
@@ -122,6 +123,8 @@ def changa_run(command, verbose = True, force_wait=False, return_success=False):
     force_wait : bool
         (optional) Default = False
         If set, forces wait on ChaNGa before completion
+    log_file : str
+        (optional) filename, if passed, the stdout will be also copied to log_file
     return_success : bool
         If set, returns the success of the run, i.e. checks to see if the 
         simulation finished properly.
@@ -139,6 +142,12 @@ def changa_run(command, verbose = True, force_wait=False, return_success=False):
     p = subprocess.Popen(command.split(), stderr=output, stdout=output)
     success = False
     
+    if logfile is not None:
+        
+        logfile = open(logfile, 'w')
+    
+    try:
+        
     if verbose or return_success:
         
         for line in iter(p.stdout.readline, ''):
