@@ -106,7 +106,7 @@ def est_time_step(param_name, preset='default', dDelta0=100, changa_args='', run
     
     return dDelta
 
-def changa_run(command, verbose = True, logfile_name=None, force_wait=False):
+def changa_run(command, verbose = True, force_wait=False, return_success=False):
     """
     A wrapper for running ChaNGa
     
@@ -119,55 +119,52 @@ def changa_run(command, verbose = True, logfile_name=None, force_wait=False):
         (optional) Flag for printing ChaNGa output to stdout.
         If True - stdout is printed.  This will effectively makes changa_run
         wait on ChaNGa completion
-    logfile_name : str
-        (optional) If set, saves ChaNGa output to file
     force_wait : bool
         (optional) Default = False
         If set, forces wait on ChaNGa before completion
+    return_success : bool
+        If set, returns the success of the run, i.e. checks to see if the 
+        simulation finished properly.
     
     **RETURNS**
     
     p : subprocess.Popen
         A process object created by subprocess.Popen for the ChaNGa command
+    success : bool
+        IF return_success is set to True, the status of the run is returned
+        instead of p.
+    status : bool
     """
+    output = subprocess.PIPE
+    p = subprocess.Popen(command.split(), stderr=output, stdout=output)
+    success = False
     
-    if logfile_name is not None:
-        
-        logfile = open(logfile_name, 'w')
-        logfile.close()
-        logfile = open(logfile_name, 'a')
-    
-    if verbose:
-        
-        output = subprocess.PIPE
-        p = subprocess.Popen(command.split(), stderr=output, stdout=output)
+    if verbose or return_success:
         
         for line in iter(p.stdout.readline, ''):
             
-            print line,
-            if logfile_name is not None:
+            if "Done." in line:
                 
-                logfile.write(line)
+                success = True
+                
+            if verbose:
+                
+                print line,
                 
         p.wait()
-        
-    else:
-        
-        if logfile_name is not None:
-            
-            output = logfile
-            
-        else:
-            
-            output = subprocess.PIPE
-            
-        p = subprocess.Popen(command.split(), stderr=output, stdout=output)
         
     if force_wait:
         
         p.wait()
         
-    return p
+    
+    if return_success:
+        
+        return success
+        
+    else:
+        
+        return p
 
 def changa_command(param_name, preset='default', changa_bin=None, \
 changa_args='', runner_args='',restart_dir=None):
