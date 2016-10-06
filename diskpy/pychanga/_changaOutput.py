@@ -151,7 +151,7 @@ def load_acc(filename, param_name = None, low_mem = True):
 
         return acc
         
-def walltime(filename):
+def walltime(filename, verbose=True):
     """
     Reads walltime information from a ChaNGa .log file.
 
@@ -170,11 +170,12 @@ def walltime(filename):
     wall_per_step = log_file[:,-1]
     walltime_total = datetime.timedelta(seconds = wall_per_step.sum())
     walltime_avg = datetime.timedelta(seconds = wall_per_step.mean())
-
-    print 'Total walltime: '
-    print str(walltime_total)
-    print 'Average walltime per step:'
-    print str(walltime_avg)
+    
+    if verbose:
+        print 'Total walltime: '
+        print str(walltime_total)
+        print 'Average walltime per step:'
+        print str(walltime_avg)
 
     return wall_per_step
     
