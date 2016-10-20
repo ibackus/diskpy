@@ -108,7 +108,7 @@ def est_time_step(param_name, preset='default', dDelta0=100, changa_args='', run
     return dDelta
 
 def changa_run(command, verbose = True, force_wait=False, log_file=None,
-               return_success=False):
+               return_success=False, require_success=False):
     """
     A wrapper for running ChaNGa
     
@@ -129,6 +129,9 @@ def changa_run(command, verbose = True, force_wait=False, log_file=None,
     return_success : bool
         If set, returns the success of the run, i.e. checks to see if the 
         simulation finished properly.
+    require_success : bool
+        If true, a RuntimeError will be raised if ChaNGa does not exit 
+        successfully
     
     **RETURNS**
     
@@ -165,6 +168,11 @@ def changa_run(command, verbose = True, force_wait=False, log_file=None,
         p.wait()
         
     printer.close()
+    
+    if not success and require_success:
+        
+        raise RuntimeError, "ChaNGa did not complete successfully"
+        
     if return_success:
         
         return success
