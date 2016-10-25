@@ -116,7 +116,7 @@ jobname='PBS_job', backfill=False, email=None, changa_preset='default', **kwargs
             script += '#PBS -{0} {1}\n'.format(key, val)
             
     # Runtime initialization
-    script += 'module load gcc_4.4.7-ompi_1.6.5\n\
+    script += 'load-mpi\n\
 export MX_RCACHE=0\n\
 workdir={0}\n\
 cd $workdir\n\
