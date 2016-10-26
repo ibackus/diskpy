@@ -117,7 +117,6 @@ jobname='PBS_job', backfill=False, email=None, changa_preset='default', **kwargs
             
     # Runtime initialization
     script += 'load-mpi\n\
-export MX_RCACHE=0\n\
 workdir={0}\n\
 cd $workdir\n\
 changbin=$(which {1})\n'.format(workdir, preset[2])
