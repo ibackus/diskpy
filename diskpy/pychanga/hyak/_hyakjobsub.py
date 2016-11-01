@@ -116,8 +116,7 @@ jobname='PBS_job', backfill=False, email=None, changa_preset='default', **kwargs
             script += '#PBS -{0} {1}\n'.format(key, val)
             
     # Runtime initialization
-    script += 'load-mpi\n\
-workdir={0}\n\
+    script += 'workdir={0}\n\
 cd $workdir\n\
 changbin=$(which {1})\n'.format(workdir, preset[2])
 
