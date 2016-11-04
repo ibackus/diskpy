@@ -23,7 +23,7 @@ from diskpy.pdmath import extrap1d, digitize_threshold, binned_mean
 from diskpy.pychanga import load_acc
 
 def v_xy(f, param, changbin=None, nr=50, min_per_bin=100, changa_preset=None, \
-max_particles=None, est_eps=True):
+max_particles=None, est_eps=True, changa_args=''):
     """
     Attempts to calculate the circular velocities for particles in a thin
     (not flat) keplerian disk.  Also estimates gravitational softening (eps)
@@ -59,6 +59,8 @@ max_particles=None, est_eps=True):
     est_eps : bool
         Estimate eps (gravitational softening length).  Default is True.
         If False, it is assumed eps has already been estimated
+    changa_args : str
+        Additional command line arguments to pass to changa
         
     Returns
     -------
@@ -122,10 +124,12 @@ max_particles=None, est_eps=True):
         
         if iGrav == 0:
             # Run ChaNGa calculating all forces (for initial run)
-            command = ICgen_utils.changa_command(p_name, changa_preset, changbin, '+gas +n 0')
+            command = ICgen_utils.changa_command(p_name, changa_preset, \
+            changbin, '+gas +n 0 ' + changa_args)
         else:
             # Run ChaNGa, only calculating gravity (on second run)
-            command = ICgen_utils.changa_command(p_name, changa_preset, changbin, '-gas +n 0')
+            command = ICgen_utils.changa_command(p_name, changa_preset, \
+            changbin, '-gas +n 0 ' + changa_args)
             
         print command
         p = ICgen_utils.changa_run(command)
@@ -197,7 +201,8 @@ max_particles=None, est_eps=True):
     configsave(p_temp, p_name, ftype='param')
     
     # Run ChaNGa, including SPH
-    command = ICgen_utils.changa_command(p_name, changa_preset, changbin, '+gas -n 0')
+    command = ICgen_utils.changa_command(p_name, changa_preset, changbin, \
+    '+gas -n 0 ' + changa_args)
     p = ICgen_utils.changa_run(command)
     p.wait()
         

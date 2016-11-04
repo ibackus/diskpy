@@ -57,9 +57,10 @@ def snapshot_gen(IC):
     # -------------------------------------------------
     print 'Calculating circular velocity'
     preset = IC.settings.changa_run.preset
+    changa_args = IC.settings.changa_run.changa_args
     max_particles = global_settings['misc']['max_particles']
     dDelta = calc_velocity.v_xy(snapshot, param, \
-    changa_preset=preset, max_particles=max_particles)
+    changa_preset=preset, max_particles=max_particles, changa_args=changa_args)
     param['dDelta'] = dDelta    
     print 'Calculated time step.  dDelta = ', dDelta
     gc.collect()

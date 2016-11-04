@@ -4,7 +4,6 @@ Created on Wed Jul 15 23:26:04 2015
 
 @author: ibackus
 """
-np.genfromtxt
 import glob
 import os
 import re
