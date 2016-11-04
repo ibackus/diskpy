@@ -4,6 +4,7 @@ Created on Wed Jul 15 23:26:04 2015
 
 @author: ibackus
 """
+np.genfromtxt
 import glob
 import os
 import re
@@ -70,7 +71,7 @@ def get_fnames(fprefix, directory=None):
     
     return fnames
 
-def load_acc(filename, param_name = None, low_mem = True):
+def load_acc(filename, param_name = None, low_mem = False):
     """
     Loads accelerations from a ChaNGa acceleration file (.acc2), ignoring the
     star particle.
@@ -143,13 +144,13 @@ def load_acc(filename, param_name = None, low_mem = True):
     else:
 
         # Load acceleration file as numpy array
-        acc = np.genfromtxt(filename, skip_header=1, dtype=np.float32)
+        acc = np.genfromtxt(filename, skip_header=1).astype(np.float32)
         n_particles = len(acc)/3
 
         # Reshape and make it a SimArray with proper units
         acc = SimArray(acc.reshape([n_particles, 3], order='F'), a_unit)
 
-        return acc
+        return acc[0:-1]
         
 def walltime(filename, verbose=True):
     """
