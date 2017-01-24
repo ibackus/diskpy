@@ -183,35 +183,6 @@ def units_from_param(param):
         A dictionary of the units used in the simulation, returned as
         pynbody units
     """
-
-    # Define function to load the units from a given param
-    def _load_units(param):
-
-        # Load param if necessary
-        if isinstance(param, str):
-
-            param = configparser(param, 'param')
-
-        # Universal G
-        G = pynbody.units.G
-
-        # Load units
-        dKpcUnit = param['dKpcUnit']
-        dMsolUnit = param['dMsolUnit']
-
-        # Set up pynbody units
-        m_unit = pynbody.units.Unit('{0} Msol'.format(dMsolUnit))
-        l_unit = pynbody.units.Unit('{0} kpc'.format(dKpcUnit))
-        t_unit = (l_unit**3/(G*m_unit))**(1,2)
-
-        # Convert the time unit to something sensible
-        years = t_unit.in_units('yr')
-        t_unit = pynbody.units.Unit('{0} yr'.format(years))
-
-        # Return
-        outdict = {'l_unit':l_unit, 'm_unit':m_unit, 't_unit':t_unit}
-        return outdict
-
     # Iterate over param if necessary
     if isinstance(param, (list, np.ndarray)):
 
@@ -219,14 +190,34 @@ def units_from_param(param):
 
         for par in param:
 
-            outlist.append(_load_units(par))
+            outlist.append(units_from_param(par))
 
         return outlist
+    
+    # Load param if necessary
+    if isinstance(param, str):
 
-    else:
+        param = configparser(param, 'param')
 
-        # Not iterable
-        return _load_units(param)
+    # Universal G
+    G = pynbody.units.G
+
+    # Load units
+    dKpcUnit = param['dKpcUnit']
+    dMsolUnit = param['dMsolUnit']
+
+    # Set up pynbody units
+    m_unit = pynbody.units.Unit('{0} Msol'.format(dMsolUnit))
+    l_unit = pynbody.units.Unit('{0} kpc'.format(dKpcUnit))
+    t_unit = (l_unit**3/(G*m_unit))**(1,2)
+
+    # Convert the time unit to something sensible
+    years = t_unit.in_units('yr')
+    t_unit = pynbody.units.Unit('{0} yr'.format(years))
+
+    # Return
+    outdict = {'l_unit':l_unit, 'm_unit':m_unit, 't_unit':t_unit}
+    return outdict
         
 def setup_units(m, x):
     """
