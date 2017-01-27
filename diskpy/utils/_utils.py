@@ -182,66 +182,8 @@ def configsave(param,filename,ftype='auto'):
     f.close()
     
 def units_from_param(param):
-    """
-    Figures out the simulation units from a .param file
-
-    **ARGUMENTS**
-
-    param : str or param dict (see configparser)
-        Simulation .param file or param dict loaded by configparser
-        Can also be a list or numpy array of these in which case a list
-        of units dicts is returned
-
-    **RETURNS**
-
-    units : dict
-        A dictionary of the units used in the simulation, returned as
-        pynbody units
-    """
-
-    # Define function to load the units from a given param
-    def _load_units(param):
-
-        # Load param if necessary
-        if isinstance(param, str):
-
-            param = configparser(param, 'param')
-
-        # Universal G
-        G = pb.units.G
-
-        # Load units
-        dKpcUnit = param['dKpcUnit']
-        dMsolUnit = param['dMsolUnit']
-
-        # Set up pynbody units
-        m_unit = pb.units.Unit('{0} Msol'.format(dMsolUnit))
-        l_unit = pb.units.Unit('{0} kpc'.format(dKpcUnit))
-        t_unit = (l_unit**3/(G*m_unit))**(1,2)
-
-        # Convert the time unit to something sensible
-        years = t_unit.in_units('yr')
-        t_unit = pb.units.Unit('{0} yr'.format(years))
-
-        # Return
-        outdict = {'l_unit':l_unit, 'm_unit':m_unit, 't_unit':t_unit}
-        return outdict
-
-    # Iterate over param if necessary
-    if isinstance(param, (list, np.ndarray)):
-
-        outlist = []
-
-        for par in param:
-
-            outlist.append(_load_units(par))
-
-        return outlist
-
-    else:
-
-        # Not iterable
-        return _load_units(param)
+    raise RuntimeError, "diskpy.utils.units_from_param is depcreated.  "\
+    "use diskpy.pychanga.units_from_param"
         
 def get_units(x):
     """
