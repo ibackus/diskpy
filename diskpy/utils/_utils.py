@@ -46,6 +46,9 @@ def configparser(fname,ftype='auto'):
     # --------------------------------------------------
     if ftype == 'param':
         farray = np.genfromtxt(fname,delimiter='=',dtype='|S256')
+        if farray.ndim == 1:
+            # Handle the case that there is only 1 line the .param file
+            farray = farray[None, :]
         for n in range(len(farray)):
             param[farray[n,0].strip()] = str2num(farray[n,1].strip())
     # --------------------------------------------------
