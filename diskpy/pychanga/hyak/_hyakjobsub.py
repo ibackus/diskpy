@@ -130,10 +130,10 @@ changbin=$(which {1})\n'.format(workdir, preset[2])
 then\n\
     echo "lastcheckpoint exists -- restarting simulation..."\n\
     last=`cat lastcheckpoint`\n\
-    {0} >> {1} 2>&1\n'.format(resumeCommand, outfile)
+    {0} 2>&1 >> {1}\n'.format(resumeCommand, outfile)
     script += 'else\n\
     echo "lastcheckpoint doesnt exist -- starting new simulation..."\n\
-    {0} >& {1}\n\
+    {0} 2>&1 > {1}\n\
 fi\n'.format(startCommand, outfile)
     
     return script
