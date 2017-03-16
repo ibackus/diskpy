@@ -219,10 +219,12 @@ def units_from_param(param):
     v_unit = l_unit/t_unit
     rho_unit = m_unit/l_unit**3
     acc_unit = l_unit/t_unit**2
+    pres_unit = rho_unit * v_unit**2
     
     # Return
     outdict = {'l_unit':l_unit, 'm_unit':m_unit, 't_unit':t_unit, 
-               'v_unit': v_unit, 'rho_unit': rho_unit, 'acc_unit': acc_unit}
+               'v_unit': v_unit, 'rho_unit': rho_unit, 'acc_unit': acc_unit, 
+               'pres_unit': pres_unit}
     return outdict
         
 def setup_units(m, x):
