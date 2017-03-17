@@ -52,6 +52,29 @@ _dir = os.path.dirname(os.path.realpath(__file__))
 _coeffsfile = os.path.join(_dir, 'hermite_spline_coeffs.dat')
 hermite_coeffs = _loadcoeffs(_coeffsfile)
 
+def weighted_avg_and_std(values, weights):
+    """
+    Return the weighted average and standard deviation.
+    
+    Parameters
+    ----------
+    values, weights : SimArray-like
+        Numpy ndarrays with the same shape or SimArrays
+    
+    Returns
+    -------
+    average, std : SimArray-like
+        Weighted average and standard deviation.
+    """
+    average = np.average(values, weights=weights)
+    # Fast and numerically precise
+    variance = np.average((values-average)**2, weights=weights)  
+    std = np.sqrt(variance)
+    if pb.units.has_units(values):
+        average = SimArray(average, values.units)
+        std = SimArray(std, values.units)
+    return average, std
+
 def dA(redges, thetaedges):
     """
     Calculates the area of bins in cylindrical coordinates as
