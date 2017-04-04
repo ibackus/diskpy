@@ -11,9 +11,111 @@ from matplotlib.colors import LogNorm
 import numpy as np
 import copy
 import os
+from pynbody.plot.sph import image
 
 from diskpy.disk import powerspectrum_t
 from diskpy.utils import get_units
+
+def colorCodeArray(x1, x2, cmap='Reds'):
+    """
+    Get a color-coded array from x1 (brightess) and x2 (color).  x1 and x2 
+    are assumed to be normalized (0 to 1).  x1 defines the brightness, x2
+    defines the color.  Returns an RGB array
+    """
+    # Get color image for the color-coded qty
+    cm = plt.get_cmap(cmap)
+    colors = cm(x2)
+    # Drop alpha to retrieve RGB
+    colors = colors[:, :, 0:-1]
+    # get hsv (Hue-Saturation-Value)
+    hsv = mpl.colors.rgb_to_hsv(colors)
+    # Set value (brightness) to the first gray-scale image
+    hsv[:, :, 2] = x1
+    
+    rgb = mpl.colors.hsv_to_rgb(hsv)
+    return rgb
+
+def normalizeArray(x, log=True, vmin=None, vmax=None):
+    """
+    Normalize an array.  Values below/above the thresholds of vmin/vmax are
+    set to 0/1
+    """
+    if log:
+        Norm = mpl.colors.LogNorm
+    else:
+        Norm = mpl.colors.Normalize
+    norm = Norm(vmin=vmin, vmax=vmax)
+    x = norm(x)
+    x[x < 0] = 0
+    x[x > 1] = 1
+    
+    return x
+
+def colorCodedImage(sim, qtys, width = 60, resolution = 500, z_camera = None,
+                    av_z = True, cmap = 'Reds', vmins = (None, None), 
+                    vmaxs = (None, None), logs = (True, True)):
+    """
+    Generates an image as with pynbody.plot.sph.image with brightness set by
+    one quantity and color set by a second quantity.
+    
+    Parameters
+    ----------
+    sim : SimSnap
+        Snapshot or sub-snap to render
+    qtys : list or tuple
+        A tuple/list of 2 quantities (strings) to render.  The quantity are
+        SimSnap keys, e.g. 'rho', 'temp', 'mass', etc.  The first quantity
+        sets the brightness of the image, the second sets the color
+    width : number
+        Width of the plot to render
+    resolution : int
+        Number of pixels to render along each axis
+    z_camera : number
+        z-camera location (see pynbody.plot.sph.image)
+    av_z : bool
+        Average along line-of-sight (see pynbody.plot.sph.image)
+    cmap : str or cmap
+        colormap to use for color-coding
+    vmins, vmaxs : list/tuples
+        vmin, vmax for the quantities (one for each quantity)
+    logs : list/tuple
+        List or tuple of booleans.  Defines whether color should use a log
+        scale.
+    
+    Returns
+    -------
+    im : array
+        The rendered RGB image used
+    """
+    cmaps = ('gray', cmap)
+    ims = []
+    # Generate the images
+    for i in range(2):
+        im = image(sim, qtys[i], width, resolution, av_z=av_z, 
+                           z_camera=z_camera, log=logs[i], vmin=vmins[i],
+                           vmax=vmaxs[i], cmap=cmaps[i], ret_im=True)
+        cb = plt.gcf().axes[-1]
+        ims.append(im)
+    
+    # Grayscale image arrays
+    grayims = [im.get_array() for im in ims]
+    for i in range(2):
+        grayims[i] = normalizeArray(grayims[i], logs[i], vmins[i], vmaxs[i])
+    # Convert to rgb
+    rgb = colorCodeArray(grayims[0], grayims[1], cmap=cmap)
+    # Plot
+    #rgb = mpl.colors.hsv_to_rgb(hsv)
+    top = 0.5 * width
+    plt.gca().imshow(rgb, extent = (-top, top, -top, top))
+    # Add colorbar
+    #ax = im.get_axes()
+    cb = plt.colorbar(ims[1], orientation='vertical', label=qtys[1])
+    cb = plt.colorbar(ims[0], orientation='horizontal', label=qtys[0])
+    plt.ylabel('y ($' + sim['y'].units.latex() + '$)')
+    plt.tight_layout()
+    return rgb
+
+
 
 def gridplot(nrows, ncols=1, square=False):
     """
