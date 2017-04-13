@@ -77,6 +77,11 @@ jobname='PBS_job', backfill=False, email=None, changa_preset='default', **kwargs
     outfile = '$workdir/' + 'changa.out'
     fprefix = os.path.splitext(param)[0]
         
+    # Load the preset
+    if (changa_preset is None) or (changa_preset is 'default'):
+        
+        changa_preset = global_settings['changa_presets']['default']
+        
     preset = global_settings['changa_presets'][changa_preset]
     
     # Set up the walltime for PBS
