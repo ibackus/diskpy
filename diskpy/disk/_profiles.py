@@ -160,7 +160,9 @@ def kappa(f, bins=100):
     dummy, rv_mean, dummy2 = binned_mean(r, r*v, bins=r_edges)
     r_cent = (r_edges[1:] + r_edges[0:-1])/2
     dr = r_edges[[1]] - r_edges[[0]]
-    drv_dr = np.gradient(rv_mean, dr)
+    drv_dr = np.gradient(rv_mean, float(dr))
+    if pb.units.has_units(dr):
+        drv_dr /= dr.units
 
     kappa = np.sqrt(2*v_mean*drv_dr)/r_cent
 
