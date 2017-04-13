@@ -224,12 +224,11 @@ changa_args='', runner_args='',restart_dir=None):
     if changa_bin is None:
         
         changa_bin = preset_list[2]
-    
-    changa_bin = os.popen('which ' + changa_bin).read().strip()
-    
-    if '' == changa_bin:
+        changa_bin = os.popen('which ' + changa_bin).read().strip()
         
-        raise RuntimeError, 'Could not find ChaNGa.  Try different preset'
+        if '' == changa_bin:
+            
+            raise RuntimeError, 'Could not find ChaNGa.  Try different preset'
     
     # Merge user defined extra arguments    
     runner_args = ' '.join([preset_list[1], runner_args])
