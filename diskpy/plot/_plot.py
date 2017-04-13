@@ -52,7 +52,7 @@ def normalizeArray(x, log=True, vmin=None, vmax=None):
     return x
 
 def colorCodedImage(sim, qtys, width = 60, resolution = 500, z_camera = None,
-                    av_z = True, cmap = 'Reds', vmins = (None, None), 
+                    av_zs = (False, False), cmap = 'Reds', vmins = (None, None), 
                     vmaxs = (None, None), logs = (True, True)):
     """
     Generates an image as with pynbody.plot.sph.image with brightness set by
@@ -72,8 +72,10 @@ def colorCodedImage(sim, qtys, width = 60, resolution = 500, z_camera = None,
         Number of pixels to render along each axis
     z_camera : number
         z-camera location (see pynbody.plot.sph.image)
-    av_z : bool
-        Average along line-of-sight (see pynbody.plot.sph.image)
+    av_zs : tuple
+        Average along line-of-sight (see pynbody.plot.sph.image).  If True,
+        volume averating is used.  If a string averaging is over that qty.
+        E.g., mass averaging can be acheived by using av_zs = ('rho', 'rho')
     cmap : str or cmap
         colormap to use for color-coding
     vmins, vmaxs : list/tuples
@@ -91,7 +93,7 @@ def colorCodedImage(sim, qtys, width = 60, resolution = 500, z_camera = None,
     ims = []
     # Generate the images
     for i in range(2):
-        im = image(sim, qtys[i], width, resolution, av_z=av_z, 
+        im = image(sim, qtys[i], width, resolution, av_z=av_zs[i], 
                            z_camera=z_camera, log=logs[i], vmin=vmins[i],
                            vmax=vmaxs[i], cmap=cmaps[i], ret_im=True)
         cb = plt.gcf().axes[-1]
