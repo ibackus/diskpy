@@ -286,6 +286,7 @@ class snapshot:
         # Default: 1.0 (no scaling done).  Final particle masses are scaled
         # by this factor
         self.mScale = 1.0
+        self.nSmooth = 32
         
         # Other defaults that shouldn't need to be changed
         self.metals = 1.0
