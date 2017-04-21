@@ -52,6 +52,28 @@ _dir = os.path.dirname(os.path.realpath(__file__))
 _coeffsfile = os.path.join(_dir, 'hermite_spline_coeffs.dat')
 hermite_coeffs = _loadcoeffs(_coeffsfile)
 
+def interp1dunits(x, y, **kwargs):
+    """
+    A thin wrapper around scipy.interpolate.interp1d that respects pynbody
+    units.
+    """
+    yspl = interp1d(x, y, **kwargs)
+    
+    def splunits(x1):
+        """
+        A spline interpolant that respects units.
+        See scipy.interpolate.interp1d
+        """
+        if pb.units.has_units(x1):
+            
+            x1.convert_units(x.units)
+            
+        y1 = SimArray(yspl(x1), y.units)
+        
+        return y1
+    
+    return splunits
+
 def weighted_avg_and_std(values, weights):
     """
     Return the weighted average and standard deviation.
