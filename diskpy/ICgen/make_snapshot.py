@@ -272,6 +272,8 @@ def init_param(IC, snapshot=None):
         param['bGasAdiabatic'] = 1
         param['bGasIsothermal'] = 0
         
+    param['nSmooth'] = settings.snapshot.nSmooth
+        
     return param
 
 def init_snapshot(IC):
