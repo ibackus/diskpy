@@ -119,7 +119,7 @@ use_omega=True, alpha=0.18, beta=2.2):
     Qcalc, r_edges = Q(snapshot, molecular_mass, bins, use_velocity, use_omega)
     dummy, h = height(snapshot, r_edges, center_on_star=False)
     r = (r_edges[1:] + r_edges[0:-1])/2.
-    Qeff = beta * ((h/r).in_units('1'))**alpha
+    Qeff = Qcalc * beta * ((h/r).in_units('1'))**alpha
 
     return Qeff, r_edges
     
