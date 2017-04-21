@@ -16,7 +16,10 @@ SimArray = pb.array.SimArray
 from diskpy.pdmath import meshinterp, resolvedbins
 from diskpy.disk import rho0_est, h_est
 from diskpy.utils import strip_units
-from vertical_solver import vertical_solver
+# Available vertical density profile solvers
+from vertical_solver import vertical_solver # deprecated vertical solver
+from iterativesolver import IterativeSolver
+Solver = IterativeSolver
 
 # Constants
 G = SimArray(1.0, 'G')
@@ -313,6 +316,7 @@ def calc_rho(IC, r=None, **kwargs):
     
     nPrint = 10
     iPrint = nr/nPrint
+    
     for i in range(nr):
         
         if (i%iPrint) == 0:
@@ -321,11 +325,11 @@ def calc_rho(IC, r=None, **kwargs):
         
         if R[[i]] > 0:
             
-            rtf = vertical_solver(IC, R[[i]])
+            rtf = Solver(IC, R[[i]])
             rtf.fit(**kwargs)
             rho[i] = rtf.results['rho']
             z[i] = rtf.results['z']
-    
+            
     z = SimArray(z, rtf.results['z'].units)
     z[0] = z[1]
     rho = SimArray(rho, rtf.results['rho'].units)

@@ -239,7 +239,7 @@ class rho_calc:
         # If None (default), reasonable r bins are automatically estimated
         self.nr = None
         # The number of vertical points to calculate rho(z,r) at
-        self.nz = 200
+        self.nz = 1000
         # The maximum z (assumed to be au) to calculate rho(z,r) at.
         # If None (default, safe) zmax is automatically estimated at each rbin
         self.zmax = None

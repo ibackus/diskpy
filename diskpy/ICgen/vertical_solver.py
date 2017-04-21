@@ -41,10 +41,12 @@ class vertical_solver():
     
     This example loads up an already created initial conditions object then
     solves for hydrostatic equilibrium at R=0.5 AU
+    
+    A better solver is now implemented. see iterativesolver.IterativeSolver
 
     """
     
-    def __init__(self, IC, R, rescale_rho=True):
+    def __init__(self, IC, R, rescale_rho=True, rhoguess=None):
         
         # initialize parameters
         z, r, c, zscale, rhoscale = setup(IC, R)
@@ -59,18 +61,20 @@ class vertical_solver():
         
         # Constants used for calculations
         A = r**3 * z * (z**2 + r**2)**-1.5
-        #B = 2*c*z        
         CONSTANTS = {'c':c, 'r': r, 'A': A}
         self.CONSTANTS = CONSTANTS
         
         # Boolean flag (rescale rho as part of the residual)
         self.rescale_rho = rescale_rho
         
-        # Perform initial guess
-        h = self._fit_h()
-        self.CONSTANTS['h'] = float(h)        
-        self.rho = rho0(z, h)
-        self.rho0 = self.rho.copy()
+        if rhoguess is None:
+            # Perform initial guess
+            h = self._fit_h()
+            self.CONSTANTS['h'] = float(h)
+            self.rho = rho0(z, h)
+            self.rho0 = self.rho.copy()
+        else:
+            self.rho0 = np.array((rhoguess/rhoscale).in_units('1'))
         
         # Initialize empty results
         self.results = {}
@@ -92,7 +96,7 @@ class vertical_solver():
         residual for density of form exp(-z^2/2h^2)
         """
         sol = fmin(self._h_residual, h0, disp=False)
-        
+        print 'h:', sol
         return sol
         
     def _drho(self, rho):
@@ -221,7 +225,7 @@ class vertical_solver():
             rho = self._rescale(rho)
             
         self.rho = rho
-        self._setup_results()        
+        self._setup_results()
         
     def fitrobust(self, nh=10, scansize=5, **kwargs):
         """
@@ -336,9 +340,10 @@ def setup(IC, R):
     # Set-up constants
     a = G*M*m/(kB*T)
     b = 2*np.pi*G*m/(kB*T)
-    h = np.sqrt(R*R*R/a).in_units('au')
-    c = b*h*sigma
+    ha = np.sqrt(R*R*R/a).in_units('au')
+    c = b*ha*sigma
     c.convert_units('1')
+    h = estHeight(sigma, T, M, m, R)
     zscale = h
     rhoscale = sigma/h
     
@@ -355,6 +360,40 @@ def setup(IC, R):
     c = strip_units(c)
     
     return z, r, c, zscale, rhoscale
+
+def estHeight(sigma, T, M, m, R):
+    """
+    Roughly estimates the height of the disk, in both the regime of disk
+    self gravity dominating and star gravity dominating
+    """
+    a = G*M*m/(kB*T)
+    b = 2*np.pi*G*m/(kB*T)
+    ha = np.sqrt(R*R*R/a).in_units('au')
+    
+    return ha
+    
+#    if sigma == 0:
+#        
+#        print 'sigma = 0'
+#        return ha
+#    
+#    hb = (1.0/(b * sigma)) * 0.5
+#    hb.convert_units('au')
+#    
+#    wa = a*ha/(R**2 + ha**2)**(3,2)
+#    wb = b * sigma
+#    wb.convert_units(wa.units)
+#    
+#    norm = wa + wb
+#    wa /= norm
+#    wb /= norm
+#    
+#    if wb > 0.9:
+#        
+#        print 'WARNING: disk seems very massive.  The density profile may be bad'
+#    
+#    h = (ha*wa + hb*wb)/(wa + wb)
+#    return h
     
 def rho0(z, h=1):
     """
