@@ -113,11 +113,6 @@ class IC:
         self.maker = maker(self)
         self.add = add(self)
         
-        # Generate sigma spline interpolation
-        if (r is not None) or (profile_kind is not None):
-            
-            self.maker.sigma_gen(r, sigma, CDF)
-        
         # Define a saving function        
         def saver(filename = None):
             """
