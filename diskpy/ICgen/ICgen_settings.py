@@ -297,7 +297,10 @@ class snapshot(settingsBase):
     
     def __init__(self, nParticles=0):
         
-        settingsBase.__init__(self, 'Tipsy snapshot generator settings')
+        message = 'Tipsy snapshot generator settings'
+        message += '\n extraparams is a dict of extra parameters for ChaNGa'
+        message += '\n e.g. extraparams = {"bDoGas": 1}'
+        settingsBase.__init__(self, message)
         # Factor by which to scale the disc mass before time evolving it up to
         # a final mass of Mdisc (see above).  Should be between 0 and 1
         # Default: 1.0 (no scaling done).  Final particle masses are scaled
@@ -305,6 +308,8 @@ class snapshot(settingsBase):
         self.mScale = 1.0
         # number of neighbors used during ChaNGa calculations
         self.nSmooth = 32
+        # Extra runtime parameters for ChaNGa
+        self.extraparams = {}
         
         # Other defaults that shouldn't need to be changed
         self.metals = 1.0

@@ -273,6 +273,10 @@ def init_param(IC, snapshot=None):
         param['bGasIsothermal'] = 0
         
     param['nSmooth'] = settings.snapshot.nSmooth
+    # Also add extra parameters if defined
+    if hasattr(IC.settings.snapshot, 'extraparams'):
+        
+        param.update(IC.settings.snapshot.extraparams)
         
     return param
 
