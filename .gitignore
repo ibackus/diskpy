@@ -1,4 +1,5 @@
 # User added git ignores
+diskpy/global_settings.p
 *~
 doc/
 *.nfs*
