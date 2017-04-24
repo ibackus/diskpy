@@ -81,12 +81,15 @@ use_omega=True):
     return (kappa_calc*c_s/(np.pi*G*sig)).in_units('1'), r_edges
 
 def Qeff(snapshot, molecular_mass = 2.0, bins=100, use_velocity=False, \
-use_omega=True, alpha=0.18, beta=2.2):
+use_omega=True, alpha=0.1766, beta=2.121):
     """Estimates the effective Toomre Q as a function of r, defined as:
     
     .. math:: Q_{eff} = \\beta Q (h/R)^{\\alpha}
         
-    See Q and h for the estimates of Q and h
+    See Q and h for the estimates of Q and h.  
+    
+    The values for alpha and beta are from Backus & Quinn, 2016 and are 
+    appropriate for an isothermal disk.
     
     Parameters
     ----------
