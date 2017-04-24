@@ -14,6 +14,44 @@ import pynbody as pb
 SimArray = pb.array.SimArray
 import logging
 
+def as_simarray(x, assumed_units='1'):
+    """
+    Return x as a SimArray.  x can be a number, a numpy array, a SimArray, 
+    an interpretable string (e.g. '1 mm' or '2e3 au').
+    
+    Parameters
+    ----------
+    x : object
+        object to make a simarray from.  If already a simarray, x is returned
+    assumed_units : unit-like
+        The units used if x has no units.  Can be a string that pynbody units 
+        takes (e.g. 'au' or 'Msol yr**-1') or a pynbody unit.  If None, no 
+        units will be assumed.
+        
+    Returns
+    -------
+    xsimarray : SimArray
+        x as a SimArray
+    """
+    
+    if isinstance(x, (str, pb.units.UnitBase)):
+        
+        x1 = SimArray(1.0, x)
+        
+    elif isinstance(x, SimArray):
+        
+        x1 = x
+        
+    else:
+        
+        x1 = SimArray(x)
+        
+    if not pb.units.has_units(x) and assumed_units is not None:
+        
+        x1.units = pb.units.Unit(assumed_units)
+        
+    return x1
+
 def configparser(fname,ftype='auto'):
     """
      --------------------------------------------------
