@@ -99,7 +99,8 @@ def sbatch_script(workdir=None, param='snapshot.param', nodes=1, ppn=None,
         '#SBATCH -N {0}\n'.format(nodes) + \
         '#SBATCH -J {0}\n'.format(jobname) +\
         '#SBATCH -t {0}\n'.format(walltime_str) +\
-        '#SBATCH -p {0}\n'.format(partition)
+        '#SBATCH -p {0}\n'.format(partition) +\
+        '#SBATCH --mem=0\n'
         
     if ppn is not None:
         
