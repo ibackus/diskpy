@@ -111,6 +111,7 @@ max_particles=None, est_eps=True, changa_args=''):
     p_temp['achInFile'] = f_name
     p_temp['achOutName'] = f_prefix
     p_temp['dDelta'] = 1e-10
+    p_temp['iBinaryOutput'] = 0 # Needed to output smoothlength array
     if 'dDumpFrameTime' in p_temp: p_temp.pop('dDumpFrameTime')
     if 'dDumpFrameStep' in p_temp: p_temp.pop('dDumpFrameStep')
     
