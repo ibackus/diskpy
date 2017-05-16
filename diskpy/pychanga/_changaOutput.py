@@ -16,6 +16,8 @@ import datetime
 
 from diskpy.utils import configparser
 
+BUF_SIZE = int(1e6)
+
 def snapshot_time(f, paramname=None):
     """
     Gets the physical time of a snapshot.  t=0 corresponds to the initial
@@ -73,7 +75,7 @@ def get_fnames(fprefix, directory=None):
 def load_acc(filename, param_name = None, low_mem = False):
     """
     Loads accelerations from a ChaNGa acceleration file (.acc2), ignoring the
-    star particle.
+    star particle.  ASSUMES A SINGLE STAR PARTICLE
 
     IF param_name is None, a .param file is searched for, otherwise param_name
     should be a string specifying a .param file name
@@ -127,17 +129,20 @@ def load_acc(filename, param_name = None, low_mem = False):
     a_unit = l_unit * t_unit**-2
 
     if low_mem:
-
-        acc_file = open(filename, 'r')
-        n_particles = int(acc_file.readline().strip())
-        acc = SimArray(np.zeros(3*n_particles, dtype=np.float32), a_unit)
-
-        for i, line in enumerate(acc_file):
-
-            acc[i] = np.float32(line.strip())
-
-        acc_file.close()
-
+        # Perform ASCII read
+        with open(filename, 'r') as f:
+            # First line in tipsy format is a header
+            n_particles = int(f.readline().strip())
+            # Pre-allocate for speed
+            acc = SimArray(np.zeros(3*n_particles, dtype=np.float32), a_unit)
+            # Buffered read
+            i0 = 0
+            tmp_lines = f.readlines(BUF_SIZE)
+            while tmp_lines:
+                acc[i0:i0 + len(tmp_lines)] = tmp_lines
+                i0 += len(tmp_lines)
+                tmp_lines = f.readlines(BUF_SIZE)
+                
         return acc.reshape([n_particles, 3], order='F')[0:-1]
 
     else:
@@ -145,7 +150,6 @@ def load_acc(filename, param_name = None, low_mem = False):
         # Load acceleration file as numpy array
         acc = np.genfromtxt(filename, skip_header=1).astype(np.float32)
         n_particles = len(acc)/3
-
         # Reshape and make it a SimArray with proper units
         acc = SimArray(acc.reshape([n_particles, 3], order='F'), a_unit)
 
