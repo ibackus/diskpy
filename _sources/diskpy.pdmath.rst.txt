@@ -1,0 +1,10 @@
+diskpy\.pdmath package
+======================
+
+Module contents
+---------------
+
+.. automodule:: diskpy.pdmath
+    :members:
+    :undoc-members:
+    :show-inheritance:

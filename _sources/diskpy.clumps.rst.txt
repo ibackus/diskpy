@@ -1,0 +1,30 @@
+diskpy\.clumps package
+======================
+
+Subpackages
+-----------
+
+.. toctree::
+
+    diskpy.clumps.clumpfinding
+    diskpy.clumps.simclumps
+
+Submodules
+----------
+
+diskpy\.clumps\.clumpfinding module
+-----------------------------------
+
+.. automodule:: diskpy.clumps.clumpfinding
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: diskpy.clumps
+    :members:
+    :undoc-members:
+    :show-inheritance:

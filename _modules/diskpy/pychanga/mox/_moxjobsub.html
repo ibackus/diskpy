@@ -1,0 +1,246 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.pychanga.mox._moxjobsub &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.pychanga.mox._moxjobsub</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python2</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Helper utilies for submitting jobs on mox (hyak 2) via the slurm workload</span>
+<span class="sd">manager.</span>
+
+<span class="sd">Created on Thu Apr 13 11:11:19 2017</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">diskpy</span> <span class="k">import</span> <span class="n">global_settings</span>
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">configparser</span><span class="p">,</span> <span class="n">configsave</span><span class="p">,</span> <span class="n">units_from_param</span>
+<span class="kn">from</span> <span class="nn">diskpy.pychanga</span> <span class="k">import</span> <span class="n">changa_command</span>
+
+<div class="viewcode-block" id="sbatch_script"><a class="viewcode-back" href="../../../../diskpy.pychanga.mox.html#diskpy.pychanga.mox.sbatch_script">[docs]</a><span class="k">def</span> <span class="nf">sbatch_script</span><span class="p">(</span><span class="n">workdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">param</span><span class="o">=</span><span class="s1">&#39;snapshot.param&#39;</span><span class="p">,</span> <span class="n">nodes</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ppn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                  <span class="n">walltime</span><span class="o">=</span><span class="mi">48</span><span class="p">,</span> <span class="n">jobname</span><span class="o">=</span><span class="s1">&#39;sbatch_job&#39;</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                  <span class="n">changa_preset</span><span class="o">=</span><span class="s1">&#39;default&#39;</span><span class="p">,</span> <span class="n">partition</span><span class="o">=</span><span class="s1">&#39;vsm&#39;</span><span class="p">,</span> <span class="n">savepath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">changa_args</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">runner_args</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A not very robust function to generate SBATCH submission scripts for ChaNGa</span>
+<span class="sd">    jobs on hyak.  Some of the requirements include:</span>
+<span class="sd">    </span>
+<span class="sd">    SBATCH (it&#39;s on mox akak hyak2, don&#39;t worry)</span>
+<span class="sd">    </span>
+<span class="sd">    By default, any directory with &#39;lastcheckpoint&#39; in it will be restarted!</span>
+<span class="sd">    If you don&#39;t want to just restart a simulation, delete lastcheckpoint from</span>
+<span class="sd">    the simulation directory!</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    workdir : str</span>
+<span class="sd">        (optional) Directory of the simulation.  Default is current working</span>
+<span class="sd">        directory</span>
+<span class="sd">    param : str</span>
+<span class="sd">        Filename of the .param file (not full path)</span>
+<span class="sd">    nodes : int</span>
+<span class="sd">        Number of computation nodes to request</span>
+<span class="sd">    ppn : int</span>
+<span class="sd">        (optional) Number of cores per node</span>
+<span class="sd">    walltime : float or int</span>
+<span class="sd">        Walltime to request in hours</span>
+<span class="sd">    jobname : str</span>
+<span class="sd">        Name of the job</span>
+<span class="sd">    email : str</span>
+<span class="sd">        Email address for PBS to send updates to</span>
+<span class="sd">    changa_preset : str</span>
+<span class="sd">        ChaNGa preset to use (see diskpy.global_settings and </span>
+<span class="sd">        diskpy.pychanga.changa_command)</span>
+<span class="sd">    partition : str</span>
+<span class="sd">        mox partition (e.g. per group) to submit job to.</span>
+<span class="sd">    savepath : str</span>
+<span class="sd">        (optional) If supplied, save this script as an executable to this </span>
+<span class="sd">        path.</span>
+<span class="sd">    changa_args, runner_args : str</span>
+<span class="sd">        Optional extra command line arguments to pass to changa and the runner</span>
+<span class="sd">        (i.e. charmrun, mpirun...)</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">    flag pairs.  CAREFUL: these must not conflict with other flags.  Flag,val</span>
+<span class="sd">    pairs (ie -flag val) are passed as: flag=val.  To add an extra command </span>
+<span class="sd">    line parameter to sbatch, e.g. -flag val</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    PBS_script : str</span>
+<span class="sd">        A string for the PBS script.  Can be saved easily to file</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">workdir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">workdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+        
+    <span class="c1"># Setup filenames</span>
+    <span class="n">param_full</span> <span class="o">=</span> <span class="s1">&#39;$workdir/&#39;</span> <span class="o">+</span> <span class="n">param</span>
+    <span class="n">outfile</span> <span class="o">=</span> <span class="s1">&#39;$workdir/&#39;</span> <span class="o">+</span> <span class="s1">&#39;changa.out&#39;</span>
+    <span class="n">fprefix</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">param</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="c1"># Load the preset    </span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">changa_preset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">changa_preset</span> <span class="ow">is</span> <span class="s1">&#39;default&#39;</span><span class="p">):</span>
+        
+        <span class="n">changa_preset</span> <span class="o">=</span> <span class="n">global_settings</span><span class="p">[</span><span class="s1">&#39;changa_presets&#39;</span><span class="p">][</span><span class="s1">&#39;default&#39;</span><span class="p">]</span>
+        
+    <span class="n">preset</span> <span class="o">=</span> <span class="n">global_settings</span><span class="p">[</span><span class="s1">&#39;changa_presets&#39;</span><span class="p">][</span><span class="n">changa_preset</span><span class="p">]</span>
+    
+    <span class="c1"># Set up the walltime for PBS</span>
+    <span class="n">hours</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">walltime</span><span class="p">)</span>
+    <span class="n">mins</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">walltime</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span><span class="o">%</span><span class="mi">60</span><span class="p">)</span>
+    <span class="n">secs</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">walltime</span><span class="o">*</span><span class="mi">3600</span><span class="p">)</span><span class="o">%</span><span class="mi">60</span><span class="p">)</span>
+    <span class="n">walltime_str</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0:d}</span><span class="s1">:</span><span class="si">{1:02d}</span><span class="s1">:</span><span class="si">{2:02d}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">hours</span><span class="p">,</span><span class="n">mins</span><span class="p">,</span><span class="n">secs</span><span class="p">)</span>
+    
+    <span class="c1"># Write the script!</span>
+    <span class="n">script</span> <span class="o">=</span> <span class="s1">&#39;#!/bin/bash -l</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="c1"># Some sbatch flags</span>
+    <span class="n">script</span> <span class="o">+=</span> \
+        <span class="s1">&#39;#SBATCH -N </span><span class="si">{0}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span> <span class="o">+</span> \
+        <span class="s1">&#39;#SBATCH -J </span><span class="si">{0}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">jobname</span><span class="p">)</span> <span class="o">+</span>\
+        <span class="s1">&#39;#SBATCH -t </span><span class="si">{0}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">walltime_str</span><span class="p">)</span> <span class="o">+</span>\
+        <span class="s1">&#39;#SBATCH -p </span><span class="si">{0}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">partition</span><span class="p">)</span> <span class="o">+</span>\
+        <span class="s1">&#39;#SBATCH --mem=500G</span><span class="se">\n</span><span class="s1">&#39;</span>
+        
+    <span class="k">if</span> <span class="n">ppn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">script</span> <span class="o">+=</span> <span class="s1">&#39;#SBATCH -n </span><span class="si">{0}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nodes</span><span class="o">*</span><span class="n">ppn</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="n">email</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>        
+        
+        <span class="n">script</span> <span class="o">+=</span> <span class="s1">&#39;#SBATCH --mail-type=ALL --mail-user=</span><span class="si">{0}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
+    
+    <span class="c1"># Parse kwargs</span>
+    <span class="k">if</span> <span class="n">kwargs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            
+            <span class="n">script</span> <span class="o">+=</span> <span class="s1">&#39;#SBATCH -</span><span class="si">{0}</span><span class="s1"> </span><span class="si">{1}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+            
+    <span class="c1"># Runtime initialization</span>
+    <span class="n">script</span> <span class="o">+=</span> \
+        <span class="s1">&#39;workdir=</span><span class="si">{0}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span> <span class="o">+</span>\
+        <span class="s1">&#39;outfile=</span><span class="si">{0}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">outfile</span><span class="p">)</span> <span class="o">+</span>\
+        <span class="s1">&#39;param=</span><span class="si">{0}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">param_full</span><span class="p">)</span> <span class="o">+</span>\
+        <span class="s1">&#39;cd $workdir</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> \
+        <span class="s1">&#39;changbin=$(which </span><span class="si">{0}</span><span class="s1">)</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">preset</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">resumeCommand</span> <span class="o">=</span> <span class="n">changa_command</span><span class="p">(</span><span class="s1">&#39;$param&#39;</span><span class="p">,</span> <span class="n">preset</span><span class="o">=</span><span class="n">changa_preset</span><span class="p">,</span>\
+    <span class="n">restart_dir</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">.chk$last&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fprefix</span><span class="p">),</span> <span class="n">changa_bin</span><span class="o">=</span><span class="s1">&#39;$changbin&#39;</span><span class="p">,</span>
+    <span class="n">changa_args</span><span class="o">=</span><span class="n">changa_args</span><span class="p">,</span> <span class="n">runner_args</span><span class="o">=</span><span class="n">runner_args</span><span class="p">)</span>
+    <span class="n">changa_args</span> <span class="o">+=</span> <span class="s1">&#39; -wall </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">walltime</span><span class="o">*</span><span class="mi">60</span><span class="p">))</span>
+    <span class="n">startCommand</span> <span class="o">=</span> <span class="n">changa_command</span><span class="p">(</span><span class="s1">&#39;$param&#39;</span><span class="p">,</span> <span class="n">preset</span><span class="o">=</span><span class="n">changa_preset</span><span class="p">,</span> \
+    <span class="n">changa_bin</span><span class="o">=</span><span class="s1">&#39;$changbin&#39;</span><span class="p">,</span> <span class="n">changa_args</span><span class="o">=</span><span class="n">changa_args</span><span class="p">,</span> <span class="n">runner_args</span><span class="o">=</span><span class="n">runner_args</span><span class="p">)</span>
+    
+    <span class="c1"># Now assume that we want to restart if there is a checkpoint</span>
+    <span class="n">script</span> <span class="o">+=</span> \
+        <span class="s1">&#39;if [ -e &quot;lastcheckpoint&quot; ]</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>\
+        <span class="s1">&#39;then</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>\
+        <span class="s1">&#39;    echo &quot;lastcheckpoint exists -- restarting simulation...&quot;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>\
+        <span class="s1">&#39;    last=`cat lastcheckpoint`</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>\
+        <span class="s1">&#39;    </span><span class="si">{0}</span><span class="s1"> &gt;&gt; $outfile 2&gt;&amp;1</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">resumeCommand</span><span class="p">)</span> <span class="o">+</span>\
+        <span class="s1">&#39;else</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>\
+        <span class="s1">&#39;    echo &quot;lastcheckpoint doesnt exist -- starting new simulation...&quot;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>\
+        <span class="s1">&#39;    </span><span class="si">{0}</span><span class="s1"> &amp;&gt; $outfile </span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">startCommand</span><span class="p">)</span> <span class="o">+</span>\
+        <span class="s1">&#39;fi</span><span class="se">\n</span><span class="s1">&#39;</span>
+    
+    <span class="k">if</span> <span class="n">savepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">savepath</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+            <span class="nb">print</span> <span class="s2">&quot;Submission script saved to:&quot;</span><span class="p">,</span> <span class="n">savepath</span>
+            
+        <span class="n">os</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">savepath</span><span class="p">,</span> <span class="mi">0774</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">script</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

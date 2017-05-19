@@ -1,0 +1,152 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.disk._math &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.disk._math</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Thu Aug  6 11:39:23 2015</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">pynbody</span> <span class="k">as</span> <span class="nn">pb</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pb</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;G&#39;</span><span class="p">)</span>
+<span class="n">kB</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;k&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="rho0_est"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.rho0_est">[docs]</a><span class="k">def</span> <span class="nf">rho0_est</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimates the midplane density vs r as </span>
+<span class="sd">    </span>
+<span class="sd">    .. math::</span>
+<span class="sd">    </span>
+<span class="sd">        \\rho(z=0) = \\frac{\\Sigma}{h \\sqrt{2 \\pi}}</span>
+<span class="sd">        </span>
+<span class="sd">        </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    h, sigma : array(s)/SimArrays (same shape)</span>
+<span class="sd">        Disk height and surface density (estimated)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">sigma</span><span class="o">/</span><span class="n">h</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+    
+<div class="viewcode-block" id="h_est"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.h_est">[docs]</a><span class="k">def</span> <span class="nf">h_est</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimates disk height :math:`h=c_{s}/\\Omega`</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    r : SimArray, array, float</span>
+<span class="sd">        Disk radii to calculate h at</span>
+<span class="sd">    M : SimArray, float</span>
+<span class="sd">        Central star mass</span>
+<span class="sd">    m : SimArray, float</span>
+<span class="sd">        Mean molecular mass (with units of mass)</span>
+<span class="sd">    T : SimArray, array, float</span>
+<span class="sd">        Temperature as a function of r</span>
+<span class="sd">    gamma : float</span>
+<span class="sd">        (optional) Adiabatic index to be used.  If temperature is not a</span>
+<span class="sd">        functino of z, gamma should equal 1 (isothermal)</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    h : SimArray, float, array</span>
+<span class="sd">        Disk height vs. r (1st order estimate)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">G</span><span class="o">*</span><span class="n">M</span><span class="o">*</span><span class="n">m</span><span class="o">/</span><span class="p">(</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">hout</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">r</span><span class="o">*</span><span class="n">r</span><span class="o">*</span><span class="n">r</span><span class="o">/</span><span class="n">a</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">hout</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">units</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

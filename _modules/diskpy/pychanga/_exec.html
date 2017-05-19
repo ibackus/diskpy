@@ -1,0 +1,405 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.pychanga._exec &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.pychanga._exec</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Mon Jul 25 15:04:27 2016</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">from</span> <span class="nn">subprocess</span> <span class="k">import</span> <span class="n">Popen</span><span class="p">,</span> <span class="n">PIPE</span>
+
+<span class="kn">from</span> <span class="nn">diskpy</span> <span class="k">import</span> <span class="n">global_settings</span>
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">logPrinter</span>
+
+<div class="viewcode-block" id="est_time_step"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.est_time_step">[docs]</a><span class="k">def</span> <span class="nf">est_time_step</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">preset</span><span class="o">=</span><span class="s1">&#39;default&#39;</span><span class="p">,</span> <span class="n">dDelta0</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">changa_args</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">runner_args</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A routine to automatically estimate a reasonable time-step size for ChaNGa.</span>
+<span class="sd">    The idea is to have about half the particles fall into the lowest rung (ie </span>
+<span class="sd">    the big time step).  This is done by calculating the rung distribution for </span>
+<span class="sd">    a large time step by running ChaNGa and killing ChaNGa once it has output </span>
+<span class="sd">    rung distribution.</span>
+<span class="sd">    </span>
+<span class="sd">    NOTE: this is still fairly alpha.  A better version would probably not</span>
+<span class="sd">    just run ChaNGa and then try to kill it.  To be safe, a local ChaNGa preset</span>
+<span class="sd">    should probably be used.</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    param_name : str</span>
+<span class="sd">        Filename for a ChaNGa .param file which defines parameters for the</span>
+<span class="sd">        snapshot.  The snapshot must already be saved to disk</span>
+<span class="sd">    preset : str</span>
+<span class="sd">        changa_runner preset to use.  See diskpy.global_settings</span>
+<span class="sd">    dDelta0 : int or float</span>
+<span class="sd">        Some large time step that should place all the particles at higher</span>
+<span class="sd">        rungs.</span>
+<span class="sd">    changa_args : str</span>
+<span class="sd">        Additional command line arguments to pass to changa.  CANNOT include</span>
+<span class="sd">        -n (number of time steps) or -dt (timestep size)</span>
+<span class="sd">    runner_args : str</span>
+<span class="sd">        Additional command line arguments to pass to the runner, ie to </span>
+<span class="sd">        charmrun or mpirun</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    dDelta : float</span>
+<span class="sd">        Estimated reasonable time step that places half the particles on the</span>
+<span class="sd">        lowest rung (ie the big time step)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">global_settings</span><span class="p">[</span><span class="s1">&#39;changa_presets&#39;</span><span class="p">][</span><span class="n">preset</span><span class="p">]</span>
+    <span class="n">changa_name</span> <span class="o">=</span> <span class="n">settings</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">runner_name</span> <span class="o">=</span> <span class="n">settings</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="n">changa_args</span> <span class="o">+=</span> <span class="s1">&#39; -n 1 -dt </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dDelta0</span><span class="p">)</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">changa_command</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">preset</span><span class="p">,</span> <span class="n">changa_args</span><span class="o">=</span><span class="n">changa_args</span><span class="p">,</span> <span class="n">runner_args</span><span class="o">=</span><span class="n">runner_args</span><span class="p">)</span>
+    
+    <span class="n">rung_line</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">changa_run</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">iter</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readline</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">):</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;rung distribution&#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+            
+            <span class="c1"># Kill the runner</span>
+            <span class="n">kill_command</span> <span class="o">=</span> <span class="s1">&#39;pkill -9 &#39;</span> <span class="o">+</span> <span class="n">runner_name</span>
+            <span class="n">pkill</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">kill_command</span><span class="o">.</span><span class="n">split</span><span class="p">(),</span> \
+            <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+            <span class="n">pkill</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            
+            <span class="c1"># Kill ChaNGa</span>
+            <span class="n">kill_command</span> <span class="o">=</span> <span class="s1">&#39;pkill -9 &#39;</span> <span class="o">+</span> <span class="n">changa_name</span>
+            <span class="n">pkill</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">kill_command</span><span class="o">.</span><span class="n">split</span><span class="p">(),</span> \
+            <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+            <span class="n">pkill</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            
+            <span class="n">rung_line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">break</span>
+        
+    <span class="k">if</span> <span class="n">rung_line</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+        
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;ChaNGa failed to output rung distribution&#39;</span><span class="p">)</span>
+        
+    <span class="n">rung_list</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s1">&#39;\d+&#39;</span><span class="p">,</span> <span class="n">rung_line</span><span class="p">)</span>
+    <span class="n">rung_hist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">rung_list</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">rung_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rung_hist</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    
+    <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">rung_hist</span><span class="p">)</span>
+    <span class="n">Ntot</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="c1"># Find first bin which gives us more than half the total number</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+        
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">Ntot</span><span class="p">:</span>
+            
+            <span class="n">ind</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="k">break</span>
+    
+    <span class="c1"># Calculate the median rung    </span>
+    <span class="n">rung_med</span> <span class="o">=</span> <span class="n">rung_edges</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="n">Ntot</span> <span class="o">-</span> <span class="n">s</span><span class="p">[</span><span class="n">ind</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="n">rung_hist</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+    
+    <span class="c1"># Now estimate a time step that will fit about half the particles on the</span>
+    <span class="c1"># lowest rung (ie the big time step)</span>
+    
+    <span class="n">dDelta</span> <span class="o">=</span> <span class="n">dDelta0</span> <span class="o">*</span> <span class="mf">2.0</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="n">rung_med</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">dDelta</span></div>
+
+<div class="viewcode-block" id="changa_run"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.changa_run">[docs]</a><span class="k">def</span> <span class="nf">changa_run</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">verbose</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">force_wait</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">return_success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">require_success</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A wrapper for running ChaNGa</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    command : str</span>
+<span class="sd">        A full command line command for running ChaNGa.  Can be produced from </span>
+<span class="sd">        defaults using ICgen_utils.changa_command</span>
+<span class="sd">    verbose : bool</span>
+<span class="sd">        (optional) Flag for printing ChaNGa output to stdout.</span>
+<span class="sd">        If True - stdout is printed.  This will effectively makes changa_run</span>
+<span class="sd">        wait on ChaNGa completion</span>
+<span class="sd">    force_wait : bool</span>
+<span class="sd">        (optional) Default = False</span>
+<span class="sd">        If set, forces wait on ChaNGa before completion</span>
+<span class="sd">    log_file : str</span>
+<span class="sd">        (optional) filename, if passed, the stdout will be also copied to log_file</span>
+<span class="sd">    return_success : bool</span>
+<span class="sd">        If set, returns the success of the run, i.e. checks to see if the </span>
+<span class="sd">        simulation finished properly.</span>
+<span class="sd">    require_success : bool</span>
+<span class="sd">        If true, a RuntimeError will be raised if ChaNGa does not exit </span>
+<span class="sd">        successfully</span>
+<span class="sd">    </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    p : subprocess.Popen</span>
+<span class="sd">        A process object created by subprocess.Popen for the ChaNGa command</span>
+<span class="sd">    success : bool</span>
+<span class="sd">        IF return_success is set to True, the status of the run is returned</span>
+<span class="sd">        instead of p.</span>
+<span class="sd">    status : bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">command</span><span class="o">.</span><span class="n">split</span><span class="p">(),</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">output</span><span class="p">)</span>
+    <span class="n">printer</span> <span class="o">=</span> <span class="n">logPrinter</span><span class="p">(</span><span class="n">verbose</span><span class="p">,</span> <span class="n">log_file</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">success</span> <span class="o">=</span> <span class="kc">False</span>
+        
+    <span class="k">if</span> <span class="n">verbose</span> <span class="ow">or</span> <span class="n">return_success</span> <span class="ow">or</span> <span class="p">(</span><span class="n">log_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+        
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">iter</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readline</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">):</span>
+            
+            <span class="k">if</span> <span class="s2">&quot;Done.&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                
+                <span class="n">success</span> <span class="o">=</span> <span class="kc">True</span>
+                
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">):</span>
+                
+                <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                
+            <span class="n">printer</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                
+        <span class="n">p</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        
+    <span class="k">if</span> <span class="n">force_wait</span><span class="p">:</span>
+        
+        <span class="n">p</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        
+    <span class="n">printer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">success</span> <span class="ow">and</span> <span class="n">require_success</span><span class="p">:</span>
+        
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">,</span> <span class="s2">&quot;ChaNGa did not complete successfully&quot;</span>
+        
+    <span class="k">if</span> <span class="n">return_success</span><span class="p">:</span>
+        
+        <span class="k">return</span> <span class="n">success</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="k">return</span> <span class="n">p</span></div>
+
+<div class="viewcode-block" id="changa_command"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.changa_command">[docs]</a><span class="k">def</span> <span class="nf">changa_command</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">preset</span><span class="o">=</span><span class="s1">&#39;default&#39;</span><span class="p">,</span> <span class="n">changa_bin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> \
+<span class="n">changa_args</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">runner_args</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span><span class="n">restart_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A utility for created command line commands for running ChaNGa</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    param_name : str</span>
+<span class="sd">        Filename of the .param file used for ChaNGa</span>
+<span class="sd">    preset : str</span>
+<span class="sd">        if None or &#39;default&#39;, the default preset is used</span>
+<span class="sd">        Presets are defined in global_settings</span>
+<span class="sd">    changa_bin : str</span>
+<span class="sd">        Path to the ChaNGa binary to use.  If None, defaults are used</span>
+<span class="sd">        Overrides preset binary</span>
+<span class="sd">    changa_args : str</span>
+<span class="sd">        Additional user supplied arguments for ChaNGa</span>
+<span class="sd">    runner_args : str</span>
+<span class="sd">        Additional user supplied arguments for the runner (ie charmrun or mpirun)</span>
+<span class="sd">    restart_dir : str</span>
+<span class="sd">        (optional) If set, this will be treated as a restart.  All changa args</span>
+<span class="sd">        will be ignored.</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    command : str</span>
+<span class="sd">        A command line command for running ChaNGa</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># Contains all the presets</span>
+    <span class="n">preset_dict</span> <span class="o">=</span> <span class="n">global_settings</span><span class="p">[</span><span class="s1">&#39;changa_presets&#39;</span><span class="p">]</span>
+    
+    <span class="c1"># Load the preset    </span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">preset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">preset</span> <span class="ow">is</span> <span class="s1">&#39;default&#39;</span><span class="p">):</span>
+        
+        <span class="n">preset</span> <span class="o">=</span> <span class="n">preset_dict</span><span class="p">[</span><span class="s1">&#39;default&#39;</span><span class="p">]</span>
+        
+    <span class="n">preset_list</span> <span class="o">=</span> <span class="n">preset_dict</span><span class="p">[</span><span class="n">preset</span><span class="p">]</span>
+    
+    <span class="c1"># Get full path to ChaNGa binary</span>
+    <span class="k">if</span> <span class="n">changa_bin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">changa_bin</span> <span class="o">=</span> <span class="n">preset_list</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">changa_bin</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="s1">&#39;which &#39;</span> <span class="o">+</span> <span class="n">changa_bin</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;&#39;</span> <span class="o">==</span> <span class="n">changa_bin</span><span class="p">:</span>
+            
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">,</span> <span class="s1">&#39;Could not find ChaNGa.  Try different preset&#39;</span>
+    
+    <span class="c1"># Merge user defined extra arguments    </span>
+    <span class="n">runner_args</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">preset_list</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">runner_args</span><span class="p">])</span>
+    <span class="n">changa_args</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">preset_list</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">changa_args</span><span class="p">])</span>
+    <span class="n">runner</span> <span class="o">=</span> <span class="n">preset_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">restart_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">changa_args</span> <span class="o">=</span> <span class="s1">&#39;+restart </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">restart_dir</span><span class="p">)</span>
+        
+    <span class="n">command</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">runner</span><span class="p">,</span> <span class="n">runner_args</span><span class="p">,</span> <span class="n">changa_bin</span><span class="p">,</span> <span class="n">changa_args</span><span class="p">,</span> <span class="n">param_name</span><span class="p">])</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">command</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+    
+    <span class="k">return</span> <span class="n">command</span></div>
+            
+<span class="k">def</span> <span class="nf">arg_cat</span><span class="p">(</span><span class="n">arg_list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    STILL ALPHA!!! </span>
+<span class="sd">    </span>
+<span class="sd">    arg_str = arg_cat([args1, args2, ...])</span>
+<span class="sd">    </span>
+<span class="sd">    Concatenates a list of various command line arguments.  arg_list should</span>
+<span class="sd">    be a list containing command line argument strings.</span>
+<span class="sd">    </span>
+<span class="sd">    Priority is given to later arguments.  So arg_list[2] overwrites arg_list[1]</span>
+<span class="sd">    if they share any flags</span>
+<span class="sd">    </span>
+<span class="sd">    **EXAMPLES**</span>
+<span class="sd">    </span>
+<span class="sd">    args1 = &#39;-n 20 +cd 13 ++b fire testit&#39;</span>
+<span class="sd">    args2 = &#39;-n 20 +cd 300&#39;</span>
+<span class="sd">    print arg_cat([args1, args2])</span>
+<span class="sd">    </span>
+<span class="sd">        returns:</span>
+<span class="sd">        +cd 300 -n 20 testit ++b fire</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">args_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    
+    <span class="c1"># Loop through all sets of arguments</span>
+    <span class="k">for</span> <span class="n">args</span> <span class="ow">in</span> <span class="n">arg_list</span><span class="p">:</span>
+        
+        <span class="c1"># Split args if it&#39;s not already a list</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">((</span><span class="n">args</span><span class="p">),</span> <span class="nb">str</span><span class="p">):</span>
+            
+            <span class="n">args</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            
+        <span class="c1"># Parse arguments</span>
+        <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="k">while</span> <span class="n">counter</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+            
+            <span class="n">key</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="n">counter</span><span class="p">]</span>
+            
+            <span class="k">if</span> <span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;+&#39;</span><span class="p">):</span>
+                <span class="c1"># We have a flag followed by its value</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="n">counter</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">counter</span> <span class="o">+=</span> <span class="mi">2</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># We just have an argument</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+                <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+                
+            <span class="n">args_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+                
+    <span class="n">args_str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">args_dict</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        
+        <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+            
+            <span class="c1"># Tack on to the end</span>
+            <span class="n">args_str</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">args_str</span><span class="p">,</span> <span class="n">key</span><span class="p">])</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="c1"># Place at beginning</span>
+            <span class="n">args_str</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">args_str</span><span class="p">])</span>
+            
+    <span class="n">args_str</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args_str</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+    
+    <span class="k">return</span> <span class="n">args_str</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

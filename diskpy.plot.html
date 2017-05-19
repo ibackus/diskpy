@@ -1,0 +1,323 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.plot package &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="diskpy.pychanga package" href="diskpy.pychanga.html" />
+    <link rel="prev" title="diskpy.pdmath package" href="diskpy.pdmath.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.pychanga.html" title="diskpy.pychanga package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.pdmath.html" title="diskpy.pdmath package"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" accesskey="U">diskpy package</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="diskpy-plot-package">
+<h1>diskpy.plot package<a class="headerlink" href="#diskpy-plot-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-diskpy.plot">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diskpy.plot" title="Permalink to this headline">¶</a></h2>
+<p>init for diskpy.plot</p>
+<p>Created on Thu Jul 16 11:25:15 2015</p>
+<p>&#64;author: ibackus</p>
+<dl class="function">
+<dt id="diskpy.plot.gridplot">
+<code class="descclassname">diskpy.plot.</code><code class="descname">gridplot</code><span class="sig-paren">(</span><em>nrows</em>, <em>ncols=1</em>, <em>square=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/plot/_plot.html#gridplot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.plot.gridplot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a grid of tightly-packed subplots and returns them as a numpy array,
+shape (nrows,ncols).  If nrows=ncols=1, a single subplot is made.
+Currently not fully implemented for a 2D array</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.plot.heatmap">
+<code class="descclassname">diskpy.plot.</code><code class="descname">heatmap</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>z</em>, <em>bins=10</em>, <em>plot=True</em>, <em>output=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/plot/_plot.html#heatmap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.plot.heatmap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a pcolor heatmap for z evaluated at (x,y).  z is binned and
+averaged according to x and y.  x, y, and z should be 1-D arrays with the
+same length.</p>
+<p>IF bins = N, a pcolor plot of shape (N,N) is returned
+IF bins = (M,N) [a tuple], a pcolor plot of shape (M,N) is returned</p>
+<p>IF plot = True (default) a plot is created.</p>
+<p><strong>* RETURNS *</strong>
+IF output = False, nothing is returned (default)</p>
+<p>IF output = True:</p>
+<p>Returns x_mesh, y_mesh, z_binned</p>
+<p>x_mesh, y_mesh are the meshgrid x,y edges z is evaluted in.  z_binned is
+the average of z for each bin.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.plot.lineanimate">
+<code class="descclassname">diskpy.plot.</code><code class="descname">lineanimate</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/plot/_plot.html#lineanimate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.plot.lineanimate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Makes an animation of a line vs time and saves as .mp4 file.  Uses 
+matplotlib.animation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x</strong> : 1D array like</p>
+<blockquote>
+<div><p>x points (same at every time step)</p>
+</div></blockquote>
+<p><strong>y</strong> : 2D array like</p>
+<blockquote>
+<div><p>y points (change at each time step).  y[i] is plotted at frame i</p>
+</div></blockquote>
+<p><strong>*args</strong></p>
+<blockquote>
+<div><p>Optional additional arguments passed to matplotlib.plot</p>
+</div></blockquote>
+<p><strong>**kwargs</strong></p>
+<blockquote>
+<div><p>Optional keyword args.  The Some are used in movieplot, all others
+are passed to matplotlib</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.plot.waterfall">
+<code class="descclassname">diskpy.plot.</code><code class="descname">waterfall</code><span class="sig-paren">(</span><em>power</em>, <em>t=None</em>, <em>m=None</em>, <em>log=True</em>, <em>normalize=True</em>, <em>cmap=’cubehelix’</em>, <em>vmin=None</em>, <em>vmax=None</em>, <em>colorbar=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/plot/_plot.html#waterfall"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.plot.waterfall" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a waterfall plot for power spectrum vs time for a simulation</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>power</strong> : array, SimArray</p>
+<blockquote>
+<div><p>2D shape (nt, nm) array of power spectrum</p>
+</div></blockquote>
+<p><strong>t</strong> : array, SimArray</p>
+<blockquote>
+<div><p>(optional) time points.  1D array</p>
+</div></blockquote>
+<p><strong>m</strong> : array, SimArray</p>
+<blockquote>
+<div><p>(optional) Fourier mode numbers.  1D array</p>
+</div></blockquote>
+<p><strong>log: bool</strong></p>
+<blockquote>
+<div><p>logscale the colors</p>
+</div></blockquote>
+<p><strong>normalize</strong> : bool</p>
+<blockquote>
+<div><p>Normalize by the DC component at each time step</p>
+</div></blockquote>
+<p><strong>cmap</strong> : str or colormap</p>
+<blockquote>
+<div><p>colormap to use</p>
+</div></blockquote>
+<p><strong>vmin, vmax</strong> : float</p>
+<blockquote>
+<div><p>limits</p>
+</div></blockquote>
+<p><strong>colorbar</strong> : bool</p>
+<blockquote class="last">
+<div><p>Display colorbar</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">flist</span> <span class="o">=</span> <span class="n">diskpy</span><span class="o">.</span><span class="n">pychanga</span><span class="o">.</span><span class="n">get_fnames</span><span class="p">(</span><span class="s1">&#39;snapshot&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">m</span><span class="p">,</span> <span class="n">power</span> <span class="o">=</span> <span class="n">diskpy</span><span class="o">.</span><span class="n">disk</span><span class="o">.</span><span class="n">powerspectrum_t</span><span class="p">(</span><span class="n">flist</span><span class="p">,</span> <span class="n">spacing</span><span class="o">=</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">waterfall</span><span class="p">(</span><span class="n">power</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.plot.colorCodedImage">
+<code class="descclassname">diskpy.plot.</code><code class="descname">colorCodedImage</code><span class="sig-paren">(</span><em>sim</em>, <em>qtys</em>, <em>width=60</em>, <em>resolution=500</em>, <em>z_camera=None</em>, <em>av_zs=(False</em>, <em>False)</em>, <em>cmap=’Reds’</em>, <em>vmins=(None</em>, <em>None)</em>, <em>vmaxs=(None</em>, <em>None)</em>, <em>logs=(True</em>, <em>True)</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/plot/_plot.html#colorCodedImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.plot.colorCodedImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates an image as with pynbody.plot.sph.image with brightness set by
+one quantity and color set by a second quantity.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>sim</strong> : SimSnap</p>
+<blockquote>
+<div><p>Snapshot or sub-snap to render</p>
+</div></blockquote>
+<p><strong>qtys</strong> : list or tuple</p>
+<blockquote>
+<div><p>A tuple/list of 2 quantities (strings) to render.  The quantity are
+SimSnap keys, e.g. ‘rho’, ‘temp’, ‘mass’, etc.  The first quantity
+sets the brightness of the image, the second sets the color</p>
+</div></blockquote>
+<p><strong>width</strong> : number</p>
+<blockquote>
+<div><p>Width of the plot to render</p>
+</div></blockquote>
+<p><strong>resolution</strong> : int</p>
+<blockquote>
+<div><p>Number of pixels to render along each axis</p>
+</div></blockquote>
+<p><strong>z_camera</strong> : number</p>
+<blockquote>
+<div><p>z-camera location (see pynbody.plot.sph.image)</p>
+</div></blockquote>
+<p><strong>av_zs</strong> : tuple</p>
+<blockquote>
+<div><p>Average along line-of-sight (see pynbody.plot.sph.image).  If True,
+volume averating is used.  If a string averaging is over that qty.
+E.g., mass averaging can be acheived by using av_zs = (‘rho’, ‘rho’)</p>
+</div></blockquote>
+<p><strong>cmap</strong> : str or cmap</p>
+<blockquote>
+<div><p>colormap to use for color-coding</p>
+</div></blockquote>
+<p><strong>vmins, vmaxs</strong> : list/tuples</p>
+<blockquote>
+<div><p>vmin, vmax for the quantities (one for each quantity)</p>
+</div></blockquote>
+<p><strong>logs</strong> : list/tuple</p>
+<blockquote>
+<div><p>List or tuple of booleans.  Defines whether color should use a log
+scale.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>im</strong> : array</p>
+<blockquote class="last">
+<div><p>The rendered RGB image used</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.plot.colorCodeArray">
+<code class="descclassname">diskpy.plot.</code><code class="descname">colorCodeArray</code><span class="sig-paren">(</span><em>x1</em>, <em>x2</em>, <em>cmap=’Reds’</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/plot/_plot.html#colorCodeArray"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.plot.colorCodeArray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a color-coded array from x1 (brightess) and x2 (color).  x1 and x2 
+are assumed to be normalized (0 to 1).  x1 defines the brightness, x2
+defines the color.  Returns an RGB array</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.plot.normalizeArray">
+<code class="descclassname">diskpy.plot.</code><code class="descname">normalizeArray</code><span class="sig-paren">(</span><em>x</em>, <em>log=True</em>, <em>vmin=None</em>, <em>vmax=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/plot/_plot.html#normalizeArray"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.plot.normalizeArray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize an array.  Values below/above the thresholds of vmin/vmax are
+set to 0/1</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">diskpy.plot package</a><ul>
+<li><a class="reference internal" href="#module-diskpy.plot">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="diskpy.pdmath.html"
+                        title="previous chapter">diskpy.pdmath package</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="diskpy.pychanga.html"
+                        title="next chapter">diskpy.pychanga package</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/diskpy.plot.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.pychanga.html" title="diskpy.pychanga package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.pdmath.html" title="diskpy.pdmath package"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" >diskpy package</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

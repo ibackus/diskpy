@@ -1,0 +1,659 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.ICgen_utils &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.ICgen_utils</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Tue Aug  5 17:37:03 2014</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;$Revision: 1 $&quot;</span>
+<span class="c1"># $Source$</span>
+
+<span class="c1"># External modules</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">cPickle</span> <span class="k">as</span> <span class="nn">pickle</span>
+
+<span class="c1"># diskpy modules</span>
+<span class="kn">from</span> <span class="nn">diskpy</span> <span class="k">import</span> <span class="n">global_settings</span>
+<span class="kn">from</span> <span class="nn">diskpy.pdmath</span> <span class="k">import</span> <span class="n">binned_mean</span><span class="p">,</span> <span class="n">extrap1d</span>
+<span class="kn">from</span> <span class="nn">diskpy.disk</span> <span class="k">import</span> <span class="n">height</span>
+
+<span class="c1"># These modules have been moved to a different location.  For backwards </span>
+<span class="c1"># compatibility, load them here</span>
+<span class="kn">from</span> <span class="nn">diskpy.pychanga</span> <span class="k">import</span> <span class="n">changa_run</span><span class="p">,</span> <span class="n">changa_command</span><span class="p">,</span> <span class="n">est_time_step</span>
+
+<div class="viewcode-block" id="pickle_import"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_utils.pickle_import">[docs]</a><span class="k">def</span> <span class="nf">pickle_import</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">moduledir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Performs a cPickle.load on fname</span>
+<span class="sd">    If an ImportError is raised, moduledir is temporarily added to sys.path</span>
+<span class="sd">    to try and find the module</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    fname : filename</span>
+<span class="sd">        filename of a file to open</span>
+<span class="sd">    moduledir : str or list of strings</span>
+<span class="sd">        The directory or directories to temporarily add to sys.path</span>
+<span class="sd">        IF None, a normal cPickle.load is performed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">moduledir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">data</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">data</span>
+    
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">moduledir</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        
+        <span class="n">moduledir</span> <span class="o">=</span> <span class="p">[</span><span class="n">moduledir</span><span class="p">]</span>
+        
+    <span class="k">try</span><span class="p">:</span>
+            
+        <span class="c1"># Just try to unpickle</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">))</span>
+        
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            
+        <span class="c1"># Add directories to sys.path (PYTHONPATH)</span>
+        <span class="k">for</span> <span class="n">directory</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">moduledir</span><span class="p">):</span>
+            
+            <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">directory</span><span class="p">)</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            
+            <span class="c1"># unpickle if possible</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">))</span>
+        
+        <span class="k">finally</span><span class="p">:</span>
+            
+            <span class="c1"># Remove directory</span>
+            <span class="k">for</span> <span class="n">directory</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">moduledir</span><span class="p">):</span>
+                
+                <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+            
+    <span class="k">return</span> <span class="n">data</span></div>
+    
+<div class="viewcode-block" id="Qeff"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_utils.Qeff">[docs]</a><span class="k">def</span> <span class="nf">Qeff</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    
+    <span class="k">if</span> <span class="n">bins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">bins</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">r_bins</span>
+        
+    <span class="c1"># Constants</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span><span class="s1">&#39;G&#39;</span><span class="p">)</span>
+    <span class="n">kB</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span> <span class="s1">&#39;k&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;snapshot&#39;</span><span class="p">):</span>
+        
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Could not find snapshot.  Must generate ICs first&#39;</span><span class="p">)</span>
+        
+    <span class="n">snap</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">snapshot</span>
+    
+    <span class="n">T</span> <span class="o">=</span> <span class="n">snap</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;temp&#39;</span><span class="p">]</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">snap</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">snap</span><span class="o">.</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">m</span>
+    
+    <span class="n">cs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="o">/</span><span class="n">m</span><span class="p">)</span>
+    <span class="n">omega</span> <span class="o">=</span> <span class="n">snap</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;vt&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">r</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    
+    <span class="n">r_edges</span><span class="p">,</span> <span class="n">h_binned</span> <span class="o">=</span> <span class="n">height</span><span class="p">(</span><span class="n">snap</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">r_cent</span> <span class="o">=</span> <span class="p">(</span><span class="n">r_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">r_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">h_spl</span> <span class="o">=</span> <span class="n">extrap1d</span><span class="p">(</span><span class="n">r_cent</span><span class="p">,</span> <span class="n">h_binned</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">h_spl</span><span class="p">(</span><span class="n">r</span><span class="p">),</span> <span class="n">h_binned</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+    
+    <span class="n">Q</span> <span class="o">=</span> <span class="p">(</span><span class="n">cs</span><span class="o">*</span><span class="n">omega</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">G</span><span class="o">*</span><span class="n">sigma</span><span class="p">))</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="n">Q1</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">*</span> <span class="p">((</span><span class="n">h</span><span class="o">/</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">))</span><span class="o">**</span><span class="mf">0.192</span>
+    
+    <span class="n">dummy</span><span class="p">,</span> <span class="n">Q1_binned</span><span class="p">,</span> <span class="n">dummy2</span> <span class="o">=</span> <span class="n">binned_mean</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">Q1</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">r_edges</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">r_edges</span><span class="p">,</span> <span class="n">Q1_binned</span></div>
+
+<div class="viewcode-block" id="larray"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_utils.larray">[docs]</a><span class="k">class</span> <span class="nc">larray</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A simple subclass of list for containing listified arrays</span>
+<span class="sd">    (see ICgen_utils.listify)</span>
+<span class="sd">    Should be instantiated by ICgen_utils.listify</span>
+<span class="sd">    </span>
+<span class="sd">    USAGE:</span>
+<span class="sd">    </span>
+<span class="sd">    Creating an larray object:</span>
+<span class="sd">    </span>
+<span class="sd">        a = larray() # blank larray</span>
+<span class="sd">        a = larray(shape) # sets a.shape = shape</span>
+<span class="sd">    </span>
+<span class="sd">    Then one can append to an larray just as with a list</span>
+<span class="sd">    </span>
+<span class="sd">        a.append(stuff)</span>
+<span class="sd">        </span>
+<span class="sd">    To return return a normal array:</span>
+<span class="sd">    </span>
+<span class="sd">        array = a.delistify()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        
+        <span class="nb">list</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
+    
+<div class="viewcode-block" id="larray.delistify"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_utils.larray.delistify">[docs]</a>    <span class="k">def</span> <span class="nf">delistify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return an array made from self.  See ICgen_utils.delistify</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">return</span> <span class="n">delistify</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="listify"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_utils.listify">[docs]</a><span class="k">def</span> <span class="nf">listify</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">max_element</span><span class="o">=</span><span class="mi">10</span><span class="o">**</span><span class="mi">7</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Breaks up an array or SimArray into chunks and saves as an larray object</span>
+<span class="sd">    (essentially, a list).  Useful for pickling very large arrays which otherwise</span>
+<span class="sd">    may throw an error with pickle</span>
+<span class="sd">    </span>
+<span class="sd">    Whenever possible the array is NOT copied, rather a view is returned.  This</span>
+<span class="sd">    depends on the functionality of array.ravel() (see numpy.ravel)</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    array : array_like or SimArray</span>
+<span class="sd">        Input array to listify</span>
+<span class="sd">    max_element : int</span>
+<span class="sd">        Maximimum number of elements per chunk (i.e., per list item)</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    list_array : larray</span>
+<span class="sd">        A listified array.  </span>
+<span class="sd">        </span>
+<span class="sd">    See Also : ICgen_utils.delistify</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># Initialize</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">n_elements</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">n_elements</span> <span class="o">&lt;=</span> <span class="n">max_element</span><span class="p">:</span>
+        
+        <span class="k">return</span> <span class="n">array</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">out_list</span> <span class="o">=</span> <span class="n">larray</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        
+        <span class="c1"># Number per slice</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_element</span><span class="p">)</span>
+        
+        <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="k">while</span> <span class="n">counter</span> <span class="o">&lt;</span> <span class="n">n_elements</span><span class="p">:</span>
+            
+            <span class="n">out_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">counter</span><span class="p">:</span><span class="n">counter</span><span class="o">+</span><span class="n">N</span><span class="p">])</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">counter</span> <span class="o">+=</span> <span class="n">N</span>
+        
+        <span class="k">return</span> <span class="n">out_list</span></div>
+    
+<div class="viewcode-block" id="delistify"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_utils.delistify">[docs]</a><span class="k">def</span> <span class="nf">delistify</span><span class="p">(</span><span class="n">in_list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reverses listify.</span>
+<span class="sd">    Takes an larray object (a listified array) and returns the original array</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    in_list : larray</span>
+<span class="sd">        Listified array</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    array : array_like or SimArray</span>
+<span class="sd">        array from the original data</span>
+<span class="sd">        </span>
+<span class="sd">    See Also : ICgen_utils.listify</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">in_list</span><span class="p">,</span> <span class="n">larray</span><span class="p">):</span>
+        
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">in_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">SimArray</span><span class="p">):</span>
+            
+            <span class="n">array</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">in_list</span><span class="p">),</span> <span class="n">in_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">in_list</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">array</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">in_list</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="k">return</span> <span class="n">in_list</span></div>
+        
+<div class="viewcode-block" id="est_eps"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_utils.est_eps">[docs]</a><span class="k">def</span> <span class="nf">est_eps</span><span class="p">(</span><span class="n">smoothlength_file</span><span class="p">,</span> <span class="n">nstar</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimate gravitational softening length (eps) from a ChaNGa output .smoothlength</span>
+<span class="sd">    file.  eps is estimated as 1/2 the mean smoothing length</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    smoothlength_file : str</span>
+<span class="sd">        Filename of the .smoothlength file</span>
+<span class="sd">    nstar : int</span>
+<span class="sd">        Number of star particles present</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    eps : float</span>
+<span class="sd">        Estimate of the gravitational softening length in simulation units</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Open ChaNGa output file containing smoothing lengths for all particles</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">smoothlength_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+    <span class="c1"># Total number of particles (incl. star)</span>
+    <span class="n">nParticles</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+    <span class="c1"># Allocate smoothing length array    </span>
+    <span class="n">smoothlength</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nParticles</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="c1"># Read smoothing lengths</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+        
+        <span class="n">smoothlength</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        
+    <span class="c1"># Calculate eps, ignoring star particle</span>
+    <span class="n">mean_smooth</span> <span class="o">=</span> <span class="p">(</span><span class="n">smoothlength</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">-</span> <span class="n">smoothlength</span><span class="p">[</span><span class="o">-</span><span class="n">nstar</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">nParticles</span><span class="o">-</span><span class="n">nstar</span><span class="p">)</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="n">mean_smooth</span><span class="o">/</span><span class="mi">2</span>
+    
+    <span class="k">return</span> <span class="n">eps</span></div>
+    
+<span class="c1">#def est_time_step(param_name, preset=&#39;default&#39;, dDelta0=100, changa_args=&#39;&#39;, runner_args=&#39;&#39;):</span>
+<span class="c1">#    &quot;&quot;&quot;</span>
+<span class="c1">#    A routine to automatically estimate a reasonable time-step size for ChaNGa.</span>
+<span class="c1">#    The idea is to have about half the particles fall into the lowest rung (ie </span>
+<span class="c1">#    the big time step).  This is done by calculating the rung distribution for </span>
+<span class="c1">#    a large time step by running ChaNGa and killing ChaNGa once it has output </span>
+<span class="c1">#    rung distribution.</span>
+<span class="c1">#    </span>
+<span class="c1">#    NOTE: this is still fairly alpha.  A better version would probably not</span>
+<span class="c1">#    just run ChaNGa and then try to kill it.  To be safe, a local ChaNGa preset</span>
+<span class="c1">#    should probably be used.</span>
+<span class="c1">#    </span>
+<span class="c1">#    **ARGUMENTS**</span>
+<span class="c1">#    </span>
+<span class="c1">#    param_name : str</span>
+<span class="c1">#        Filename for a ChaNGa .param file which defines parameters for the</span>
+<span class="c1">#        snapshot.  The snapshot must already be saved to disk</span>
+<span class="c1">#    preset : str</span>
+<span class="c1">#        changa_runner preset to use.  See diskpy.global_settings</span>
+<span class="c1">#    dDelta0 : int or float</span>
+<span class="c1">#        Some large time step that should place all the particles at higher</span>
+<span class="c1">#        rungs.</span>
+<span class="c1">#    changa_args : str</span>
+<span class="c1">#        Additional command line arguments to pass to changa.  CANNOT include</span>
+<span class="c1">#        -n (number of time steps) or -dt (timestep size)</span>
+<span class="c1">#    runner_args : str</span>
+<span class="c1">#        Additional command line arguments to pass to the runner, ie to </span>
+<span class="c1">#        charmrun or mpirun</span>
+<span class="c1">#        </span>
+<span class="c1">#    **RETURNS**</span>
+<span class="c1">#    </span>
+<span class="c1">#    dDelta : float</span>
+<span class="c1">#        Estimated reasonable time step that places half the particles on the</span>
+<span class="c1">#        lowest rung (ie the big time step)</span>
+<span class="c1">#    &quot;&quot;&quot;</span>
+<span class="c1">#    </span>
+<span class="c1">#    settings = global_settings[&#39;changa_presets&#39;][preset]</span>
+<span class="c1">#    changa_name = settings[2]</span>
+<span class="c1">#    runner_name = settings[0]</span>
+<span class="c1">#    </span>
+<span class="c1">#    changa_args += &#39; -n 1 -dt {0}&#39;.format(dDelta0)</span>
+<span class="c1">#    command = changa_command(param_name, preset, changa_args=changa_args, runner_args=runner_args)</span>
+<span class="c1">#    </span>
+<span class="c1">#    rung_line = &#39;&#39;</span>
+<span class="c1">#    p = changa_run(command, verbose=False)</span>
+<span class="c1">#    </span>
+<span class="c1">#    for line in iter(p.stdout.readline, &#39;&#39;):</span>
+<span class="c1">#        </span>
+<span class="c1">#        if &#39;rung distribution&#39; in line.lower():</span>
+<span class="c1">#            </span>
+<span class="c1">#            # Kill the runner</span>
+<span class="c1">#            kill_command = &#39;pkill -9 &#39; + runner_name</span>
+<span class="c1">#            pkill = subprocess.Popen(kill_command.split(), \</span>
+<span class="c1">#            stdout=subprocess.PIPE)</span>
+<span class="c1">#            pkill.wait()</span>
+<span class="c1">#            </span>
+<span class="c1">#            # Kill ChaNGa</span>
+<span class="c1">#            kill_command = &#39;pkill -9 &#39; + changa_name</span>
+<span class="c1">#            pkill = subprocess.Popen(kill_command.split(), \</span>
+<span class="c1">#            stdout=subprocess.PIPE)</span>
+<span class="c1">#            pkill.wait()</span>
+<span class="c1">#            </span>
+<span class="c1">#            rung_line = line.strip()</span>
+<span class="c1">#            break</span>
+<span class="c1">#        </span>
+<span class="c1">#    if rung_line == &#39;&#39;:</span>
+<span class="c1">#        </span>
+<span class="c1">#        raise RuntimeError(&#39;ChaNGa failed to output rung distribution&#39;)</span>
+<span class="c1">#        </span>
+<span class="c1">#    rung_list = re.findall(&#39;\d+&#39;, rung_line)</span>
+<span class="c1">#    rung_hist = np.array(rung_list).astype(float)</span>
+<span class="c1">#    rung_edges = np.arange(len(rung_hist) + 1, dtype=float)</span>
+<span class="c1">#    </span>
+<span class="c1">#    s = np.cumsum(rung_hist)</span>
+<span class="c1">#    Ntot = s[-1]</span>
+<span class="c1">#    </span>
+<span class="c1">#    # Find first bin which gives us more than half the total number</span>
+<span class="c1">#    for i, n in enumerate(s):</span>
+<span class="c1">#        </span>
+<span class="c1">#        if n &gt;= 0.5*Ntot:</span>
+<span class="c1">#            </span>
+<span class="c1">#            ind = i</span>
+<span class="c1">#            break</span>
+<span class="c1">#    </span>
+<span class="c1">#    # Calculate the median rung    </span>
+<span class="c1">#    rung_med = rung_edges[ind] + (0.5*Ntot - s[ind-1])/rung_hist[ind]</span>
+<span class="c1">#    </span>
+<span class="c1">#    # Now estimate a time step that will fit about half the particles on the</span>
+<span class="c1">#    # lowest rung (ie the big time step)</span>
+<span class="c1">#    </span>
+<span class="c1">#    dDelta = dDelta0 * 2.0**(-rung_med+1)</span>
+<span class="c1">#    </span>
+<span class="c1">#    return dDelta</span>
+            
+
+<span class="c1">#def changa_run(command, verbose = True, logfile_name=None, force_wait=False):</span>
+<span class="c1">#    &quot;&quot;&quot;</span>
+<span class="c1">#    A wrapper for running ChaNGa</span>
+<span class="c1">#    </span>
+<span class="c1">#    **ARGUMENTS**</span>
+<span class="c1">#    </span>
+<span class="c1">#    command : str</span>
+<span class="c1">#        A full command line command for running ChaNGa.  Can be produced from </span>
+<span class="c1">#        defaults using ICgen_utils.changa_command</span>
+<span class="c1">#    verbose : bool</span>
+<span class="c1">#        (optional) Flag for printing ChaNGa output to stdout.</span>
+<span class="c1">#        If True - stdout is printed.  This will effectively makes changa_run</span>
+<span class="c1">#        wait on ChaNGa completion</span>
+<span class="c1">#    logfile_name : str</span>
+<span class="c1">#        (optional) If set, saves ChaNGa output to file</span>
+<span class="c1">#    force_wait : bool</span>
+<span class="c1">#        (optional) Default = False</span>
+<span class="c1">#        If set, forces wait on ChaNGa before completion</span>
+<span class="c1">#    </span>
+<span class="c1">#    **RETURNS**</span>
+<span class="c1">#    </span>
+<span class="c1">#    p : subprocess.Popen</span>
+<span class="c1">#        A process object created by subprocess.Popen for the ChaNGa command</span>
+<span class="c1">#    &quot;&quot;&quot;</span>
+<span class="c1">#    </span>
+<span class="c1">#    if logfile_name is not None:</span>
+<span class="c1">#        </span>
+<span class="c1">#        logfile = open(logfile_name, &#39;w&#39;)</span>
+<span class="c1">#        logfile.close()</span>
+<span class="c1">#        logfile = open(logfile_name, &#39;a&#39;)</span>
+<span class="c1">#    </span>
+<span class="c1">#    if verbose:</span>
+<span class="c1">#        </span>
+<span class="c1">#        output = subprocess.PIPE</span>
+<span class="c1">#        p = subprocess.Popen(command.split(), stderr=output, stdout=output)</span>
+<span class="c1">#        </span>
+<span class="c1">#        for line in iter(p.stdout.readline, &#39;&#39;):</span>
+<span class="c1">#            </span>
+<span class="c1">#            print line,</span>
+<span class="c1">#            if logfile_name is not None:</span>
+<span class="c1">#                </span>
+<span class="c1">#                logfile.write(line)</span>
+<span class="c1">#                </span>
+<span class="c1">#        p.wait()</span>
+<span class="c1">#        </span>
+<span class="c1">#    else:</span>
+<span class="c1">#        </span>
+<span class="c1">#        if logfile_name is not None:</span>
+<span class="c1">#            </span>
+<span class="c1">#            output = logfile</span>
+<span class="c1">#            </span>
+<span class="c1">#        else:</span>
+<span class="c1">#            </span>
+<span class="c1">#            output = subprocess.PIPE</span>
+<span class="c1">#            </span>
+<span class="c1">#        p = subprocess.Popen(command.split(), stderr=output, stdout=output)</span>
+<span class="c1">#        </span>
+<span class="c1">#    if force_wait:</span>
+<span class="c1">#        </span>
+<span class="c1">#        p.wait()</span>
+<span class="c1">#        </span>
+<span class="c1">#    return p</span>
+    
+<span class="c1">#def changa_command(param_name, preset=&#39;default&#39;, changa_bin=None, changa_args=&#39;&#39;, runner_args=&#39;&#39;):</span>
+<span class="c1">#    &quot;&quot;&quot;</span>
+<span class="c1">#    A utility for created command line commands for running ChaNGa</span>
+<span class="c1">#    </span>
+<span class="c1">#    **ARGUMENTS**</span>
+<span class="c1">#    </span>
+<span class="c1">#    param_name : str</span>
+<span class="c1">#        Filename of the .param file used for ChaNGa</span>
+<span class="c1">#    preset : str</span>
+<span class="c1">#        if None or &#39;default&#39;, the default preset is used</span>
+<span class="c1">#        Presets are defined in global_settings</span>
+<span class="c1">#    changa_bin : str</span>
+<span class="c1">#        Path to the ChaNGa binary to use.  If None, defaults are used</span>
+<span class="c1">#        Overrides preset binary</span>
+<span class="c1">#    changa_args : str</span>
+<span class="c1">#        Additional user supplied arguments for ChaNGa</span>
+<span class="c1">#    runner_args : str</span>
+<span class="c1">#        Additional user supplied arguments for the runner (ie charmrun or mpirun)</span>
+<span class="c1">#        </span>
+<span class="c1">#    **RETURNS**</span>
+<span class="c1">#    </span>
+<span class="c1">#    command : str</span>
+<span class="c1">#        A command line command for running ChaNGa</span>
+<span class="c1">#    &quot;&quot;&quot;</span>
+<span class="c1">#    </span>
+<span class="c1">#    # Contains all the presets</span>
+<span class="c1">#    preset_dict = global_settings[&#39;changa_presets&#39;]</span>
+<span class="c1">#    </span>
+<span class="c1">#    # Load the preset    </span>
+<span class="c1">#    if (preset is None) or (preset is &#39;default&#39;):</span>
+<span class="c1">#        </span>
+<span class="c1">#        preset = preset_dict[&#39;default&#39;]</span>
+<span class="c1">#        </span>
+<span class="c1">#    preset_list = preset_dict[preset]</span>
+<span class="c1">#    </span>
+<span class="c1">#    # Get full path to ChaNGa binary</span>
+<span class="c1">#    if changa_bin is None:</span>
+<span class="c1">#        </span>
+<span class="c1">#        changa_bin = preset_list[2]</span>
+<span class="c1">#    </span>
+<span class="c1">#    changa_bin = os.popen(&#39;which &#39; + changa_bin).read().strip()</span>
+<span class="c1">#    </span>
+<span class="c1">#    if &#39;&#39; == changa_bin:</span>
+<span class="c1">#        </span>
+<span class="c1">#        raise RuntimeError, &#39;Could not find ChaNGa.  Try different preset&#39;</span>
+<span class="c1">#    </span>
+<span class="c1">#    # Merge user defined extra arguments    </span>
+<span class="c1">#    runner_args = &#39; &#39;.join([preset_list[1], runner_args])</span>
+<span class="c1">#    changa_args = &#39; &#39;.join([preset_list[3], changa_args])</span>
+<span class="c1">#    runner = preset_list[0]</span>
+<span class="c1">#    </span>
+<span class="c1">#    command = &#39; &#39;.join([runner, runner_args, changa_bin, changa_args, param_name])</span>
+<span class="c1">#    command = &#39; &#39;.join(command.split())</span>
+<span class="c1">#    </span>
+<span class="c1">#    return command</span>
+<span class="c1">#            </span>
+<span class="c1">#def arg_cat(arg_list):</span>
+<span class="c1">#    &quot;&quot;&quot;</span>
+<span class="c1">#    STILL ALPHA!!! </span>
+<span class="c1">#    </span>
+<span class="c1">#    arg_str = arg_cat([args1, args2, ...])</span>
+<span class="c1">#    </span>
+<span class="c1">#    Concatenates a list of various command line arguments.  arg_list should</span>
+<span class="c1">#    be a list containing command line argument strings.</span>
+<span class="c1">#    </span>
+<span class="c1">#    Priority is given to later arguments.  So arg_list[2] overwrites arg_list[1]</span>
+<span class="c1">#    if they share any flags</span>
+<span class="c1">#    </span>
+<span class="c1">#    **EXAMPLES**</span>
+<span class="c1">#    </span>
+<span class="c1">#    args1 = &#39;-n 20 +cd 13 ++b fire testit&#39;</span>
+<span class="c1">#    args2 = &#39;-n 20 +cd 300&#39;</span>
+<span class="c1">#    print arg_cat([args1, args2])</span>
+<span class="c1">#    </span>
+<span class="c1">#        returns:</span>
+<span class="c1">#        +cd 300 -n 20 testit ++b fire</span>
+<span class="c1">#    &quot;&quot;&quot;</span>
+<span class="c1">#    </span>
+<span class="c1">#    args_dict = {}</span>
+<span class="c1">#    </span>
+<span class="c1">#    # Loop through all sets of arguments</span>
+<span class="c1">#    for args in arg_list:</span>
+<span class="c1">#        </span>
+<span class="c1">#        # Split args if it&#39;s not already a list</span>
+<span class="c1">#        if isinstance((args), str):</span>
+<span class="c1">#            </span>
+<span class="c1">#            args = args.split()</span>
+<span class="c1">#            </span>
+<span class="c1">#        # Parse arguments</span>
+<span class="c1">#        counter = 0</span>
+<span class="c1">#        </span>
+<span class="c1">#        while counter &lt; len(args):</span>
+<span class="c1">#            </span>
+<span class="c1">#            key = args[counter]</span>
+<span class="c1">#            </span>
+<span class="c1">#            if (key[0] == &#39;-&#39;) or (key[0] == &#39;+&#39;):</span>
+<span class="c1">#                # We have a flag followed by its value</span>
+<span class="c1">#                val = args[counter+1]</span>
+<span class="c1">#                counter += 2</span>
+<span class="c1">#                </span>
+<span class="c1">#            else:</span>
+<span class="c1">#                # We just have an argument</span>
+<span class="c1">#                val = &#39;&#39;</span>
+<span class="c1">#                counter += 1</span>
+<span class="c1">#                </span>
+<span class="c1">#            args_dict[key] = val</span>
+<span class="c1">#                </span>
+<span class="c1">#    args_str = &#39;&#39;</span>
+<span class="c1">#    </span>
+<span class="c1">#    for key, val in args_dict.iteritems():</span>
+<span class="c1">#        </span>
+<span class="c1">#        if val == &#39;&#39;:</span>
+<span class="c1">#            </span>
+<span class="c1">#            # Tack on to the end</span>
+<span class="c1">#            args_str = &#39; &#39;.join([args_str, key])</span>
+<span class="c1">#            </span>
+<span class="c1">#        else:</span>
+<span class="c1">#            </span>
+<span class="c1">#            # Place at beginning</span>
+<span class="c1">#            args_str = &#39; &#39;.join([key, val, args_str])</span>
+<span class="c1">#            </span>
+<span class="c1">#    args_str = &#39; &#39;.join(args_str.split())</span>
+<span class="c1">#    </span>
+<span class="c1">#    return args_str</span>
+    
+<div class="viewcode-block" id="checkversion"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_utils.checkversion">[docs]</a><span class="k">def</span> <span class="nf">checkversion</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks the version of an object.  Returns -1 if there is no version</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;__version__&#39;</span><span class="p">):</span>
+        
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">__version__</span>
+        
+    <span class="k">elif</span> <span class="p">(</span><span class="s1">&#39;__version__&#39;</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        
+        <span class="k">return</span> <span class="n">obj</span><span class="p">[</span><span class="s1">&#39;__version__&#39;</span><span class="p">]</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

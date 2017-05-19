@@ -1,0 +1,10 @@
+diskpy\.clumps\.clumpfinding package
+====================================
+
+Module contents
+---------------
+
+.. automodule:: diskpy.clumps.clumpfinding
+    :members:
+    :undoc-members:
+    :show-inheritance:

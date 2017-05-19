@@ -1,0 +1,493 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.pychanga package &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="diskpy.pychanga.hyak package" href="diskpy.pychanga.hyak.html" />
+    <link rel="prev" title="diskpy.plot package" href="diskpy.plot.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.pychanga.hyak.html" title="diskpy.pychanga.hyak package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.plot.html" title="diskpy.plot package"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" accesskey="U">diskpy package</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="diskpy-pychanga-package">
+<h1>diskpy.pychanga package<a class="headerlink" href="#diskpy-pychanga-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="diskpy.pychanga.hyak.html">diskpy.pychanga.hyak package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="diskpy.pychanga.hyak.html#module-diskpy.pychanga.hyak">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="diskpy.pychanga.mox.html">diskpy.pychanga.mox package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="diskpy.pychanga.mox.html#module-diskpy.pychanga.mox">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="module-diskpy.pychanga">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diskpy.pychanga" title="Permalink to this headline">¶</a></h2>
+<p>Created on Wed Jul 15 16:37:00 2015</p>
+<p>&#64;author: ibackus</p>
+<dl class="function">
+<dt id="diskpy.pychanga.make_director">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">make_director</code><span class="sig-paren">(</span><em>sigma_min</em>, <em>sigma_max</em>, <em>r</em>, <em>resolution=1200</em>, <em>filename=’snapshot’</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_param.html#make_director"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.make_director" title="Permalink to this definition">¶</a></dt>
+<dd><p>Makes a director dictionary for ChaNGa runs based on the min/max surface
+density, maximum image radius, and image resolution for a gaseous
+protoplanetary disk.  The created dictionary can be saved with
+diskpy.utils.configsave</p>
+<p>The method is to use an example director file (saved as default.director)
+which works for one simulation and scale the various parameters accordingly.
+default.director should have a commented line in it which reads:</p>
+<blockquote>
+<div>#sigma_max float</div></blockquote>
+<p>where float is the maximum surface density of the simulation in simulation
+units.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>sigma_min <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>The surface density that corresponds to 0 density on the image (ie the
+minimum threshold).  Required for setting the dynamic range</dd>
+<dt>sigma_max <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>Maximum surface density in the simulation</dd>
+<dt>r <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>Maximum radius to plot out to</dd>
+<dt>resolution <span class="classifier-delimiter">:</span> <span class="classifier">int or float</span></dt>
+<dd>Number of pixels in image.  The image is shape (resolution, resolution)</dd>
+<dt>filename <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>prefix to use for saving the images.  Example: if filename=’snapshot’,
+then the outputs will be of form ‘snapshot.000000000.ppm’</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>director <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd>A .director dictionary.  Can be saved with diskpy.utils.configsave</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.make_param">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">make_param</code><span class="sig-paren">(</span><em>snapshot</em>, <em>filename=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_param.html#make_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.make_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a default param dictionary.  Can be saved using 
+diskpy.utils.configsave</p>
+<p>EXAMPLE</p>
+<p>snapshot = pynbody.load(‘snapshot.std’)  # Load snapshot
+param_dict = make_param(snapshot)  # Make default param dict
+diskpy.utils.configsave(param_dict, ‘snapshot.param’, ftype=’param’) # Save</p>
+<p>Optionally, the user can set the snapshot filename manually</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.units_from_param">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">units_from_param</code><span class="sig-paren">(</span><em>param</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_param.html#units_from_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.units_from_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>Figures out the simulation units from a .param file</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>param <span class="classifier-delimiter">:</span> <span class="classifier">str or param dict (see configparser)</span></dt>
+<dd>Simulation .param file or param dict loaded by configparser
+Can also be a list or numpy array of these in which case a list
+of units dicts is returned</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>units <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd>A dictionary of the units used in the simulation, returned as
+pynbody units</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.setup_param">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">setup_param</code><span class="sig-paren">(</span><em>param</em>, <em>snapshot=None</em>, <em>r_orb=1.0</em>, <em>n_orb=10.0</em>, <em>n_image=None</em>, <em>n_snap=100</em>, <em>n_check=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_param.html#setup_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.setup_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up the following for a .param file:</p>
+<blockquote>
+<div>nSteps
+dDumpFrameStep
+iOutInterval
+iCheckInterval</div></blockquote>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>param <span class="classifier-delimiter">:</span> <span class="classifier">str or param_dict (see diskpy.utils.configparser, configsave)</span></dt>
+<dd>parameter file for the simulation, must already have dDelta and units
+set properly
+IF a str, assumed to be a filename</dd>
+<dt>snapshot <span class="classifier-delimiter">:</span> <span class="classifier">str or TipsySnap(see pynbody) or None</span></dt>
+<dd>Snapshot for the simulation.  Needed to estimate the outer orbital
+period.
+IF a str, assumed to be a filename
+IF None, the file pointed to by param is used</dd>
+<dt>r_orb <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>radius to calculate the outer orbital period at as a fraction of the
+radius of the farthest out particle.  Must be between 0 and 1</dd>
+<dt>n_orb <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>number of outer orbital periods to run simulation for</dd>
+<dt>n_image <span class="classifier-delimiter">:</span> <span class="classifier">int or None</span></dt>
+<dd>Total number of frames to dump (ie, dDumpFrameStep)
+If None, defaults to n_snap</dd>
+<dt>n_snap <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Total number of simulation outputs</dd>
+<dt>n_check <span class="classifier-delimiter">:</span> <span class="classifier">int or None</span></dt>
+<dd>Total number of simulation checkpoints.  If None, defaults to n_snap</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.setup_units">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">setup_units</code><span class="sig-paren">(</span><em>m</em>, <em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_param.html#setup_units"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.setup_units" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Sets up units for a ChaNGa simulation, defined by position and mass units.</dt>
+<dd><ul class="first last simple">
+<li>time unit = <span class="math">\(\sqrt{L_{unit}^3/G M_{unit}}\)</span></li>
+<li>velocity unit = <span class="math">\(L_{unit}/T_{unit}\)</span></li>
+<li>temperature units = Kelvin</li>
+</ul>
+</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>m, x</strong> : Unit, string, or SimArray</p>
+<blockquote>
+<div><p>Define the mass and position units</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>units</strong> : dict</p>
+<blockquote class="last">
+<div><p>A dictionary containing the units</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.load_acc">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">load_acc</code><span class="sig-paren">(</span><em>filename</em>, <em>param_name=None</em>, <em>low_mem=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_changaOutput.html#load_acc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.load_acc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads accelerations from a ChaNGa acceleration file (.acc2), ignoring the
+star particle.  ASSUMES A SINGLE STAR PARTICLE</p>
+<p>IF param_name is None, a .param file is searched for, otherwise param_name
+should be a string specifying a .param file name</p>
+<dl class="docutils">
+<dt>IF no param_file is found, the defaults are used:</dt>
+<dd>length unit: AU
+mass unit  : Msol</dd>
+</dl>
+<p>Setting low_mem=True decreases memory usage by about 2x but also increases
+readtime by about 2x</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.walltime">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">walltime</code><span class="sig-paren">(</span><em>filename</em>, <em>verbose=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_changaOutput.html#walltime"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.walltime" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads walltime information from a ChaNGa .log file.</p>
+<p>** ARGUMENTS **</p>
+<dl class="docutils">
+<dt>filename <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Filename of the .log file to load</dd>
+</dl>
+<p>** RETURNS **</p>
+<dl class="docutils">
+<dt>wall_per_step <span class="classifier-delimiter">:</span> <span class="classifier">array</span></dt>
+<dd>Wall time per step in seconds</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.get_fnames">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">get_fnames</code><span class="sig-paren">(</span><em>fprefix</em>, <em>directory=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_changaOutput.html#get_fnames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.get_fnames" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Finds the filenames of ChaNGa simulation outputs.  They are formatted as:</dt>
+<dd>fprefix.000000</dd>
+</dl>
+<p>i.e., fprefix followed by ‘.’ and a 6 digit number</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>fprefix <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Prefix of the simulation outputs</dd>
+<dt>directory <span class="classifier-delimiter">:</span> <span class="classifier">str (optional)</span></dt>
+<dd>Directory to search through.  Default is current working directory</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>fnames <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list containing the matching filenames</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.snapshot_time">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">snapshot_time</code><span class="sig-paren">(</span><em>f</em>, <em>paramname=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_changaOutput.html#snapshot_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.snapshot_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the physical time of a snapshot.  t=0 corresponds to the initial
+conditions.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.read_rung_dist">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">read_rung_dist</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_changaOutput.html#read_rung_dist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.read_rung_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads the rungdistribution from ChaNGa stdout that has been saved to a disk
+by grepping the file for “Rung dist” and interpreting the output.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>rung_dist</strong> : array</p>
+<blockquote class="last">
+<div><p>Rung distribution for all big steps.  An array of integers of shape 
+(num big steps, num rungs)</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.getpar">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">getpar</code><span class="sig-paren">(</span><em>key</em>, <em>param={}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_param.html#getpar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.getpar" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempts to retrieve the key from param or from the ChaNGa default param 
+options.  Raises ValueError if key not found in either.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>key</strong> : object</p>
+<p><strong>param</strong> : str or dict</p>
+<blockquote>
+<div><p>Paramname or param dict (see diskpy.utils.configparser).  If not 
+supplied, only the ChaNGa defaults are searched</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">value</p>
+<blockquote class="last">
+<div><p>The value, taken from param if present, otherwise taken from the ChaNGa
+default params</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.est_time_step">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">est_time_step</code><span class="sig-paren">(</span><em>param_name</em>, <em>preset=’default’</em>, <em>dDelta0=100</em>, <em>changa_args=”</em>, <em>runner_args=”</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_exec.html#est_time_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.est_time_step" title="Permalink to this definition">¶</a></dt>
+<dd><p>A routine to automatically estimate a reasonable time-step size for ChaNGa.
+The idea is to have about half the particles fall into the lowest rung (ie 
+the big time step).  This is done by calculating the rung distribution for 
+a large time step by running ChaNGa and killing ChaNGa once it has output 
+rung distribution.</p>
+<p>NOTE: this is still fairly alpha.  A better version would probably not
+just run ChaNGa and then try to kill it.  To be safe, a local ChaNGa preset
+should probably be used.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>param_name <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Filename for a ChaNGa .param file which defines parameters for the
+snapshot.  The snapshot must already be saved to disk</dd>
+<dt>preset <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>changa_runner preset to use.  See diskpy.global_settings</dd>
+<dt>dDelta0 <span class="classifier-delimiter">:</span> <span class="classifier">int or float</span></dt>
+<dd>Some large time step that should place all the particles at higher
+rungs.</dd>
+<dt>changa_args <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Additional command line arguments to pass to changa.  CANNOT include
+-n (number of time steps) or -dt (timestep size)</dd>
+<dt>runner_args <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Additional command line arguments to pass to the runner, ie to 
+charmrun or mpirun</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>dDelta <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>Estimated reasonable time step that places half the particles on the
+lowest rung (ie the big time step)</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.changa_run">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">changa_run</code><span class="sig-paren">(</span><em>command</em>, <em>verbose=True</em>, <em>force_wait=False</em>, <em>log_file=None</em>, <em>return_success=False</em>, <em>require_success=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_exec.html#changa_run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.changa_run" title="Permalink to this definition">¶</a></dt>
+<dd><p>A wrapper for running ChaNGa</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>command <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>A full command line command for running ChaNGa.  Can be produced from 
+defaults using ICgen_utils.changa_command</dd>
+<dt>verbose <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>(optional) Flag for printing ChaNGa output to stdout.
+If True - stdout is printed.  This will effectively makes changa_run
+wait on ChaNGa completion</dd>
+<dt>force_wait <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>(optional) Default = False
+If set, forces wait on ChaNGa before completion</dd>
+<dt>log_file <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>(optional) filename, if passed, the stdout will be also copied to log_file</dd>
+<dt>return_success <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>If set, returns the success of the run, i.e. checks to see if the 
+simulation finished properly.</dd>
+<dt>require_success <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>If true, a RuntimeError will be raised if ChaNGa does not exit 
+successfully</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>p <span class="classifier-delimiter">:</span> <span class="classifier">subprocess.Popen</span></dt>
+<dd>A process object created by subprocess.Popen for the ChaNGa command</dd>
+<dt>success <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>IF return_success is set to True, the status of the run is returned
+instead of p.</dd>
+</dl>
+<p>status : bool</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pychanga.changa_command">
+<code class="descclassname">diskpy.pychanga.</code><code class="descname">changa_command</code><span class="sig-paren">(</span><em>param_name</em>, <em>preset=’default’</em>, <em>changa_bin=None</em>, <em>changa_args=”</em>, <em>runner_args=”</em>, <em>restart_dir=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pychanga/_exec.html#changa_command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pychanga.changa_command" title="Permalink to this definition">¶</a></dt>
+<dd><p>A utility for created command line commands for running ChaNGa</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>param_name <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Filename of the .param file used for ChaNGa</dd>
+<dt>preset <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>if None or ‘default’, the default preset is used
+Presets are defined in global_settings</dd>
+<dt>changa_bin <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Path to the ChaNGa binary to use.  If None, defaults are used
+Overrides preset binary</dd>
+<dt>changa_args <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Additional user supplied arguments for ChaNGa</dd>
+<dt>runner_args <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Additional user supplied arguments for the runner (ie charmrun or mpirun)</dd>
+<dt>restart_dir <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>(optional) If set, this will be treated as a restart.  All changa args
+will be ignored.</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>command <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>A command line command for running ChaNGa</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">diskpy.pychanga package</a><ul>
+<li><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li><a class="reference internal" href="#module-diskpy.pychanga">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="diskpy.plot.html"
+                        title="previous chapter">diskpy.plot package</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="diskpy.pychanga.hyak.html"
+                        title="next chapter">diskpy.pychanga.hyak package</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/diskpy.pychanga.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.pychanga.hyak.html" title="diskpy.pychanga.hyak package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.plot.html" title="diskpy.plot package"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" >diskpy package</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

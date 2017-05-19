@@ -1,0 +1,22 @@
+diskpy\.ICgen\.sigprofiles package
+==================================
+
+Submodules
+----------
+
+diskpy\.ICgen\.sigprofiles\.powerlaw module
+-------------------------------------------
+
+.. automodule:: diskpy.ICgen.sigprofiles.powerlaw
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: diskpy.ICgen.sigprofiles
+    :members:
+    :undoc-members:
+    :show-inheritance:

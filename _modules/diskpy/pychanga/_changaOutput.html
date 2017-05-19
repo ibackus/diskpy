@@ -1,0 +1,313 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.pychanga._changaOutput &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.pychanga._changaOutput</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Wed Jul 15 23:26:04 2015</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">configparser</span>
+
+<span class="n">BUF_SIZE</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mf">1e6</span><span class="p">)</span>
+
+<div class="viewcode-block" id="snapshot_time"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.snapshot_time">[docs]</a><span class="k">def</span> <span class="nf">snapshot_time</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">paramname</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gets the physical time of a snapshot.  t=0 corresponds to the initial</span>
+<span class="sd">    conditions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        
+        <span class="n">f</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">paramname</span><span class="o">=</span><span class="n">paramname</span><span class="p">)</span>
+        
+    <span class="n">t_unit</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">infer_original_units</span><span class="p">(</span><span class="s1">&#39;yr&#39;</span><span class="p">))</span>
+    <span class="c1"># Note, for ChaNGa outputs, t0 = t_unit (ie, 1 in simulation units)</span>
+    <span class="c1"># To correct for this, we subtract off one time unit from the </span>
+    <span class="c1"># snapshot&#39;s time</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">t_unit</span>
+    
+    <span class="k">return</span> <span class="n">t</span></div>
+
+<div class="viewcode-block" id="get_fnames"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.get_fnames">[docs]</a><span class="k">def</span> <span class="nf">get_fnames</span><span class="p">(</span><span class="n">fprefix</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Finds the filenames of ChaNGa simulation outputs.  They are formatted as:</span>
+<span class="sd">        fprefix.000000</span>
+<span class="sd">    i.e., fprefix followed by &#39;.&#39; and a 6 digit number</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    fprefix : str</span>
+<span class="sd">        Prefix of the simulation outputs</span>
+<span class="sd">    directory : str (optional)</span>
+<span class="sd">        Directory to search through.  Default is current working directory</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    fnames : list</span>
+<span class="sd">        A list containing the matching filenames</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">fnames</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">if</span> <span class="n">directory</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">fprefix</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">fprefix</span><span class="p">)</span>
+        
+    <span class="n">repattern</span> <span class="o">=</span> <span class="s1">&#39;^&#39;</span> <span class="o">+</span> <span class="n">fprefix</span> <span class="o">+</span> <span class="s1">&#39;.(?:(?&lt;!\d)\d</span><span class="si">{6}</span><span class="s1">(?!\d))$&#39;</span>
+        
+    <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fprefix</span> <span class="o">+</span> <span class="s1">&#39;.*&#39;</span><span class="p">):</span>
+        
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">repattern</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            
+            <span class="n">fnames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+            
+    <span class="n">fnames</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="n">fnames</span></div>
+
+<div class="viewcode-block" id="load_acc"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.load_acc">[docs]</a><span class="k">def</span> <span class="nf">load_acc</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">param_name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">low_mem</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Loads accelerations from a ChaNGa acceleration file (.acc2), ignoring the</span>
+<span class="sd">    star particle.  ASSUMES A SINGLE STAR PARTICLE</span>
+
+<span class="sd">    IF param_name is None, a .param file is searched for, otherwise param_name</span>
+<span class="sd">    should be a string specifying a .param file name</span>
+
+<span class="sd">    IF no param_file is found, the defaults are used:</span>
+<span class="sd">        length unit: AU</span>
+<span class="sd">        mass unit  : Msol</span>
+
+<span class="sd">    Setting low_mem=True decreases memory usage by about 2x but also increases</span>
+<span class="sd">    readtime by about 2x</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">param_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="n">prefix</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">param_list</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;*&#39;</span> <span class="o">+</span> <span class="n">prefix</span> <span class="o">+</span><span class="s1">&#39;*param&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+
+            <span class="n">param_name</span> <span class="o">=</span> <span class="n">param_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;*.param&#39;</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+
+            <span class="n">param_name</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;*.param&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Could not find .param file.  Assuming default units&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">param_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="c1"># If a param name is set or a param file has been found:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Loading param file: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">param_name</span><span class="p">)</span>
+        <span class="n">param</span> <span class="o">=</span> <span class="n">configparser</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">ftype</span><span class="o">=</span><span class="s1">&#39;param&#39;</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="c1"># Set the default parameters</span>
+        <span class="n">param</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># Assume AU as length unit</span>
+        <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dKpcUnit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">au</span><span class="o">.</span><span class="n">ratio</span><span class="p">(</span><span class="s1">&#39;kpc&#39;</span><span class="p">)</span>
+        <span class="c1"># Assume mass units as Msol</span>
+        <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dMsolUnit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="c1"># Figure out units</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">G</span>
+    <span class="n">l_unit</span> <span class="o">=</span> <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dKpcUnit&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">kpc</span>
+    <span class="n">m_unit</span> <span class="o">=</span> <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dMsolUnit&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">Msol</span>
+    <span class="n">t_unit</span> <span class="o">=</span> <span class="p">((</span><span class="n">l_unit</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="n">G</span><span class="o">**-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">m_unit</span><span class="o">**-</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">a_unit</span> <span class="o">=</span> <span class="n">l_unit</span> <span class="o">*</span> <span class="n">t_unit</span><span class="o">**-</span><span class="mi">2</span>
+
+    <span class="k">if</span> <span class="n">low_mem</span><span class="p">:</span>
+        <span class="c1"># Perform ASCII read</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="c1"># First line in tipsy format is a header</span>
+            <span class="n">n_particles</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+            <span class="c1"># Pre-allocate for speed</span>
+            <span class="n">acc</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">n_particles</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">a_unit</span><span class="p">)</span>
+            <span class="c1"># Buffered read</span>
+            <span class="n">i0</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">tmp_lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">(</span><span class="n">BUF_SIZE</span><span class="p">)</span>
+            <span class="k">while</span> <span class="n">tmp_lines</span><span class="p">:</span>
+                <span class="n">acc</span><span class="p">[</span><span class="n">i0</span><span class="p">:</span><span class="n">i0</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">tmp_lines</span><span class="p">)]</span> <span class="o">=</span> <span class="n">tmp_lines</span>
+                <span class="n">i0</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tmp_lines</span><span class="p">)</span>
+                <span class="n">tmp_lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">(</span><span class="n">BUF_SIZE</span><span class="p">)</span>
+                
+        <span class="k">return</span> <span class="n">acc</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="n">n_particles</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="c1"># Load acceleration file as numpy array</span>
+        <span class="n">acc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">n_particles</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">acc</span><span class="p">)</span><span class="o">/</span><span class="mi">3</span>
+        <span class="c1"># Reshape and make it a SimArray with proper units</span>
+        <span class="n">acc</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">acc</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="n">n_particles</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">),</span> <span class="n">a_unit</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">acc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+        
+<div class="viewcode-block" id="walltime"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.walltime">[docs]</a><span class="k">def</span> <span class="nf">walltime</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads walltime information from a ChaNGa .log file.</span>
+
+<span class="sd">    ** ARGUMENTS **</span>
+
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename of the .log file to load</span>
+
+<span class="sd">    ** RETURNS **</span>
+
+<span class="sd">    wall_per_step : array</span>
+<span class="sd">        Wall time per step in seconds</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">log_file</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">comments</span><span class="o">=</span><span class="s1">&#39;#&#39;</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+    <span class="n">wall_per_step</span> <span class="o">=</span> <span class="n">log_file</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">walltime_total</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span> <span class="o">=</span> <span class="n">wall_per_step</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">walltime_avg</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span> <span class="o">=</span> <span class="n">wall_per_step</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+    
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Total walltime: &#39;</span>
+        <span class="nb">print</span> <span class="nb">str</span><span class="p">(</span><span class="n">walltime_total</span><span class="p">)</span>
+        <span class="nb">print</span> <span class="s1">&#39;Average walltime per step:&#39;</span>
+        <span class="nb">print</span> <span class="nb">str</span><span class="p">(</span><span class="n">walltime_avg</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">wall_per_step</span></div>
+    
+<div class="viewcode-block" id="read_rung_dist"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.read_rung_dist">[docs]</a><span class="k">def</span> <span class="nf">read_rung_dist</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads the rungdistribution from ChaNGa stdout that has been saved to a disk</span>
+<span class="sd">    by grepping the file for &quot;Rung dist&quot; and interpreting the output.</span>
+<span class="sd">    </span>
+<span class="sd">    Paramters</span>
+<span class="sd">    ---------</span>
+<span class="sd">    </span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Filename for the ChaNGa stdout output</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    rung_dist : array</span>
+<span class="sd">        Rung distribution for all big steps.  An array of integers of shape </span>
+<span class="sd">        (num big steps, num rungs)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;snapshot.out&#39;</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="s2">&quot;grep -i -e &#39;rung dist&#39; &quot;</span> <span class="o">+</span> <span class="n">filename</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+        <span class="c1"># Extract all the numbers from the rung distribution string</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;(&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,)&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+            
+            <span class="n">a</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+            
+        <span class="c1"># Save all numbers back to output</span>
+        <span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span>
+        
+    <span class="n">rungdist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">rungdist</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

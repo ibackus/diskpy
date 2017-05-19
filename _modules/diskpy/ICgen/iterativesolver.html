@@ -1,0 +1,344 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.iterativesolver &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.iterativesolver</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python2</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Contains an iterative solver class to iteratively solve</span>
+
+<span class="sd">Created on Thu Apr 20 10:36:48 2017</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">scipy.special</span> <span class="k">import</span> <span class="n">erf</span>
+<span class="kn">from</span> <span class="nn">scipy.integrate</span> <span class="k">import</span> <span class="n">cumtrapz</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+
+<span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="s1">&#39;G&#39;</span><span class="p">)</span>
+<span class="n">kB</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;k&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="IterativeSolver"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.iterativesolver.IterativeSolver">[docs]</a><span class="k">class</span> <span class="nc">IterativeSolver</span><span class="p">():</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the vertical density profile for a thin, extended gaseous disk</span>
+<span class="sd">    orbiting a central star by solving vertical hydrostatic equilibrium </span>
+<span class="sd">    using an iterative method.</span>
+<span class="sd">    </span>
+<span class="sd">    The generator equation used is:</span>
+<span class="sd">        </span>
+<span class="sd">    .. math::</span>
+<span class="sd">        \rho_{n+1}(z) &amp;= \rho_{n+1}(0)\exp\left[ -a \left( \frac{1}{R} - </span>
+<span class="sd">        \frac{1}{\sqrt{R^2 + z^2}} \right) - 2 b II_{\rho}(z)\right] \\</span>
+<span class="sd">        a             &amp;\equiv \frac{G M m}{k_B T} \\</span>
+<span class="sd">        b             &amp;\equiv \frac{2\pi G m}{k_B T} \\</span>
+<span class="sd">        II_{\rho}(z)  &amp;\equiv \int_0^z\int_0^{z&#39;} \rho(z&#39;&#39;) dz&#39;&#39; dz&#39;</span>
+<span class="sd">        </span>
+<span class="sd">    The normalization :math:`\rho_{n+1}(0)` is calculated by the constraint </span>
+<span class="sd">    that the integral of the density (numerically estimated) is equal to</span>
+<span class="sd">    the surface density.</span>
+<span class="sd">    </span>
+<span class="sd">    This generator typically converges for reasonable disk/star parameters.</span>
+<span class="sd">    I&#39;ve tried other generators, and they all failed horribly.</span>
+<span class="sd">    </span>
+<span class="sd">    The initial guess is for a thin disk ignoring self gravity:</span>
+<span class="sd">        </span>
+<span class="sd">        .. math::</span>
+<span class="sd">            \rho_0(z) &amp;= \frac{\Sigma}{\sqrt{2 \pi} h} \exp(-z^2/2 h^2) \\</span>
+<span class="sd">            h         &amp;\equiv \sqrt{R^3/a} = c_s/\Omega</span>
+<span class="sd">            </span>
+<span class="sd">    The 2nd integral of this is known which provides a basis for the first</span>
+<span class="sd">    order solution:</span>
+<span class="sd">        </span>
+<span class="sd">        .. math::</span>
+<span class="sd">            II_{\rho,0}(z) &amp;= z I_{\rho}(z) + h^2 \rho{0}(z) </span>
+<span class="sd">                - \frac{\Sigma h}{\sqrt{2 \pi}} \\</span>
+<span class="sd">            I_{\rho,0}(z) &amp;= \frac{\Sigma}{2}\mathrm{erf}(z/\sqrt{2}h)</span>
+<span class="sd">            </span>
+<span class="sd">    Which is then normalized numerically</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">IC</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">sigma</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">T</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">M</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">m</span>
+        <span class="c1"># Initial calculations</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">G</span><span class="o">*</span><span class="n">M</span><span class="o">*</span><span class="n">m</span><span class="o">/</span><span class="p">(</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">G</span><span class="o">*</span><span class="n">m</span><span class="o">/</span><span class="p">(</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="p">)</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">R</span><span class="o">*</span><span class="n">R</span><span class="o">*</span><span class="n">R</span><span class="o">/</span><span class="n">a</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="n">h</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rhounits</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma</span><span class="o">/</span><span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">units</span>
+        <span class="c1"># Setup z</span>
+        <span class="k">if</span> <span class="n">z</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">zmax</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">rho_calc</span><span class="o">.</span><span class="n">zmax</span>
+            <span class="n">nz</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">rho_calc</span><span class="o">.</span><span class="n">nz</span>
+            <span class="k">if</span> <span class="n">zmax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Default value of zmax</span>
+                <span class="n">zmax</span> <span class="o">=</span> <span class="mf">6.</span> <span class="o">*</span> <span class="n">h</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">zmax</span><span class="p">,</span> <span class="n">nz</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s1">&#39;z has no units.  maybe zmax doesnt either&#39;</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assume_h_units</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">rho0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho0</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
+        <span class="n">rzfactor</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="n">R</span> <span class="o">-</span> <span class="mf">1.</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">R</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">z</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">rzfactor</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+        <span class="c1"># Save stuff</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">a</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">b</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">T</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">=</span> <span class="n">M</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">=</span> <span class="p">[</span><span class="n">rho0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">z</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rzfactor</span> <span class="o">=</span> <span class="n">rzfactor</span>
+        
+    <span class="k">def</span> <span class="nf">_assume_h_units</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        For all the operations here, I will assume the units of z are the </span>
+<span class="sd">        units of h</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">z</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="o">.</span><span class="n">units</span><span class="p">)</span> 
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">z</span>
+        
+<div class="viewcode-block" id="IterativeSolver.iterate"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.iterativesolver.IterativeSolver.iterate">[docs]</a>    <span class="k">def</span> <span class="nf">iterate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Perform one iteration.  Guesses are appended as SimArrays to the list</span>
+<span class="sd">        self.rho</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">currentOrder</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        
+        <span class="k">if</span> <span class="n">currentOrder</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            
+            <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rho1</span><span class="p">()</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            
+        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span></div>
+        
+<div class="viewcode-block" id="IterativeSolver.fit"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.iterativesolver.IterativeSolver.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">maxiter</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">ftol</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A convenience utility which iterates over self.iterate() and saves</span>
+<span class="sd">        results to a results dict</span>
+<span class="sd">        </span>
+<span class="sd">        This will also delete any guess except the first one</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">converged</span> <span class="o">=</span> <span class="kc">False</span>
+        
+        <span class="k">while</span> <span class="p">(</span><span class="n">i</span> <span class="o">&lt;</span> <span class="n">maxiter</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">converged</span><span class="p">):</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">iterate</span><span class="p">()</span>
+            <span class="n">change</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">similarity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="kc">True</span><span class="p">))</span>
+            <span class="n">converged</span> <span class="o">=</span> <span class="n">change</span> <span class="o">&lt;</span> <span class="n">ftol</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+            
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">converged</span><span class="p">:</span>
+            
+            <span class="nb">print</span> <span class="s1">&#39;WARNING: maxiter reached.  did not converge&#39;</span>
+            
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;rho&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">}</span></div>
+    
+    <span class="k">def</span> <span class="nf">_generator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rho</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates a next-order guess for rho</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Load        </span>
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span>
+        <span class="n">part1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rzfactor</span>
+        <span class="c1"># Double integral of rho</span>
+        <span class="n">IntIntRho</span> <span class="o">=</span> <span class="n">cumtrapz</span><span class="p">(</span><span class="n">cumtrapz</span><span class="p">(</span><span class="n">rho</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">initial</span><span class="o">=</span><span class="mf">0.</span><span class="p">),</span> <span class="n">z</span><span class="p">,</span> <span class="n">initial</span><span class="o">=</span><span class="mf">0.</span><span class="p">)</span>
+        <span class="n">IntIntRho</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">IntIntRho</span><span class="p">,</span> <span class="n">rho</span><span class="o">.</span><span class="n">units</span> <span class="o">*</span> <span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">units</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="c1"># Calculate rho</span>
+        <span class="n">part2</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">*</span> <span class="n">IntIntRho</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">part1</span> <span class="o">-</span> <span class="n">part2</span><span class="p">)</span>
+        <span class="c1"># Normalize</span>
+        <span class="n">rho</span> <span class="o">*=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">trapz</span><span class="p">(</span><span class="n">rho</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">rho</span>
+        
+<div class="viewcode-block" id="IterativeSolver.rho0"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.iterativesolver.IterativeSolver.rho0">[docs]</a>    <span class="k">def</span> <span class="nf">rho0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initial guess (a gaussian).  this models a thin disk with no </span>
+<span class="sd">        self-gravity.  Generally, this will overestimate the disk scale height.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">if</span> <span class="n">h</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">h</span>
+        <span class="k">if</span> <span class="n">sigma</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span>
+        
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">sigma</span><span class="o">/</span><span class="p">(</span><span class="n">h</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">rho</span><span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">z</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">h</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+        
+        <span class="k">return</span> <span class="n">rho</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rhounits</span><span class="p">)</span></div>
+    
+    <span class="k">def</span> <span class="nf">_rho1</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the rho1 guess which is known semianlytically by running</span>
+<span class="sd">        the generator on the initial guess</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">h</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span>
+        <span class="n">part1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rzfactor</span>
+        
+        <span class="c1"># Calculate 2nd integral of rho0</span>
+        <span class="n">Irho</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">sigma</span> <span class="o">*</span> <span class="n">erf</span><span class="p">(</span><span class="n">z</span><span class="o">/</span><span class="p">(</span><span class="n">h</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)))</span>
+        <span class="n">IntIrho</span> <span class="o">=</span> <span class="n">Irho</span><span class="o">*</span><span class="n">z</span> <span class="o">+</span> <span class="p">(</span><span class="n">h</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">sigma</span><span class="o">*</span><span class="n">h</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+        
+        <span class="n">part2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span>  <span class="n">b</span> <span class="o">*</span> <span class="n">IntIrho</span>
+        <span class="n">part2</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">part1</span> <span class="o">-</span> <span class="n">part2</span><span class="p">)</span>
+        <span class="n">rho1norm</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">trapz</span><span class="p">(</span><span class="n">rho</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="p">(</span><span class="n">rho</span> <span class="o">*</span> <span class="n">rho1norm</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rhounits</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="similarity"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.iterativesolver.similarity">[docs]</a><span class="k">def</span> <span class="nf">similarity</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">forcePositive</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Attempts to quantify the similarity between 2 PDFs using a normalized and</span>
+<span class="sd">    shifted version of the bhattacharyya distance, defined as:</span>
+<span class="sd">        </span>
+<span class="sd">    1 - D(p1, p2)/D(p1, p1)</span>
+<span class="sd">    </span>
+<span class="sd">    Where D(x, y) is the Bhattacharyya distance between x and y.</span>
+<span class="sd">    </span>
+<span class="sd">    If force positive is set, negative values are set to zero.</span>
+<span class="sd">    </span>
+<span class="sd">    A value &lt;&lt; 1 indicates similar pdfs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span>
+    <span class="n">p2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">p2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">forcePositive</span><span class="p">:</span>
+        <span class="n">p1</span><span class="p">[</span><span class="n">p1</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">p2</span><span class="p">[</span><span class="n">p2</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">p1</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">p2</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s2">&quot;Negative values present.  try using force Positive&quot;</span>
+        
+    <span class="n">bhattacharyya</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">p1</span><span class="o">*</span><span class="n">p2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">bhattacharyya</span><span class="o">/</span><span class="n">norm</span></div>
+
+
+<div class="viewcode-block" id="estHeight2"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.iterativesolver.estHeight2">[docs]</a><span class="k">def</span> <span class="nf">estHeight2</span><span class="p">(</span><span class="n">rho</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A simple way to estimate disk height from a density profile</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">h2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">trapz</span><span class="p">(</span><span class="n">rho</span><span class="o">*</span><span class="n">z</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">trapz</span><span class="p">(</span><span class="n">rho</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">h2</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="heightProfile"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.iterativesolver.heightProfile">[docs]</a><span class="k">def</span> <span class="nf">heightProfile</span><span class="p">(</span><span class="n">IC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a disk height profile from the vertical density profile</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    h, r : SimArray</span>
+<span class="sd">        Disk height and radius</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">r_bins</span>
+    <span class="n">nr</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nr</span><span class="p">),</span> <span class="s1">&#39;au&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nr</span><span class="p">):</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">z_bins</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">rho_binned</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">h</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span> <span class="p">(</span><span class="n">rho</span><span class="o">*</span><span class="p">(</span><span class="n">z</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="n">rho</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="p">)</span>
+    <span class="k">return</span> <span class="n">h</span><span class="p">,</span> <span class="n">r</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

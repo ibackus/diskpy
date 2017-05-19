@@ -1,0 +1,432 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.sigma_profile &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.sigma_profile</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Mon Jun 23 10:17:53 2014</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># External modules</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+
+<span class="c1"># diskpy modules</span>
+<span class="kn">from</span> <span class="nn">diskpy.pdmath</span> <span class="k">import</span> <span class="n">smoothstep</span>
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">match_units</span>
+
+
+<div class="viewcode-block" id="make_profile"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.sigma_profile.make_profile">[docs]</a><span class="k">def</span> <span class="nf">make_profile</span><span class="p">(</span><span class="n">ICobj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A wrapper for generating surface density profiles according to the IC object.</span>
+<span class="sd">    </span>
+<span class="sd">    Settings for the profile are defined in ICobj.settings.  Which profile gets</span>
+<span class="sd">    used is defined by ICobj.settings.sigma.kind</span>
+<span class="sd">    </span>
+<span class="sd">    Currently available kinds are:</span>
+<span class="sd">    </span>
+<span class="sd">    viscous</span>
+<span class="sd">    powerlaw</span>
+<span class="sd">    MQWS</span>
+<span class="sd">    </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    r : SimArray</span>
+<span class="sd">        Radii at which sigma is calculated</span>
+<span class="sd">    sigma : SimArray</span>
+<span class="sd">        Surface density profile as a function of R</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">kind</span>
+    
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;powerlaw&#39;</span><span class="p">:</span>
+        
+        <span class="n">r</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">powerlaw</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="p">,</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        
+    <span class="k">elif</span> <span class="p">(</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;mqws&#39;</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;MQWS&#39;</span><span class="p">):</span>
+        
+        <span class="n">r</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">MQWS</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="p">,</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        
+    <span class="k">elif</span> <span class="p">(</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;viscous&#39;</span><span class="p">):</span>
+        
+        <span class="n">r</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">viscous</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+        
+    <span class="k">elif</span> <span class="p">(</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;gaussring&#39;</span><span class="p">):</span>
+        
+        <span class="n">r</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">gaussian_ring</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="s1">&#39;Could not make profile for kind </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">kind</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span> <span class="s1">&#39;innercut&#39;</span><span class="p">):</span>
+        
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">_applycut</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">innercut</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span> <span class="s1">&#39;outercut&#39;</span><span class="p">):</span>
+        
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">_applycut</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">outercut</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">r</span><span class="p">,</span> <span class="n">sigma</span></div>
+    
+<span class="k">def</span> <span class="nf">_applycut</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">rcut</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Applies a hard cut to a surface density profile (sigma).  If outer=True,</span>
+<span class="sd">    sigma = 0 at r &gt; rcut.  Otherwise, sigma = 0 at r &lt; rcut.  If rcut is</span>
+<span class="sd">    None, inf, or nan no cut is performed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">rcut</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="k">return</span> <span class="n">sigma</span>
+        
+    <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">rcut</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">rcut</span><span class="p">):</span>
+        
+        <span class="k">return</span> <span class="n">sigma</span>
+        
+    <span class="k">if</span> <span class="n">outer</span><span class="p">:</span>
+        
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">r</span> <span class="o">&gt;</span> <span class="n">rcut</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="n">rcut</span>
+    
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">mask</span><span class="p">):</span>
+        
+        <span class="n">sigma</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        
+    <span class="k">return</span> <span class="n">sigma</span>
+
+<div class="viewcode-block" id="gaussian_ring"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.sigma_profile.gaussian_ring">[docs]</a><span class="k">def</span> <span class="nf">gaussian_ring</span><span class="p">(</span><span class="n">settings</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a gaussian ring surface density profile according to:</span>
+<span class="sd">    </span>
+<span class="sd">    .. math::  \\Sigma = \\Sigma_0 exp(-(R-R_d)^2/2a^2)</span>
+<span class="sd">    </span>
+<span class="sd">    .. math:: \\Sigma_0 = M_d/(2\\pi)^{3/2} a R_d</span>
+<span class="sd">    </span>
+<span class="sd">    Here we call a the ringwidth.</span>
+<span class="sd">    </span>
+<span class="sd">    The max radius is determined automatically</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    settings : IC settings</span>
+<span class="sd">        settings like those contained in an IC object (see ICgen_settings.py)</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    R : SimArray</span>
+<span class="sd">        Radii at which sigma is calculated</span>
+<span class="sd">    sigma : SimArray</span>
+<span class="sd">        Surface density profile as a function of R</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Rd</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">Rd</span>
+    <span class="n">ringwidth</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">ringwidth</span>
+    <span class="n">n_points</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">n_points</span>
+    <span class="n">m_disk</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">m_disk</span>
+    
+    <span class="n">Rmax</span> <span class="o">=</span> <span class="p">(</span><span class="n">Rd</span> <span class="o">+</span> <span class="mi">5</span><span class="o">*</span><span class="n">ringwidth</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="n">Rd</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+    <span class="n">Rmax</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">Rmax</span><span class="p">,</span> <span class="n">Rd</span><span class="o">*</span><span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">Rmax</span><span class="p">,</span> <span class="n">n_points</span><span class="p">),</span> <span class="n">Rd</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+    <span class="n">sigma0</span> <span class="o">=</span> <span class="n">m_disk</span> <span class="o">/</span> <span class="p">(</span><span class="n">ringwidth</span> <span class="o">*</span> <span class="n">Rd</span><span class="p">)</span> 
+    <span class="n">sigma0</span> <span class="o">*=</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span><span class="o">**-</span><span class="mf">1.5</span>
+    <span class="n">expArg</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">R</span><span class="o">-</span><span class="n">Rd</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">ringwidth</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">expArg</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">expArg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="n">sigma</span></div>
+    
+    
+<div class="viewcode-block" id="viscous"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.sigma_profile.viscous">[docs]</a><span class="k">def</span> <span class="nf">viscous</span><span class="p">(</span><span class="n">settings</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a surface density profile derived from a self-similarity solution</span>
+<span class="sd">    for a viscous disk, according to:</span>
+<span class="sd">    </span>
+<span class="sd">        sigma ~ r^-gamma exp(-r^(2-gamma))</span>
+<span class="sd">        </span>
+<span class="sd">    Where r is a dimensionless radius and gamma is a constant less than 2.</span>
+<span class="sd">    Rd (disk radius) is defined as the radius containing 95% of the disk mass</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    settings : IC settings</span>
+<span class="sd">        settings like those contained in an IC object (see ICgen_settings.py)</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    R : SimArray</span>
+<span class="sd">        Radii at which sigma is calculated</span>
+<span class="sd">    sigma : SimArray</span>
+<span class="sd">        Surface density profile as a function of R</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Rd</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">Rd</span>
+    <span class="n">rin</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">rin</span>
+    <span class="n">rmax</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">rmax</span>
+    <span class="n">n_points</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">n_points</span>
+    <span class="n">gamma</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">gamma</span>
+    <span class="n">m_disk</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">m_disk</span>
+    
+    <span class="c1"># Define the fraction of mass contained within Rd</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="mf">0.95</span>
+    <span class="c1"># Normalization for r</span>
+    <span class="n">R1</span> <span class="o">=</span> <span class="n">Rd</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">A</span><span class="p">))</span><span class="o">**</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">-</span><span class="n">gamma</span><span class="p">)))</span>
+    <span class="n">Rmax</span> <span class="o">=</span> <span class="n">rmax</span> <span class="o">*</span> <span class="n">Rd</span>
+    <span class="n">Rin</span> <span class="o">=</span> <span class="n">rin</span> <span class="o">*</span> <span class="n">Rd</span>
+    
+    <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">Rmax</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">R</span><span class="o">/</span><span class="n">R1</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span><span class="o">**-</span><span class="n">gamma</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">r</span><span class="o">**</span><span class="p">(</span><span class="mi">2</span><span class="o">-</span><span class="n">gamma</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="n">m_disk</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">R1</span><span class="o">*</span><span class="n">R1</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span><span class="o">-</span><span class="n">gamma</span><span class="p">)</span>   
+    <span class="c1"># Deal with infinities at the origin with a hard cut off</span>
+    <span class="n">sigma</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">sigma</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="c1"># Apply interior cutoff</span>
+    <span class="n">cut_mask</span> <span class="o">=</span> <span class="n">R</span> <span class="o">&lt;</span> <span class="n">Rin</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">cut_mask</span><span class="p">):</span>
+        
+        <span class="n">sigma</span><span class="p">[</span><span class="n">cut_mask</span><span class="p">]</span> <span class="o">*=</span> <span class="n">smoothstep</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">cut_mask</span><span class="p">],</span><span class="n">degree</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span><span class="n">rescale</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+    
+    <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="n">sigma</span></div>
+    
+<div class="viewcode-block" id="powerlaw"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.sigma_profile.powerlaw">[docs]</a><span class="k">def</span> <span class="nf">powerlaw</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">T</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a surface density profile according to a powerlaw sigma ~ r^p</span>
+<span class="sd">    with a smooth interior cutoff and smooth exterior exponential cutoff.</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    settings : IC settings</span>
+<span class="sd">        settings like those contained in an IC object (see ICgen_settings.py)</span>
+<span class="sd">    T : callable function</span>
+<span class="sd">        Function that returns temperature of the disk as a function of radius</span>
+<span class="sd">        IF none, a powerlaw temperature is assumed</span>
+<span class="sd">    </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    R : SimArray</span>
+<span class="sd">        Radii at which sigma is calculated</span>
+<span class="sd">    sigma : SimArray</span>
+<span class="sd">        Surface density profile as a function of R</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Parse settings</span>
+    <span class="n">Rd</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">Rd</span>
+    <span class="n">rin</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">rin</span>
+    <span class="n">rmax</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">rmax</span>
+    <span class="n">cutlength</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">cutlength</span>
+    <span class="n">Mstar</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">M</span>
+    <span class="n">Qmin</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">Qmin</span>
+    <span class="n">n_points</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">n_points</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">m</span>
+    <span class="n">power</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">power</span>    
+
+    <span class="k">if</span> <span class="n">T</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># If no callable object to calculate Temperature(R) is provided, </span>
+        <span class="c1"># default to a powerlaw T ~ R^-q</span>
+        
+        <span class="n">T0</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([</span><span class="mf">129.0</span><span class="p">],</span><span class="s1">&#39;K&#39;</span><span class="p">)</span> <span class="c1"># Temperature at 1 AU</span>
+        <span class="n">R0</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="mf">0.59</span>
+        <span class="k">def</span> <span class="nf">T</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            
+            <span class="k">return</span> <span class="n">T0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">((</span><span class="n">x</span><span class="o">/</span><span class="n">R0</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">),</span><span class="o">-</span><span class="n">q</span><span class="p">)</span>
+        
+    <span class="n">Rd</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">au</span><span class="p">,</span> <span class="n">Rd</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">Mstar</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">Msol</span><span class="p">,</span> <span class="n">Mstar</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># Molecular weight</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">m_p</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Maximum R to calculate sigma at (needed for the exponential cutoff region)</span>
+    <span class="n">Rmax</span> <span class="o">=</span> <span class="n">rmax</span><span class="o">*</span><span class="n">Rd</span>
+    
+    <span class="c1"># Q calculation parameters:</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span><span class="s1">&#39;G&#39;</span><span class="p">)</span>
+    <span class="n">kB</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span><span class="s1">&#39;k&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Initialize stuff</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="s1">&#39;Msol&#39;</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">Rd</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+    <span class="c1">#R = np.linspace(0,Rmax,n_points)</span>
+    <span class="c1">#r = np.array((R/Rd).in_units(&#39;1&#39;))</span>
+    <span class="c1"># dflemin3 Nov. 4, 2015</span>
+    <span class="c1"># Made units more explicit via SimArrays</span>
+    <span class="n">r_units</span> <span class="o">=</span> <span class="n">Rd</span><span class="o">.</span><span class="n">units</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">Rmax</span><span class="p">,</span><span class="n">n_points</span><span class="p">),</span><span class="n">r_units</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">R</span><span class="o">/</span><span class="n">Rd</span>
+    
+    <span class="c1"># Calculate sigma</span>
+    <span class="c1"># Powerlaw</span>
+    <span class="c1">#sigma = A/r</span>
+    <span class="c1">#dflemin3 edit 06/10/2015: Try powerlaw of the form sigma ~ r^power</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">A</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">power</span><span class="p">)</span>
+    <span class="n">sigma</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="c1"># Exterior cutoff</span>
+    <span class="n">sigma</span><span class="p">[</span><span class="n">r</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">]</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">r</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">cutlength</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+    <span class="c1"># Interior cutoff</span>
+    <span class="n">sigma</span><span class="p">[</span><span class="n">r</span><span class="o">&lt;</span><span class="n">rin</span><span class="p">]</span> <span class="o">*=</span> <span class="n">smoothstep</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">r</span><span class="o">&lt;</span><span class="n">rin</span><span class="p">],</span><span class="n">degree</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span><span class="n">rescale</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+    <span class="c1"># Calculate Q</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Mstar</span><span class="o">*</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="p">(</span><span class="n">R</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">G</span><span class="o">*</span><span class="n">m</span><span class="o">*</span><span class="n">R</span><span class="o">**</span><span class="mi">3</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">sigma</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Rescale sigma to meet the minimum Q requirement</span>
+    <span class="n">sigma</span> <span class="o">*=</span> <span class="n">Q</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">/</span><span class="n">Qmin</span>
+    
+    <span class="c1"># Calculate Q</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Mstar</span><span class="o">*</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="p">(</span><span class="n">R</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">G</span><span class="o">*</span><span class="n">m</span><span class="o">*</span><span class="n">R</span><span class="o">**</span><span class="mi">3</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">sigma</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="n">sigma</span></div>
+    
+<span class="c1">#def MQWS(n_points=1000, rin=4.0, rout=20.0, rmax = None, m_disk=0.1):</span>
+<div class="viewcode-block" id="MQWS"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.sigma_profile.MQWS">[docs]</a><span class="k">def</span> <span class="nf">MQWS</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">T</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a surface density profile as the per method used in Mayer, Quinn,</span>
+<span class="sd">    Wadsley, and Stadel 2004</span>
+<span class="sd">    </span>
+<span class="sd">    ** ARGUMENTS **</span>
+<span class="sd">    NOTE: if units are not supplied, assumed units are AU, Msol</span>
+<span class="sd">    </span>
+<span class="sd">    settings : IC settings</span>
+<span class="sd">        settings like those contained in an IC object (see ICgen_settings.py)</span>
+<span class="sd">        </span>
+<span class="sd">    T : callable</span>
+<span class="sd">        A function to calculate temperature as a function of radius</span>
+<span class="sd">        </span>
+<span class="sd">    ** RETURNS **</span>
+<span class="sd">    </span>
+<span class="sd">    r : SimArray</span>
+<span class="sd">        Radii at which sigma is calculated</span>
+<span class="sd">    sigma : SimArray</span>
+<span class="sd">        Surface density profile as a function of R</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Q calculation parameters:</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span><span class="s1">&#39;G&#39;</span><span class="p">)</span>
+    <span class="n">kB</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span><span class="s1">&#39;k&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Load in settings</span>
+    <span class="n">n_points</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">n_points</span>
+    <span class="n">rin</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">rin</span>
+    <span class="n">rout</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">rout</span>
+    <span class="n">rmax</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">rmax</span>
+    <span class="n">Qmin</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">Qmin</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">m</span>
+    <span class="n">Mstar</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">M</span>
+    <span class="c1">#m_disk = settings.sigma.m_disk</span>
+    
+    <span class="n">rin</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">au</span><span class="p">,</span> <span class="n">rin</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">rout</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">au</span><span class="p">,</span> <span class="n">rout</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1">#m_disk = match_units(pynbody.units.Msol, m_disk)[1]</span>
+    
+    <span class="k">if</span> <span class="n">rmax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">rmax</span> <span class="o">=</span> <span class="mf">2.5</span> <span class="o">*</span> <span class="n">rout</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">rmax</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">au</span><span class="p">,</span> <span class="n">rmax</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        
+    <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">rmax</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)</span>
+    
+    <span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="n">rin</span><span class="o">/</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span><span class="o">/</span><span class="n">rout</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">a</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">b</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">r</span><span class="p">)</span> <span class="o">*</span> <span class="n">Mstar</span><span class="o">.</span><span class="n">units</span><span class="o">/</span><span class="n">r</span><span class="o">.</span><span class="n">units</span>
+    
+    <span class="c1"># Calculate Q</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Mstar</span><span class="o">*</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">G</span><span class="o">*</span><span class="n">m</span><span class="o">*</span><span class="n">r</span><span class="o">**</span><span class="mi">3</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">sigma</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+
+    <span class="n">sigma</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span><span class="o">/</span><span class="n">Qmin</span>
+    
+    <span class="c1"># Remove all nans</span>
+    <span class="n">sigma</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">sigma</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    
+    
+    <span class="k">return</span> <span class="n">r</span><span class="p">,</span> <span class="n">sigma</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

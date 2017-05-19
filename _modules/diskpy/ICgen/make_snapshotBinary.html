@@ -1,0 +1,325 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.make_snapshotBinary &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.make_snapshotBinary</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Fri Mar 21 15:11:31 2014</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">@editor: dfleming</span>
+<span class="sd">-Note: indentation is 4 spaces in this file, not a tab!</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;$Revision: 1 $&quot;</span>
+<span class="c1"># $Source$</span>
+
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">gc</span>
+<span class="kn">import</span> <span class="nn">AddBinary</span>
+<span class="kn">import</span> <span class="nn">calc_velocity</span>
+<span class="kn">import</span> <span class="nn">ICgen_utils</span>
+<span class="kn">from</span> <span class="nn">diskpy</span> <span class="k">import</span> <span class="n">global_settings</span>
+
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">match_units</span><span class="p">,</span> <span class="n">strip_units</span><span class="p">,</span> <span class="n">configsave</span>
+<span class="kn">from</span> <span class="nn">diskpy.pychanga</span> <span class="k">import</span> <span class="n">make_param</span><span class="p">,</span> <span class="n">make_director</span>
+
+<div class="viewcode-block" id="snapshot_gen"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.make_snapshotBinary.snapshot_gen">[docs]</a><span class="k">def</span> <span class="nf">snapshot_gen</span><span class="p">(</span><span class="n">ICobj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a tipsy snapshot from the initial conditions object ICobj.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns snapshot, param</span>
+<span class="sd">    </span>
+<span class="sd">        snapshot: tipsy snapshot</span>
+<span class="sd">        param: dictionary containing info for a .param file</span>
+<span class="sd">    Note: Code has been edited (dflemin3) such that now it returns a snapshot for a circumbinary disk</span>
+<span class="sd">    where initial conditions generated assuming star at origin of mass M.  After gas initialized, replaced</span>
+<span class="sd">    star at origin with binary system who&#39;s center of mass lies at the origin and who&#39;s mass m1 +m2 = M</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="nb">print</span> <span class="s1">&#39;Generating snapshot...&#39;</span>
+    <span class="c1"># Constants</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="s1">&#39;G&#39;</span><span class="p">)</span>
+    <span class="c1"># ------------------------------------</span>
+    <span class="c1"># Load in things from ICobj</span>
+    <span class="c1"># ------------------------------------</span>
+    <span class="nb">print</span> <span class="s1">&#39;Accessing data from ICs&#39;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span>
+    
+    <span class="c1"># snapshot file name</span>
+    <span class="n">snapshotName</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">filenames</span><span class="o">.</span><span class="n">snapshotName</span>
+    <span class="n">paramName</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">filenames</span><span class="o">.</span><span class="n">paramName</span>   
+ 
+    <span class="c1"># particle positions</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">pos</span><span class="o">.</span><span class="n">r</span>
+    <span class="n">xyz</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">pos</span><span class="o">.</span><span class="n">xyz</span>
+    
+    <span class="c1"># Number of particles</span>
+    <span class="n">nParticles</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">pos</span><span class="o">.</span><span class="n">nParticles</span>
+    
+    <span class="c1"># molecular mass</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">m</span>
+    
+    <span class="c1"># star mass</span>
+    <span class="n">m_star</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">M</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    
+    <span class="c1"># disk mass</span>
+    <span class="n">m_disk</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">m_disk</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">m_disk</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">m_disk</span><span class="p">,</span> <span class="n">m_star</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="c1"># mass of the gas particles</span>
+    <span class="n">m_particles</span> <span class="o">=</span> <span class="n">m_disk</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">nParticles</span><span class="p">)</span>
+    
+    <span class="c1"># re-scale the particles (allows making of low-mass disk)</span>
+    <span class="n">m_particles</span> <span class="o">*=</span> <span class="n">settings</span><span class="o">.</span><span class="n">snapshot</span><span class="o">.</span><span class="n">mScale</span>
+    
+    <span class="c1"># -------------------------------------------------</span>
+    <span class="c1"># Assign output</span>
+    <span class="c1"># -------------------------------------------------</span>
+    <span class="nb">print</span> <span class="s1">&#39;Assigning data to snapshot&#39;</span>
+    <span class="c1"># Get units all set up</span>
+    <span class="n">m_unit</span> <span class="o">=</span> <span class="n">m_star</span><span class="o">.</span><span class="n">units</span>
+    <span class="n">pos_unit</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">units</span>
+    
+    <span class="k">if</span> <span class="n">xyz</span><span class="o">.</span><span class="n">units</span> <span class="o">!=</span> <span class="n">r</span><span class="o">.</span><span class="n">units</span><span class="p">:</span>
+        
+        <span class="n">xyz</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="n">pos_unit</span><span class="p">)</span>
+        
+    <span class="c1"># time units are sqrt(L^3/GM)</span>
+    <span class="n">t_unit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">pos_unit</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">((</span><span class="n">G</span><span class="o">*</span><span class="n">m_unit</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">units</span>
+    <span class="c1"># velocity units are L/t</span>
+    <span class="n">v_unit</span> <span class="o">=</span> <span class="p">(</span><span class="n">pos_unit</span><span class="o">/</span><span class="n">t_unit</span><span class="p">)</span><span class="o">.</span><span class="n">ratio</span><span class="p">(</span><span class="s1">&#39;km s**-1&#39;</span><span class="p">)</span>
+    <span class="c1"># Make it a unit, save value for future conversion</span>
+    <span class="n">v_unit_vel</span> <span class="o">=</span> <span class="n">v_unit</span>
+    <span class="c1">#Ensure v_unit_vel is the same as what I assume it is.</span>
+    <span class="k">assert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">VEL_UNIT</span><span class="o">-</span><span class="n">v_unit_vel</span><span class="p">)</span><span class="o">&lt;</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">SMALL</span><span class="p">),</span><span class="s2">&quot;VEL_UNIT not equal to ChaNGa unit! Why??&quot;</span>			
+	
+    <span class="n">v_unit</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1"> km s**-1&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v_unit</span><span class="p">))</span>
+    
+    <span class="c1"># Other settings</span>
+    <span class="n">metals</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">snapshot</span><span class="o">.</span><span class="n">metals</span>
+    <span class="n">star_metals</span> <span class="o">=</span> <span class="n">metals</span>
+    
+    <span class="c1"># Generate snapshot</span>
+    <span class="c1"># Note that empty pos, vel, and mass arrays are created in the snapshot</span>
+    <span class="n">snapshot</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">star</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">gas</span><span class="o">=</span><span class="n">nParticles</span><span class="p">)</span>
+    <span class="n">snapshot</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">v_unit</span>
+    <span class="n">snapshot</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.01</span><span class="o">*</span><span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">nParticles</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">pos_unit</span><span class="p">)</span>
+    <span class="n">snapshot</span><span class="p">[</span><span class="s1">&#39;metals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nParticles</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+    <span class="n">snapshot</span><span class="p">[</span><span class="s1">&#39;rho&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nParticles</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+    
+    <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xyz</span>
+    <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;temp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">T</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m_particles</span>
+    <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;metals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">metals</span>
+    
+    <span class="n">snapshot</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([[</span> <span class="mf">0.</span><span class="p">,</span>  <span class="mf">0.</span><span class="p">,</span>  <span class="mf">0.</span><span class="p">]],</span><span class="n">pos_unit</span><span class="p">)</span>
+    <span class="n">snapshot</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([[</span> <span class="mf">0.</span><span class="p">,</span>  <span class="mf">0.</span><span class="p">,</span>  <span class="mf">0.</span><span class="p">]],</span> <span class="n">v_unit</span><span class="p">)</span>
+    <span class="n">snapshot</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m_star</span>
+    <span class="n">snapshot</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="s1">&#39;metals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">star_metals</span><span class="p">)</span>
+    <span class="c1"># Estimate the star&#39;s softening length as the closest particle distance</span>
+    <span class="c1">#snapshot.star[&#39;eps&#39;] = r.min()</span>
+    
+    <span class="c1"># Make param file</span>
+    <span class="n">param</span> <span class="o">=</span> <span class="n">make_param</span><span class="p">(</span><span class="n">snapshot</span><span class="p">,</span> <span class="n">snapshotName</span><span class="p">)</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dMeanMolWeight&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
+       
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+    
+    <span class="c1"># CALCULATE VELOCITY USING calc_velocity.py.  This also estimates the </span>
+    <span class="c1"># gravitational softening length eps</span>
+    <span class="nb">print</span> <span class="s1">&#39;Calculating circular velocity&#39;</span>
+    <span class="n">preset</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">changa_run</span><span class="o">.</span><span class="n">preset</span>
+    <span class="n">max_particles</span> <span class="o">=</span> <span class="n">global_settings</span><span class="p">[</span><span class="s1">&#39;misc&#39;</span><span class="p">][</span><span class="s1">&#39;max_particles&#39;</span><span class="p">]</span>
+    <span class="n">calc_velocity</span><span class="o">.</span><span class="n">v_xy</span><span class="p">(</span><span class="n">snapshot</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">changa_preset</span><span class="o">=</span><span class="n">preset</span><span class="p">,</span> <span class="n">max_particles</span><span class="o">=</span><span class="n">max_particles</span><span class="p">)</span>
+    
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+  
+	<span class="c1"># -------------------------------------------------</span>
+    <span class="c1"># Estimate time step for changa to use</span>
+    <span class="c1"># -------------------------------------------------</span>
+    <span class="c1"># Save param file</span>
+    <span class="n">configsave</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">paramName</span><span class="p">,</span> <span class="s1">&#39;param&#39;</span><span class="p">)</span>
+    <span class="c1"># Save snapshot</span>
+    <span class="n">snapshot</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">snapshotName</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">pynbody</span><span class="o">.</span><span class="n">tipsy</span><span class="o">.</span><span class="n">TipsySnap</span><span class="p">)</span>
+    <span class="c1"># est dDelta</span>
+    <span class="n">dDelta</span> <span class="o">=</span> <span class="n">ICgen_utils</span><span class="o">.</span><span class="n">est_time_step</span><span class="p">(</span><span class="n">paramName</span><span class="p">,</span> <span class="n">preset</span><span class="p">)</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dDelta&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dDelta</span>
+ 
+	<span class="c1"># -------------------------------------------------</span>
+    <span class="c1"># Create director file</span>
+    <span class="c1"># -------------------------------------------------</span>
+    <span class="c1"># largest radius to plot</span>
+    <span class="n">r_director</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.9</span> <span class="o">*</span> <span class="n">r</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="c1"># Maximum surface density</span>
+    <span class="n">sigma_min</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span><span class="p">(</span><span class="n">r_director</span><span class="p">))</span>
+    <span class="c1"># surface density at largest radius</span>
+    <span class="n">sigma_max</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;sigma&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="c1"># Create director dict</span>
+    <span class="n">director</span> <span class="o">=</span> <span class="n">make_director</span><span class="p">(</span><span class="n">sigma_min</span><span class="p">,</span> <span class="n">sigma_max</span><span class="p">,</span> <span class="n">r_director</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">param</span><span class="p">[</span><span class="s1">&#39;achOutName&#39;</span><span class="p">])</span>
+    <span class="c1">## Save .director file</span>
+    <span class="c1">#configsave(director, directorName, &#39;director&#39;)</span>
+
+    <span class="c1">#Now that velocities and everything are all initialized for gas particles, create new snapshot to return in which</span>
+    <span class="c1">#single star particle is replaced by 2, same units as above</span>
+    <span class="n">snapshotBinary</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">star</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">gas</span><span class="o">=</span><span class="n">nParticles</span><span class="p">)</span>
+    <span class="n">snapshotBinary</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.01</span><span class="o">*</span><span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">nParticles</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">pos_unit</span><span class="p">)</span>
+    <span class="n">snapshotBinary</span><span class="p">[</span><span class="s1">&#39;metals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nParticles</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+    <span class="n">snapshotBinary</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">v_unit</span>
+    <span class="n">snapshotBinary</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">pos_unit</span>
+    <span class="n">snapshotBinary</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">snapshot</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span>
+    <span class="n">snapshotBinary</span><span class="p">[</span><span class="s1">&#39;rho&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nParticles</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+
+    <span class="c1">#Assign gas particles with calculated/given values from above</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;temp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;temp&#39;</span><span class="p">]</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rho&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rho&#39;</span><span class="p">]</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;metals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;metals&#39;</span><span class="p">]</span>
+
+    <span class="c1">#Load Binary system obj to initialize system</span>
+    <span class="n">binsys</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">binsys</span>
+    
+    <span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">v1</span><span class="p">,</span><span class="n">v2</span> <span class="o">=</span> <span class="n">binsys</span><span class="o">.</span><span class="n">generateICs</span><span class="p">()</span>
+
+    <span class="c1">#Put velocity in sim units</span>
+    <span class="c1">#!!! Note: v_unit_vel will always be 29.785598165 km/s when m_unit = Msol and r_unit = 1 AU in kpc!!!</span>
+    <span class="c1">#conv = v_unit_vel #km/s in sim units</span>
+    <span class="c1">#v1 /= conv</span>
+    <span class="c1">#v2 /= conv</span>
+
+    <span class="c1">#Assign position, velocity assuming CCW orbit</span>
+
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">pos_unit</span><span class="p">)</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span><span class="n">v_unit</span><span class="p">)</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">x2</span><span class="p">,</span><span class="n">pos_unit</span><span class="p">)</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">v2</span><span class="p">,</span><span class="n">v_unit</span><span class="p">)</span>
+
+    <span class="c1">#Set stellar masses</span>
+    <span class="c1">#Set Mass units</span>
+    <span class="c1">#Create simArray for mass, convert units to simulation mass units</span>
+    <span class="n">priMass</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">binsys</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span><span class="n">m_unit</span><span class="p">)</span>
+    <span class="n">secMass</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">binsys</span><span class="o">.</span><span class="n">m2</span><span class="p">,</span><span class="n">m_unit</span><span class="p">)</span>
+
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">priMass</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">secMass</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="s1">&#39;metals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">star_metals</span><span class="p">)</span>
+
+    <span class="c1">#Estimate stars&#39; softening length as fraction of distance to COM</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">dotProduct</span><span class="p">(</span><span class="n">x1</span><span class="o">-</span><span class="n">x2</span><span class="p">,</span><span class="n">x1</span><span class="o">-</span><span class="n">x2</span><span class="p">))</span>
+
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">d</span><span class="p">)</span><span class="o">/</span><span class="mf">4.0</span><span class="p">,</span><span class="n">pos_unit</span><span class="p">)</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">d</span><span class="p">)</span><span class="o">/</span><span class="mf">4.0</span><span class="p">,</span><span class="n">pos_unit</span><span class="p">)</span>
+ 
+    <span class="nb">print</span> <span class="s1">&#39;Wrapping up&#39;</span>
+    <span class="c1"># Now set the star particle&#39;s tform to a negative number.  This allows</span>
+    <span class="c1"># UW ChaNGa treat it as a sink particle.</span>
+    <span class="n">snapshotBinary</span><span class="o">.</span><span class="n">star</span><span class="p">[</span><span class="s1">&#39;tform&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
+    
+    <span class="c1">#Set Sink Radius to be mass-weighted average of Roche lobes of two stars</span>
+    <span class="n">r1</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">calcRocheLobe</span><span class="p">(</span><span class="n">binsys</span><span class="o">.</span><span class="n">m1</span><span class="o">/</span><span class="n">binsys</span><span class="o">.</span><span class="n">m2</span><span class="p">,</span><span class="n">binsys</span><span class="o">.</span><span class="n">a</span><span class="p">)</span> 
+    <span class="n">r2</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">calcRocheLobe</span><span class="p">(</span><span class="n">binsys</span><span class="o">.</span><span class="n">m2</span><span class="o">/</span><span class="n">binsys</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span><span class="n">binsys</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">binsys</span><span class="o">.</span><span class="n">m1</span><span class="o">/</span><span class="p">(</span><span class="n">binsys</span><span class="o">.</span><span class="n">m1</span> <span class="o">+</span> <span class="n">binsys</span><span class="o">.</span><span class="n">m2</span><span class="p">))</span>
+
+    <span class="n">r_sink</span> <span class="o">=</span> <span class="p">(</span><span class="n">r1</span><span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">r2</span><span class="o">*</span><span class="p">(</span><span class="mf">1.0</span><span class="o">-</span><span class="n">p</span><span class="p">))</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dSinkBoundOrbitRadius&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">r_sink</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dSinkRadius&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">r_sink</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dSinkMassMin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.9</span> <span class="o">*</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">secMass</span><span class="p">)</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;bDoSinks&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    
+    <span class="k">return</span> <span class="n">snapshotBinary</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">director</span></div>
+    
+        
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

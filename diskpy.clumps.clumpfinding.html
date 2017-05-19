@@ -1,0 +1,439 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.clumps.clumpfinding package &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="diskpy.clumps.simclumps package" href="diskpy.clumps.simclumps.html" />
+    <link rel="prev" title="diskpy.clumps package" href="diskpy.clumps.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.clumps.simclumps.html" title="diskpy.clumps.simclumps package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.clumps.html" title="diskpy.clumps package"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" >diskpy package</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="diskpy.clumps.html" accesskey="U">diskpy.clumps package</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="diskpy-clumps-clumpfinding-package">
+<h1>diskpy.clumps.clumpfinding package<a class="headerlink" href="#diskpy-clumps-clumpfinding-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-diskpy.clumps.clumpfinding">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diskpy.clumps.clumpfinding" title="Permalink to this headline">¶</a></h2>
+<p>Created on Sat Jul 18 15:33:32 2015</p>
+<p>&#64;author: ibackus</p>
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.clump_tracker">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">clump_tracker</code><span class="sig-paren">(</span><em>fprefix</em>, <em>param=None</em>, <em>directory=None</em>, <em>nsmooth=32</em>, <em>verbose=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#clump_tracker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.clump_tracker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds and tracks clumps over a simulation with multiple time steps and
+calculates various physical properties of the clumps.</p>
+<p>Runs all the steps necessary to find/track clumps, these are:</p>
+<p>get_fnames
+pFind_clumps
+pClump_properties
+pLink2
+multilink
+build_clumps</p>
+<p>If the iord property is not found, the linking will only work if the number
+of particles remains constant through the simulation</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>fprefix <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Prefix of the simulation outputs</dd>
+<dt>param <span class="classifier-delimiter">:</span> <span class="classifier">str (recommended)</span></dt>
+<dd>Filename of a .param file for the simulation</dd>
+<dt>directory <span class="classifier-delimiter">:</span> <span class="classifier">str (optional)</span></dt>
+<dd>Directory to search through.  Default is current working directory</dd>
+<dt>nsmooth <span class="classifier-delimiter">:</span> <span class="classifier">int (optional)</span></dt>
+<dd>Number of nearest neighbors used for particle smoothing in the
+simulation.  This is used in the definition of a density threshold
+for clump finding.</dd>
+<dt>verbose <span class="classifier-delimiter">:</span> <span class="classifier">bool (optional)</span></dt>
+<dd>Verbosity flag.  Default is True</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>clump_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list containing dictionaries for all clumps foujohn obryan fiddlend in the simulation
+See clump_properties for a list of the properties calculated for clumps</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.blank_clump">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">blank_clump</code><span class="sig-paren">(</span><em>clump_pars</em>, <em>nt=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#blank_clump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.blank_clump" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a blank clump dictionary, using clump_pars</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.build_clumps">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">build_clumps</code><span class="sig-paren">(</span><em>multilink_list</em>, <em>clump_pars_list</em>, <em>fnames=None</em>, <em>param=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#build_clumps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.build_clumps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds a list of clump dictionaries.  The clump dictionaries contain various
+properties as a function of time for the different clumps.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>multilink_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list of clump-link arrays (output of multilink)</dd>
+<dt>clump_pars_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>List of dictionaries containing clump properties for all clumps on a
+given time step (see pClump_properties)</dd>
+<dt>fnames <span class="classifier-delimiter">:</span> <span class="classifier">list (recommended)</span></dt>
+<dd>A list of the simulation snapshot filenames.  If provided, the time
+steps are included in the clumps</dd>
+<dt>param <span class="classifier-delimiter">:</span> <span class="classifier">str (recommended)</span></dt>
+<dd>Filename of a .param file for the simulation.  Only used if fnames is
+provided</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>clump_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list of clump dictionaries.  Each clump dictionary gives various
+physical properties for a clump as a function of time.  A value of NaN
+means the clump was not present at that time step.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.multilink">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">multilink</code><span class="sig-paren">(</span><em>link_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#multilink"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.multilink" title="Permalink to this definition">¶</a></dt>
+<dd><p>Links clumps on multiple time steps.</p>
+<p>Given the output of link2 or pLink2 for multiple time-steps, this determines
+every clump’s ID as a function of time-step.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>link_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list of link arrays.  link_list[i] contains the links between time
+step i and i+1.
+ie: link_list[i] = link2(clump_pars_list[i], clump_pars_list[i+1])
+Same as the output from pLink2</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>clumpid_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list of 2D arrays.  Each array gives pairs of (clumpID, time-step)</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.pLink2">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">pLink2</code><span class="sig-paren">(</span><em>clump_pars_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#pLink2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.pLink2" title="Permalink to this definition">¶</a></dt>
+<dd><p>A parallel (batch) implementation of links2 for linking clumps in
+consecutive time-steps.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>clump_pars_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list of dictionaries containing the properties of clumps.  Each
+element of the list is a dictio:nary for a single time step.
+(see pClump_properties)</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>link_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list of link arrays.  link_list[i] contains the links between time
+step i and i+1.
+ie: link_list[i] = link2(clump_pars_list[i], clump_pars_list[i+1])</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.link2">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">link2</code><span class="sig-paren">(</span><em>clump_pars1</em>, <em>clump_pars2</em>, <em>link_thresh=0.2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#link2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.link2" title="Permalink to this definition">¶</a></dt>
+<dd><p>‘Links’ the clumps in two consecutive timesteps.  i.e., a clump numbered
+10 in one time step might be numbered 15 in the next.  Requires the particle
+iord (ie, particle ID)</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>clump_pars1 <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd>Dict containing the properties of the clumps in time-step 1 
+(see clump_properties)</dd>
+<dt>clump_pars2 <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd>Dict containing the properties of the clumps in time-step 2 
+(see clump_properties)</dd>
+<dt>link_thresh <span class="classifier-delimiter">:</span> <span class="classifier">int (optional)</span></dt>
+<dd>The minimum fraction of particles in clump i at time 1 which must end
+up in clump j at time 2 to consider the clumps ‘linked’</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>clump_pairs <span class="classifier-delimiter">:</span> <span class="classifier">array</span></dt>
+<dd>2D numpy array organized according to (parent index, clump number)
+where clump number is the number of a clump in time 2 and parent index
+is the number of it’s “parent” in time-step 1 (ie, that same clump’s
+ID in time-step 1)
+A parent index of -1 corresponds to no parent (a new clump)</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.clump_im">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">clump_im</code><span class="sig-paren">(</span><em>f</em>, <em>clump_array</em>, <em>width</em>, <em>qty=’rho’</em>, <em>resolution=1200</em>, <em>clim=None</em>, <em>clump_min=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#clump_im"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.clump_im" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots an sph image from f with particles not in clumps colored red and 
+particles in clumps colored green.  Uses pynbody for a backend.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>f <span class="classifier-delimiter">:</span> <span class="classifier">TipsySnapshot (see pynbody) or str</span></dt>
+<dd>The snapshot to plot OR the filename of a snapshot to plot</dd>
+<dt>clump_array <span class="classifier-delimiter">:</span> <span class="classifier">numpy array</span></dt>
+<dd>A array (same length as f) such that 0 entries correspond to particles
+not in clumps and entries &gt; 0 correspond to particles in clumps</dd>
+<dt>width <span class="classifier-delimiter">:</span> <span class="classifier">str, simarray</span></dt>
+<dd>See pynbody.plot.sph.image.  Width of the plot, ie ‘3 au’</dd>
+<dt>resolution <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Resolution in pixels of the plot.  The plot will be res by res pixels</dd>
+<dt>clim <span class="classifier-delimiter">:</span> <span class="classifier">tuple,list,array</span></dt>
+<dd>Density limits arranged as [low, high].  Any pixels below low are mapped
+to 0, any pixels above high are mapped to 1.</dd>
+<dt>clump_min <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>Used to set a cutoff for masking the clumps.  Not needed</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>image <span class="classifier-delimiter">:</span> <span class="classifier">numpy nd-array</span></dt>
+<dd>Returns an NxNx3 numpy array of the color image plotted.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.pClump_properties">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">pClump_properties</code><span class="sig-paren">(</span><em>flist</em>, <em>clumpnum_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#pClump_properties"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.pClump_properties" title="Permalink to this definition">¶</a></dt>
+<dd><p>A parallel (batch) implementation of clump_properties.  Calculates the 
+physical properties of clumps in a list of snapshots.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>flist <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list of tipsy snapshots or filenames pointing to snapshots.</dd>
+<dt>clumpnum_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list of arrays (one per snapshot) which define the clump number
+each particle belongs to (see pFind_clumps)</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>properties <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list of dictionaries which contain the clump properties for every
+simulation (see clump_properties)</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.clump_properties">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">clump_properties</code><span class="sig-paren">(</span><em>f</em>, <em>clump_nums</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#clump_properties"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.clump_properties" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the physical properties of clumps in a snapshot.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>f <span class="classifier-delimiter">:</span> <span class="classifier">str -OR- tipsy snapshot</span></dt>
+<dd>Either a tipsy snapshot or a filename pointing to a snapshot</dd>
+<dt>clump_nums <span class="classifier-delimiter">:</span> <span class="classifier">array like</span></dt>
+<dd>Clump number that each particle belongs to (see clumps.find_clumps).
+0 corresponds to not being in a clump.</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>properties <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd><p class="first">A dictionary containing the physical properties of the clumps.
+Keys are:</p>
+<p>‘m’         mass
+‘N’         Number of particles
+‘pos’       xyz position
+‘r’         cylindrical radial position
+‘v’         center of mass velocity
+‘L’         Angular momentum relative to clump center of mass
+‘T’         Average temperature
+‘rho’       Average density
+‘r_clump’   Clump radius.  Sqrt of mass averaged particle distance squared</p>
+<blockquote>
+<div>(from the center of mass).  IE: r = sqrt( sum(mr^2)/sum(m))</div></blockquote>
+<dl class="docutils">
+<dt>‘ids’       particle IDs in the clump (first particle in simulation is</dt>
+<dd>0, second is 1, etc…)</dd>
+</dl>
+<p class="last">‘iord’      Particle iord (a particle’s ID for the whole simulation)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.pFind_clumps">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">pFind_clumps</code><span class="sig-paren">(</span><em>f_list</em>, <em>n_smooth=32</em>, <em>param=None</em>, <em>arg_string=None</em>, <em>verbose=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#pFind_clumps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.pFind_clumps" title="Permalink to this definition">¶</a></dt>
+<dd><p>A parallel implementation of find_clumps.  Since SKID is not parallelized
+this can be used to run find_clumps on a set of snapshots from one
+simulation.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>f_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list containing the filenames of snapshots OR the tipsy snapshots</dd>
+<dt>n_smooth <span class="classifier-delimiter">:</span> <span class="classifier">int (optional)</span></dt>
+<dd>Number of nearest neighbors used for particle smoothing in the
+simulation.  This is used in the definition of a density threshold
+for clump finding.</dd>
+<dt>param <span class="classifier-delimiter">:</span> <span class="classifier">str (optional)</span></dt>
+<dd>filename for a tipsy .param file</dd>
+<dt>arg_string <span class="classifier-delimiter">:</span> <span class="classifier">str (optional)</span></dt>
+<dd>Additional arguments to be passed to SKID.  Cannot use -tau, -d, -m, -s, -o</dd>
+<dt>verbose <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>Verbosity flag.  Default is True</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt>clumpnum_list <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list containing the particle clump assignment for every snapshot in 
+f_list.  clumps[i][j] gives the clump number for particle j in
+snapshot i.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.clumpfinding.find_clumps">
+<code class="descclassname">diskpy.clumps.clumpfinding.</code><code class="descname">find_clumps</code><span class="sig-paren">(</span><em>f</em>, <em>n_smooth=32</em>, <em>param=None</em>, <em>arg_string=None</em>, <em>seed=None</em>, <em>verbose=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/clumpfinding/_clumpfinding.html#find_clumps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.clumpfinding.find_clumps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses skid (<a class="reference external" href="https://github.com/N-BodyShop/skid">https://github.com/N-BodyShop/skid</a>) to find clumps in a gaseous
+protoplanetary disk.  
+Also requires tipsy tools (<a class="reference external" href="https://github.com/N-BodyShop/tipsy_tools">https://github.com/N-BodyShop/tipsy_tools</a>),
+specifically totipnat</p>
+<p>The linking length used is equal to the gravitational softening length of
+the gas particles.</p>
+<p>The density cut-off comes from the criterion that there are n_smooth particles
+within the Hill sphere of a particle.  This is formulated mathematically as:</p>
+<blockquote>
+<div>rho_min = 3*n_smooth*Mstar/R^3</div></blockquote>
+<p>where R is the distance from the star.  The trick used here is to multiply
+all particle masses by R^3 before running skid so the density cut-off is:</p>
+<blockquote>
+<div>rho_min = 3*n_smooth*Mstar</div></blockquote>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt><em>f</em> <span class="classifier-delimiter">:</span> <span class="classifier">TipsySnap, or str</span></dt>
+<dd>A tipsy snapshot loaded/created by pynbody -OR- a filename pointing to a
+snapshot.</dd>
+<dt><em>n_smooth</em> <span class="classifier-delimiter">:</span> <span class="classifier">int (optional)</span></dt>
+<dd>Number of particles used in SPH calculations.  Should be the same as used
+in the simulation.  Default = 32</dd>
+<dt><em>param</em> <span class="classifier-delimiter">:</span> <span class="classifier">str (optional)</span></dt>
+<dd>filename for a .param file for the simulation</dd>
+<dt><em>arg_string</em> <span class="classifier-delimiter">:</span> <span class="classifier">str (optional)</span></dt>
+<dd>Additional arguments to be passed to skid.  Cannot use -tau, -d, -m, -s, -o</dd>
+<dt><em>seed</em> <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>An integer used to seed the random filename generation for temporary
+files.  Necessary for multiprocessing and should be unique for each
+thread.</dd>
+<dt><em>verbose</em> <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>Verbosity flag.  Default is True</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<dl class="docutils">
+<dt><em>clumps</em> <span class="classifier-delimiter">:</span> <span class="classifier">array, int-like</span></dt>
+<dd>Array containing the group number each particle belongs to, with star
+particles coming after gas particles.  A zero means the particle belongs
+to no groups</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">diskpy.clumps.clumpfinding package</a><ul>
+<li><a class="reference internal" href="#module-diskpy.clumps.clumpfinding">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="diskpy.clumps.html"
+                        title="previous chapter">diskpy.clumps package</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="diskpy.clumps.simclumps.html"
+                        title="next chapter">diskpy.clumps.simclumps package</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/diskpy.clumps.clumpfinding.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.clumps.simclumps.html" title="diskpy.clumps.simclumps package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.clumps.html" title="diskpy.clumps package"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" >diskpy package</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="diskpy.clumps.html" >diskpy.clumps package</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

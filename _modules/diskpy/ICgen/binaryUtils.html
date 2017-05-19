@@ -1,0 +1,1087 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.binaryUtils &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.binaryUtils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">David Fleming</span>
+<span class="sd">Utilities to process/interact with binary star system in ChaNGa sims</span>
+
+<span class="sd">Note on inputs: Most (if not all?) functions are designed to be used with SimArrays as inputs.  </span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># Imports</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">AddBinary</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">interpolate</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="k">import</span> <span class="n">fsolve</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">strip_units</span>
+
+
+<div class="viewcode-block" id="changaFloatSearch"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.changaFloatSearch">[docs]</a><span class="k">def</span> <span class="nf">changaFloatSearch</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">simUnits</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Given the name of a file containing line dumps for ChaNGa and outputs numpy arrays containing changa dumps line-by-line.</span>
+<span class="sd">	</span>
+<span class="sd">	Genfromtxt will convert output into either an numpy array of strings or a numpy array of lists of strings.</span>
+<span class="sd">	Determine what format is, use regex library to find all floats and output accordingly.</span>
+
+<span class="sd">	Default usage is searching for linear momentum dumps of the form mg,vx,vy,vz for gas</span>
+<span class="sd">	Assume appropriate flag was used to grep data into input file</span>
+<span class="sd">	</span>
+<span class="sd">	Input:</span>
+<span class="sd">	name: Name of input file (something.txt)</span>
+<span class="sd">	simUnits: whether or not to use simUnits (False -&gt; convert to cgs)</span>
+<span class="sd">			  Only for use for linear momentum values!</span>
+
+<span class="sd">	Output:</span>
+<span class="sd">	Numpy array containing all floats from changa output</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	
+	<span class="c1">#Read in data</span>
+	<span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;str&quot;</span><span class="p">)</span>
+
+	<span class="c1">#Determine size of intermediate output numpy array</span>
+	<span class="n">rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+	<span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+	<span class="c1">#Loop over inputs, store all floats in numpy array to return</span>
+	<span class="c1">#Case: Each element of data is a string</span>
+	<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">basestring</span><span class="p">):</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rows</span><span class="p">):</span>
+			<span class="n">tmpList</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[+-]? *(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?&quot;</span><span class="p">,</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+			<span class="k">if</span> <span class="n">tmpList</span><span class="p">:</span>
+				<span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tmpList</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+	<span class="c1">#Case: Each element of data is a list of strings</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rows</span><span class="p">):</span>
+			<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+				<span class="c1">#Check if list is empty or contains floats.  If not empty, convert to numpy array of floats, store in return array</span>
+				<span class="n">tmpList</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[+-]? *(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?&quot;</span><span class="p">,</span><span class="n">item</span><span class="p">)</span>
+				<span class="k">if</span> <span class="n">tmpList</span><span class="p">:</span>
+					<span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tmpList</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+	<span class="c1">#Ensure final result is some 2D numpy array so I can access it like final[i,j]</span>
+	<span class="n">cols</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+	<span class="n">final</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span><span class="n">cols</span><span class="p">),</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rows</span><span class="p">):</span>
+		<span class="n">temp</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+		<span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cols</span><span class="p">):</span>
+			<span class="n">final</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+
+	<span class="k">return</span> <span class="n">final</span></div>
+
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="linearMomentumEffects"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.linearMomentumEffects">[docs]</a><span class="k">def</span> <span class="nf">linearMomentumEffects</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">accretion</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Given initial binary system parameters and an array tracking the accretion events, calculate the effects of accretion</span>
+<span class="sd">	on the semimajor axis and eccentricity of the binary system.</span>
+
+<span class="sd">	Inputs: Assume all input arrays are in simulation units</span>
+<span class="sd">	Masses of primary and secondary (m1, m2 in Msol)</span>
+<span class="sd">	Position arrays of primary and secondary x1, x2 (in AU)</span>
+<span class="sd">	Velocity arrays of primary and secondary v1, v2 (in km/s)</span>
+<span class="sd">	Numpy array of accretion events of the form [m vx vy vz ...] for each accreted gas particle at time of accretion</span>
+
+<span class="sd">	Output:</span>
+<span class="sd">	Semimajor axis, eccentricity of binary system after accretion events</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="c1">#Extract masses and velocities of accreted gas particles from array of known format</span>
+	<span class="n">m_g</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">accretion</span><span class="p">))</span>	
+	<span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">accretion</span><span class="p">),</span><span class="mi">3</span><span class="p">))</span>
+
+	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">accretion</span><span class="p">)):</span>
+		<span class="n">m_g</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">accretion</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>	
+		<span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">):</span>
+			<span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">accretion</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span>
+
+	<span class="c1">#Strip units from all inputs, convert all into CGS</span>
+	<span class="n">r1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">x1</span><span class="p">))</span><span class="o">*</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">AUCM</span>
+	<span class="n">r2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">x2</span><span class="p">))</span><span class="o">*</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">AUCM</span>
+	<span class="n">v1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">v1</span><span class="p">))</span><span class="o">*</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">VEL_UNIT</span><span class="o">*</span><span class="mi">100</span><span class="o">*</span><span class="mi">1000</span>
+	<span class="n">v2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">v2</span><span class="p">))</span><span class="o">*</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">VEL_UNIT</span><span class="o">*</span><span class="mi">100</span><span class="o">*</span><span class="mi">1000</span>
+	<span class="n">m1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">m1</span><span class="p">))</span><span class="o">*</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">Msol</span>
+	<span class="n">m2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">m2</span><span class="p">))</span><span class="o">*</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">Msol</span>
+	<span class="n">m_g</span> <span class="o">=</span> <span class="n">m_g</span><span class="o">*</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">Msol</span>
+	<span class="n">v</span> <span class="o">=</span> <span class="n">v</span> <span class="o">*</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">VEL_UNIT</span><span class="o">*</span><span class="mi">100</span><span class="o">*</span><span class="mi">1000</span>
+
+	<span class="c1">#Compute relative binary system quantities</span>
+	<span class="n">vBin</span> <span class="o">=</span> <span class="n">v1</span> <span class="o">-</span> <span class="n">v2</span>
+	<span class="n">rBin</span> <span class="o">=</span> <span class="n">r1</span> <span class="o">-</span> <span class="n">r2</span>
+	<span class="n">mBin</span> <span class="o">=</span> <span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span>
+
+	<span class="c1">#Loop over accretion events, apply conservation of linear momentum at each step</span>
+	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">accretion</span><span class="p">)):</span>
+		<span class="n">vBin</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="n">mBin</span><span class="o">+</span><span class="n">m_g</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">*</span><span class="p">(</span><span class="n">mBin</span><span class="o">*</span><span class="n">vBin</span> <span class="o">+</span> <span class="n">m_g</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+		<span class="n">mBin</span> <span class="o">=</span> <span class="n">mBin</span> <span class="o">+</span> <span class="n">m_g</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>	
+
+	<span class="c1">#Compute final semimajor axis, eccentricity</span>
+	
+	<span class="c1">#Compute r, v, standard gravitational parameter</span>
+	<span class="n">magR</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">rBin</span><span class="p">)</span>
+	<span class="n">mu</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">BigG</span><span class="o">*</span><span class="p">(</span><span class="n">mBin</span><span class="p">)</span>
+	<span class="n">magV</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">vBin</span><span class="p">)</span>
+
+	<span class="c1">#Compute specific orbital energy, angular momentum</span>
+	<span class="n">eps</span> <span class="o">=</span> <span class="p">(</span><span class="n">magV</span><span class="o">*</span><span class="n">magV</span><span class="o">/</span><span class="mf">2.0</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">mu</span><span class="o">/</span><span class="n">magR</span><span class="p">)</span>
+	<span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">rBin</span><span class="p">,</span><span class="n">vBin</span><span class="p">)</span>
+	<span class="n">magH</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+	
+	<span class="c1">#Compute semimajor axis	in AU</span>
+	<span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="n">mu</span><span class="o">/</span><span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="n">eps</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">AUCM</span><span class="p">)</span>
+
+	<span class="c1">#Compute eccentricity</span>
+	<span class="n">e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="p">((</span><span class="mi">2</span><span class="o">*</span><span class="n">eps</span><span class="o">*</span><span class="n">magH</span><span class="o">*</span><span class="n">magH</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">mu</span><span class="o">*</span><span class="n">mu</span><span class="p">)))</span>
+
+	<span class="k">return</span> <span class="n">a</span><span class="p">,</span><span class="n">e</span></div>
+
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="find_crit_radius"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.find_crit_radius">[docs]</a><span class="k">def</span> <span class="nf">find_crit_radius</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">array</span><span class="p">,</span><span class="n">toFind</span><span class="p">,</span><span class="n">num</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given an array as a function of radius,	the array value to search for, the radial range to search over and the search</span>
+<span class="sd">    resolution, find the corresponding radius.</span>
+<span class="sd">    Assumed that array is calculated as a function of r.</span>
+<span class="sd">	</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    r: array</span>
+<span class="sd">        array of radial points</span>
+<span class="sd">    array: array</span>
+<span class="sd">        array of quantity of interest (could be surface density?) as a function of r</span>
+<span class="sd">    toFind: float</span>
+<span class="sd">        array value you&#39;re looking for</span>
+<span class="sd">    num: int</span>
+<span class="sd">        resolution of search</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    critial_radius: float</span>
+<span class="sd">        radius at which array(critical_radius) = toFind (approximately)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#Require len(r) == len(array) for interpolation to work</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+
+    <span class="c1">#Estimate surface density as function of radius.  s=0 -&gt; Interpolate through all data points assuming smooth curve</span>
+    <span class="n">array_f</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">UnivariateSpline</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">array</span><span class="p">,</span><span class="n">s</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+	
+    <span class="c1">#Compute radius array to search over</span>
+    <span class="n">radius</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span><span class="n">r</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span><span class="n">num</span><span class="p">)</span>
+
+    <span class="c1">#Find, return critical radius</span>
+    <span class="k">return</span> <span class="n">radius</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">array_f</span><span class="p">(</span><span class="n">radius</span><span class="p">)</span><span class="o">-</span><span class="n">toFind</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">()]</span></div>
+
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="computeCOM"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.computeCOM">[docs]</a><span class="k">def</span> <span class="nf">computeCOM</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span><span class="n">gas</span><span class="p">,</span><span class="n">cutoff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">starFlag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">gasFlag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody star and gas arrays, compute the center of mass for the entire specified system.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------    </span>
+<span class="sd">    stars: s.stars pynbody object</span>
+<span class="sd">    gas: s.gas pynbody object</span>
+<span class="sd">    cutoff: float</span>
+<span class="sd">        radius at which you only consider objects interior to it</span>
+<span class="sd">    starFlag: bool</span>
+<span class="sd">        whether or not to consider stars</span>
+
+<span class="sd">    Return</span>
+<span class="sd">    -------</span>
+<span class="sd">    com: SimArray</span>
+<span class="sd">        Center of mass (in AU for each x,y,z component)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">com</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>	
+
+    <span class="k">assert</span> <span class="n">starFlag</span> <span class="o">==</span> <span class="kc">True</span> <span class="ow">or</span> <span class="n">gasFlag</span> <span class="o">==</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;At least one flag must be true.&quot;</span>    
+    
+    <span class="c1">#If there&#39;s a cutoff, select gas particles with cylindrical radius less than the cutoff</span>
+    <span class="k">if</span> <span class="n">cutoff</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">cutoff</span>
+        <span class="n">gas</span> <span class="o">=</span> <span class="n">gas</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+	
+    <span class="k">if</span> <span class="n">starFlag</span><span class="p">:</span> <span class="c1">#Include stars</span>
+        <span class="c1">#Ensure binary</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">stars</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+	
+        <span class="c1">#Compute stellar mass, mass-weighted position</span>
+        <span class="n">starMass</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+        <span class="n">starPos</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span><span class="o">*</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+        <span class="n">starPos</span> <span class="o">+=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span><span class="o">*</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+	
+        <span class="k">if</span> <span class="n">gasFlag</span><span class="p">:</span>
+            <span class="c1">#Compute, return total center of mass</span>
+            <span class="n">com</span> <span class="o">=</span> <span class="n">starPos</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span><span class="o">*</span><span class="n">gas</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">],</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">com</span> <span class="o">/=</span> <span class="p">(</span><span class="n">starMass</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]))</span>
+            <span class="k">return</span> <span class="n">com</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">com</span> <span class="o">=</span> <span class="p">(</span><span class="n">starPos</span><span class="o">/</span><span class="n">starMass</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">com</span>
+          
+    <span class="k">else</span><span class="p">:</span> <span class="c1">#No stars, just gas</span>
+         <span class="n">com</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s2">&quot;au&quot;</span><span class="p">)</span><span class="o">*</span><span class="n">gas</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">],</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+         <span class="n">com</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">])</span>
+         <span class="k">return</span> <span class="n">com</span></div>
+
+<span class="c1">#end function </span>
+ 
+
+<div class="viewcode-block" id="computeVelocityCOM"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.computeVelocityCOM">[docs]</a><span class="k">def</span> <span class="nf">computeVelocityCOM</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">cutoff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">starFlag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">gasFlag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody star and gas arrays, compute the center of mass velocity</span>
+<span class="sd">    for the entire specified system.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s : pynbody snapshot</span>
+<span class="sd">    cutoff : float</span>
+<span class="sd">        radius at which you only consider objects interior to it [AU]</span>
+<span class="sd">    starFlag : bool</span>
+<span class="sd">        whether or not to consider stars</span>
+<span class="sd">    gasFlag : bool</span>
+<span class="sd">        whether or not to consider gas</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Center of mass velocity: SimArry</span>
+<span class="sd">        in AU for each vx,vy,vz component</span>
+
+<span class="sd">    Note: a lot of &quot;strip_units&quot; commands included to prevent throwing weird value errors.  As long as all masses</span>
+<span class="sd">    are in solar masses and positions in AU before this is run, you won&#39;t have any problems.	</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">stars</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span>
+    <span class="n">gas</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">gas</span>
+    
+    <span class="n">com</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span><span class="s1">&#39;km s**-1&#39;</span><span class="p">)</span>
+    
+    <span class="k">assert</span> <span class="n">starFlag</span> <span class="o">==</span> <span class="kc">True</span> <span class="ow">or</span> <span class="n">gasFlag</span> <span class="o">==</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;At least one flag must be true.&quot;</span>    
+    
+    <span class="c1">#If there&#39;s a cutoff, select gas particles with cylindrical radius less than the cutoff</span>
+    <span class="k">if</span> <span class="n">cutoff</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">cutoff</span>
+        <span class="n">gas</span> <span class="o">=</span> <span class="n">gas</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+	
+    <span class="k">if</span> <span class="n">starFlag</span><span class="p">:</span> <span class="c1">#Include stars</span>
+        <span class="c1">#Ensure binary</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">stars</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+	
+        <span class="c1">#Compute stellar mass, mass-weighted position</span>
+        <span class="n">starMass</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+        <span class="n">starPos</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;km s**-1&#39;</span><span class="p">)</span><span class="o">*</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+        <span class="n">starPos</span> <span class="o">+=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;km s**-1&#39;</span><span class="p">)</span><span class="o">*</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+	
+        <span class="k">if</span> <span class="n">gasFlag</span><span class="p">:</span>
+            <span class="c1">#Compute, return total center of mass</span>
+            <span class="n">com</span> <span class="o">=</span> <span class="n">starPos</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;km s**-1&#39;</span><span class="p">)</span><span class="o">*</span><span class="n">gas</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">],</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">com</span> <span class="o">/=</span> <span class="p">(</span><span class="n">starMass</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]))</span>
+            <span class="k">return</span> <span class="n">com</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">com</span> <span class="o">=</span> <span class="p">(</span><span class="n">starPos</span><span class="o">/</span><span class="n">starMass</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">com</span>
+          
+    <span class="k">else</span><span class="p">:</span> <span class="c1">#No stars, just gas</span>
+         <span class="n">com</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s2">&quot;km s**-1&quot;</span><span class="p">)</span><span class="o">*</span><span class="n">gas</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">],</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+         <span class="n">com</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">])</span>
+         <span class="k">return</span> <span class="n">com</span></div>
+
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="calcDiskRadialBins"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.calcDiskRadialBins">[docs]</a><span class="k">def</span> <span class="nf">calcDiskRadialBins</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">r_in</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">r_out</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">bins</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Cleanly partitions disk into radial bins and returns the bin edges and central bin values.  Note, default</span>
+<span class="sd">    ndim = 2 so all bins are in 2D plane (i.e. radius r is polar/cylindrical radius in xy plane which makes </span>
+<span class="sd">    sense for thin disks)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s: Pynbody snapshot</span>
+<span class="sd">    r_in: float </span>
+<span class="sd">        Inner disk radius you&#39;ll consider (AU)</span>
+<span class="sd">    r_out: float </span>
+<span class="sd">        Outer disk radius you&#39;ll consider (AU)</span>
+<span class="sd">    bins: int</span>
+<span class="sd">        # of bins </span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    --------</span>
+<span class="sd">    r: numpy array </span>
+<span class="sd">        central radial bin values (AU)</span>
+<span class="sd">    rBinEdges: numpy array </span>
+<span class="sd">        edges of radial bins</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#Load data, compute semimajor axis and strip units</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+    <span class="n">v1</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+    <span class="n">v2</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+    <span class="n">m1</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+    <span class="n">m2</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+    <span class="n">s_a</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">calcSemi</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">)</span> <span class="c1">#Units = au</span>
+
+    <span class="c1">#Default r_in, r_out if none given</span>
+    <span class="k">if</span> <span class="n">r_in</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">r_out</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">r_in</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">*</span><span class="n">s_a</span>
+        <span class="n">r_out</span> <span class="o">=</span> <span class="mf">4.0</span><span class="o">*</span><span class="n">s_a</span>
+
+    <span class="c1">#Bin gas particles by radius</span>
+    <span class="n">pg</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">analysis</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">Profile</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">gas</span><span class="p">,</span><span class="nb">max</span><span class="o">=</span><span class="n">r_out</span><span class="p">,</span><span class="n">nbins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">pg</span><span class="p">[</span><span class="s1">&#39;rbins&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>    
+    
+    <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span> <span class="o">&gt;</span> <span class="n">r_in</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">r</span> <span class="o">&lt;</span> <span class="n">r_out</span><span class="p">)</span> <span class="c1">#Ensure you&#39;re not right on binary or too far out.</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+
+    <span class="c1">#Make nice, evenly spaced radial bins vector</span>
+    <span class="n">rBinEdges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">r</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">r</span><span class="p">),</span><span class="n">bins</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+ 
+    <span class="c1">#Create compute center of radial bins</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">rBinEdges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">rBinEdges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">r</span><span class="p">,</span> <span class="n">rBinEdges</span></div>
+
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="calcNetTorque"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.calcNetTorque">[docs]</a><span class="k">def</span> <span class="nf">calcNetTorque</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span><span class="n">gas</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody snapshot (Tipsy format)arrays of the stars and gas of a binary surrounded by a CB disk, </span>
+<span class="sd">    compute the net torque on the binary due to the CB disk.  	</span>
+<span class="sd">    This function can be used to compute the net torque/mass due to any collection of gas (total disk, an annulus, etc) on </span>
+<span class="sd">    the stars.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stars, gas: pynbody-readable Tipsy snapshot arrays </span>
+<span class="sd">        of binary + CB disk.  Assumes units are in standard sim units (Msol,au...)</span>
+<span class="sd">   </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    net torque: numpy array </span>
+<span class="sd">        Net torque/mass vector (3D) acting on binary system in cgs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#Ensure system is binary</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">stars</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Only use for binary system.&quot;</span>
+
+    <span class="c1">#Compute center of mass of entire binary-disk system</span>
+    <span class="n">com</span> <span class="o">=</span> <span class="n">computeCOM</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span><span class="n">gas</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+
+    <span class="c1">#Compute net force on primary star (index = 0)</span>
+
+    <span class="c1">#Compute M*m/|x&#39;-x|^3 in cgs </span>
+    <span class="c1">#grav = AddBinary.BigG*(stars[0][&#39;mass&#39;]*gas[&#39;mass&#39;]/np.power(np.linalg.norm(stars[0][&#39;pos&#39;]-gas[&#39;pos&#39;],1),3))</span>
+    <span class="n">grav</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">G</span><span class="o">*</span><span class="p">(</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span><span class="o">*</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">))</span>
+    <span class="n">grav</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span><span class="o">-</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">),</span><span class="mi">1</span><span class="p">),</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="c1">#Scale that value by (x&#39;-x) to make it a vector pointing to gas particles</span>
+    <span class="n">F1</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">*</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">gas</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+    <span class="c1">#conv = (AddBinary.Msol*AddBinary.Msol)/(AddBinary.AUCM*AddBinary.AUCM)</span>
+    <span class="n">F1</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="n">grav</span><span class="c1">#*conv)</span>
+    <span class="n">F1</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">*=</span> <span class="n">grav</span><span class="c1">#*conv)</span>
+    <span class="n">F1</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span> <span class="o">*=</span> <span class="n">grav</span><span class="c1">#*conv)</span>
+
+    <span class="c1">#Compute net force on stars due to gas (3 components)</span>
+    <span class="n">F1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">F1</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="c1">#Compute net force on secondary star (index = 1)</span>
+
+    <span class="c1">#Compute M*m/|x&#39;-x|^3 in cgs </span>
+    <span class="c1">#grav = AddBinary.BigG*(stars[0][&#39;mass&#39;]*gas[&#39;mass&#39;]/np.power(np.linalg.norm(stars[0][&#39;pos&#39;]-gas[&#39;pos&#39;],1),3))</span>
+    <span class="n">grav</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">G</span><span class="o">*</span><span class="p">(</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span><span class="o">*</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">))</span>
+    <span class="n">grav</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span><span class="o">-</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">),</span><span class="mi">1</span><span class="p">),</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="c1">#Scale that value by (x&#39;-x) to make it a vector pointing to gas particles</span>
+    <span class="n">F2</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">*</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">gas</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+    <span class="c1">#conv = (AddBinary.Msol*AddBinary.Msol)/(AddBinary.AUCM*AddBinary.AUCM)</span>
+    <span class="n">F2</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="n">grav</span><span class="c1">#*conv)</span>
+    <span class="n">F2</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">*=</span> <span class="n">grav</span><span class="c1">#*conv)</span>
+    <span class="n">F2</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span> <span class="o">*=</span> <span class="n">grav</span><span class="c1">#*conv)</span>
+
+    <span class="c1">#Compute net force on stars due to gas (3 components)</span>
+    <span class="n">F2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">F2</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>    
+    
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    #Compute net force on the secondary star (index = 1) in cgs</span>
+<span class="sd">    grav = AddBinary.BigG*(stars[1][&#39;mass&#39;]*gas[&#39;mass&#39;]/np.power(np.linalg.norm(stars[1][&#39;pos&#39;]-gas[&#39;pos&#39;],1),3))</span>
+
+<span class="sd">    #Scale that value by (x&#39;-x) to make it a vector in cgs units</span>
+<span class="sd">    conv = (AddBinary.Msol*AddBinary.Msol)/(AddBinary.AUCM*AddBinary.AUCM)</span>
+<span class="sd">    F2 = -1*stars[1][&#39;pos&#39;] + gas[&#39;pos&#39;]</span>
+<span class="sd">    F2[:,0] *= (grav*conv)</span>
+<span class="sd">    F2[:,1] *= (grav*conv)</span>
+<span class="sd">    F2[:,2] *= (grav*conv)</span>
+
+<span class="sd">    #Compute net force</span>
+<span class="sd">    F2 = np.sum(F2,axis=0)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#Compute the center of mass distances (au-&gt;cm)</span>
+    <span class="n">r1</span> <span class="o">=</span> <span class="p">(</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span> <span class="o">-</span> <span class="n">com</span><span class="p">)</span><span class="c1">#*AddBinary.AUCM</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="p">(</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span> <span class="o">-</span> <span class="n">com</span><span class="p">)</span><span class="c1">#*AddBinary.AUCM</span>
+
+    <span class="c1">#Compute torque per unit mass in cgs</span>
+    <span class="n">tau1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">r1</span><span class="p">,</span><span class="n">F1</span><span class="p">)</span>
+    <span class="n">tau2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">r2</span><span class="p">,</span><span class="n">F2</span><span class="p">)</span>
+    <span class="c1">#netTau = tau1/(stars[0][&#39;mass&#39;]*AddBinary.Msol) + tau2/(stars[1][&#39;mass&#39;]*AddBinary.Msol)</span>
+    <span class="n">netTau</span> <span class="o">=</span> <span class="n">tau1</span><span class="o">/</span><span class="p">(</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">))</span> <span class="o">+</span> <span class="n">tau2</span><span class="o">/</span><span class="p">(</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">netTau</span><span class="p">)</span></div>
+    
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="torqueVsRadius"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.torqueVsRadius">[docs]</a><span class="k">def</span> <span class="nf">torqueVsRadius</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">rBinEdges</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Takes in pynbody snapshot s for a binary system with a CB disk </span>
+<span class="sd">    returns torque per unit mass vs radius and the approximate radius of the bin where</span>
+<span class="sd">    that torque was calculated.  Note, I only care about the z component of the torque</span>
+<span class="sd">    since this is a circumbinary disk system </span>
+<span class="sd">    Note: This function is best for returning proper disk radial bins.</span>
+<span class="sd">	</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s: pynbody snapshot of binary + CB disk</span>
+<span class="sd">    Bins: int</span>
+<span class="sd">        number of radial bins to make the calculation</span>
+<span class="sd">    r_in, r_out: floats</span>
+<span class="sd">        Inner and outer radii over which torque is calculated (au)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tau: numpy array</span>
+<span class="sd">        Torque per unit mass as function of radius (cgs vs au)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#Create array to hold torque as function of radius</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">rBinEdges</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+
+    <span class="c1">#For a given radius, put gas particles in bins where s.gas[&#39;r&#39;] is in au and pynbody units are stripped</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">rBinEdges</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">rMask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">s</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="n">rMask</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span> <span class="c1">#at least 1 gas particle in bin</span>
+            <span class="n">tau</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">calcNetTorque</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">,</span><span class="n">s</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="n">rMask</span><span class="p">]))</span> 
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tau</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        
+    <span class="k">return</span> <span class="n">tau</span></div>
+
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="calcDeDt"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.calcDeDt">[docs]</a><span class="k">def</span> <span class="nf">calcDeDt</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span><span class="n">tau</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the change in binary orbital eccentricity over time at each radial bin due to</span>
+<span class="sd">    the torque/mass from the surrounding CB disk.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stars: pynbody stars object	(sim units)</span>
+<span class="sd">    tau: torque/mass on binary due to CB disk during a given snapshot (cgs)</span>
+<span class="sd">    tau is of the form tau[radii,(x,y,z) components]</span>
+
+<span class="sd">    Output:</span>
+<span class="sd">    (de/dt) at each radius (unitless/second)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#Strip units from all inputs and convert to cgs</span>
+    <span class="c1">#Ensure units are in cgs</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+    <span class="n">v1</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+    <span class="n">v2</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+    <span class="n">m1</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+    <span class="n">m2</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+
+    <span class="c1">#Relative position vector in cgs</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span>
+    <span class="n">magR</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">r</span><span class="p">),</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+
+    <span class="c1">#Compute standard gravitational parameter in cgs</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">G</span><span class="o">*</span><span class="p">(</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="p">)</span>
+
+    <span class="c1">#Relative velocity vector in cgs</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">v1</span> <span class="o">-</span> <span class="n">v2</span>
+    <span class="n">magV</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">v</span><span class="p">),</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+
+    <span class="c1">#Compute specific orbital energy</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="p">(</span><span class="n">magV</span><span class="o">*</span><span class="n">magV</span><span class="o">/</span><span class="mf">2.0</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">mu</span><span class="o">/</span><span class="n">magR</span><span class="p">)</span>
+
+    <span class="c1">#Compute specific angular momentum vector</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">v</span><span class="p">)</span>
+    <span class="n">magH</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">h</span><span class="p">),</span><span class="s1">&#39;cm**2 s**-1&#39;</span><span class="p">)</span>
+
+    <span class="c1">#Calculate change in e vs time due to z component of torque/mass (dh/dt for specific angular momentum h)</span>
+    <span class="n">dedt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">((</span><span class="mf">2.0</span><span class="o">*</span><span class="n">eps</span><span class="o">*</span><span class="n">magH</span><span class="o">/</span><span class="p">(</span><span class="n">mu</span><span class="o">*</span><span class="n">mu</span><span class="p">))</span><span class="o">*</span><span class="n">tau</span><span class="p">[:,</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">dedt</span> <span class="o">*=</span> <span class="mf">1.0</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="n">eps</span><span class="o">*</span><span class="n">magH</span><span class="o">*</span><span class="n">magH</span><span class="o">/</span><span class="p">(</span><span class="n">mu</span><span class="o">*</span><span class="n">mu</span><span class="p">)))</span>
+
+    <span class="k">return</span> <span class="n">dedt</span> <span class="c1">#(unitless/second)</span></div>
+
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="findCBResonances"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.findCBResonances">[docs]</a><span class="k">def</span> <span class="nf">findCBResonances</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">r</span><span class="p">,</span><span class="n">r_min</span><span class="p">,</span><span class="n">r_max</span><span class="p">,</span><span class="n">m_max</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="n">l_max</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="n">bins</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given Tipsy snapshot, computes the resonances of disk on binary as a function of orbital angular frequency omega.</span>
+<span class="sd">    Disk radius, in au, is convered to angular frequency which will then be used to compute corotation </span>
+<span class="sd">    and inner/outer Lindblad resonances.</span>
+<span class="sd">   </span>
+<span class="sd">   Note: r given MUST correspond to r over which de/dt was calculated.  Otherwise, scale gets all messed up</span>
+<span class="sd">   </span>
+<span class="sd">   !!! NOTE: This function is awful and deprecated --- do NOT use it.  Instead, use calc_LB_resonance !!!</span>
+<span class="sd"> </span>
+<span class="sd">     Parameters</span>
+<span class="sd">     ----------</span>
+<span class="sd">     s: Tipsy-format snapshot</span>
+<span class="sd">     r: array</span>
+<span class="sd">         radius array over which de/dt was calculated</span>
+<span class="sd">     r_min,r_max: floats</span>
+<span class="sd">         min/maximum disk radius for calculations (au)</span>
+<span class="sd">     bins: int</span>
+<span class="sd">         number of radial bins to calculate over</span>
+<span class="sd">     m_max,l_max: ints</span>
+<span class="sd">         maximum orders of (m,l) LR</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Orbital frequency: numpy array</span>
+<span class="sd">        for corotation and inner/outer resonances and radii as float and numpy arrays</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">stars</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span>
+    <span class="n">gas</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">gas</span>
+
+    <span class="n">m_min</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1">#m &gt;=1 for LRs, CRs</span>
+    <span class="n">l_min</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1">#l &gt;=1 for LRs, CRs</span>
+
+    <span class="c1">#Compute binary angular frequency</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+    <span class="n">v1</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+    <span class="n">v2</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+    <span class="n">m1</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+    <span class="n">m2</span> <span class="o">=</span> <span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+     
+    <span class="n">a</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">calcSemi</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">))</span>
+    <span class="n">omega_b</span> <span class="o">=</span> <span class="mf">2.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">aToP</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="p">)</span> <span class="c1">#In units 1/day</span>
+
+    <span class="c1">#Make r steps smaller for higher accuracy</span>
+    <span class="n">r_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span><span class="n">r</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>
+
+    <span class="c1">#Compute mass of disk interior to given r</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">gas</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">r_arr</span><span class="p">)),</span><span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">m_disk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">r_arr</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">r_arr</span><span class="p">)):</span>
+        <span class="n">mask</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">r_arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">m_disk</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">][</span><span class="n">mask</span><span class="p">[:,</span><span class="n">i</span><span class="p">]])</span>
+
+    <span class="c1">#Compute omega_disk in units 1/day (like omega_binary)</span>
+    <span class="n">omega_d</span> <span class="o">=</span> <span class="mf">2.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">aToP</span><span class="p">(</span><span class="n">r_arr</span><span class="p">,</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="o">+</span><span class="n">m_disk</span><span class="p">)</span>
+        
+    <span class="c1">#Compute kappa (radial epicycle frequency = sqrt(r * d(omega^2)/dr + 4*(omega^2))</span>
+    <span class="n">o2</span> <span class="o">=</span> <span class="n">omega_d</span><span class="o">*</span><span class="n">omega_d</span>
+    <span class="n">dr</span> <span class="o">=</span> <span class="n">r_arr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">r_arr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1">#dr = (r.max()-r.min())/float(bins) #Assuming r has evenly spaced bins!</span>
+    <span class="n">drdo2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">o2</span><span class="p">,</span><span class="n">dr</span><span class="p">)</span> <span class="c1">#I mean d/dr(omega^2)</span>
+    <span class="n">kappa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">r_arr</span><span class="o">*</span><span class="n">drdo2</span> <span class="o">+</span> <span class="mf">4.0</span><span class="o">*</span><span class="n">o2</span><span class="p">)</span>
+   
+    <span class="c1">#Allocate arrays for output </span>
+    <span class="n">omega_Lo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">m_max</span><span class="p">,</span><span class="n">l_max</span><span class="p">))</span>
+    <span class="n">omega_Li</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">m_max</span><span class="p">,</span><span class="n">l_max</span><span class="p">))</span>
+    <span class="n">o_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">l_max</span><span class="p">)</span>   
+ 
+    <span class="c1">#Find resonance angular frequency</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">m_min</span><span class="p">,</span><span class="n">m_max</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">l_min</span><span class="p">,</span><span class="n">l_max</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">outer</span> <span class="o">=</span> <span class="n">omega_d</span> <span class="o">+</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">l</span><span class="p">)</span><span class="o">/</span><span class="n">m</span><span class="p">)</span><span class="o">*</span><span class="n">kappa</span>
+            <span class="n">inner</span> <span class="o">=</span> <span class="n">omega_d</span> <span class="o">-</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">l</span><span class="p">)</span><span class="o">/</span><span class="n">m</span><span class="p">)</span><span class="o">*</span><span class="n">kappa</span>
+            <span class="n">omega_Lo</span><span class="p">[</span><span class="n">m</span><span class="o">-</span><span class="n">m_min</span><span class="p">,</span><span class="n">l</span><span class="o">-</span><span class="n">l_min</span><span class="p">]</span> <span class="o">=</span> <span class="n">omega_d</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">omega_b</span><span class="o">-</span><span class="n">outer</span><span class="p">))]</span>
+            <span class="n">omega_Li</span><span class="p">[</span><span class="n">m</span><span class="o">-</span><span class="n">m_min</span><span class="p">,</span><span class="n">l</span><span class="o">-</span><span class="n">l_min</span><span class="p">]</span> <span class="o">=</span> <span class="n">omega_d</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">omega_b</span><span class="o">-</span><span class="n">inner</span><span class="p">))]</span>
+
+            <span class="c1">#Find corotation resonance where omega_d ~ omega_b</span>
+            <span class="n">o_c</span><span class="p">[</span><span class="n">l</span><span class="o">-</span><span class="n">l_min</span><span class="p">]</span> <span class="o">=</span> <span class="n">omega_d</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">omega_d</span><span class="o">-</span><span class="n">omega_b</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="n">l</span><span class="p">)))]</span>
+
+    <span class="c1">#Rescale omega_d, kappa to be of length bins again</span>
+    <span class="n">omega_d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">omega_d</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span><span class="n">omega_d</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">kappa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">kappa</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span><span class="n">kappa</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span><span class="n">bins</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">omega_Li</span><span class="p">,</span> <span class="n">omega_Lo</span><span class="p">,</span> <span class="n">o_c</span><span class="p">,</span> <span class="n">omega_d</span><span class="p">,</span> <span class="n">kappa</span></div>
+
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="calc_LB_resonance"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.calc_LB_resonance">[docs]</a><span class="k">def</span> <span class="nf">calc_LB_resonance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">m_min</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">m_max</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">l_min</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">l_max</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes the locations of various Lindblad Resonances in the disk as a </span>
+<span class="sd">    function of binary pattern speed.</span>
+<span class="sd">    </span>
+<span class="sd">     Parameters</span>
+<span class="sd">     ----------</span>
+<span class="sd">     s : Tipsy-format snapshot</span>
+<span class="sd">     m_min, l_min : ints</span>
+<span class="sd">         minimum orders of (m,l) LR</span>
+<span class="sd">     m_max,l_max : ints</span>
+<span class="sd">         maximum orders of (m,l) LR</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    OLR, ILR, CR: numpy arrays</span>
+<span class="sd">        location in AU of (m,l)th order Lindblad resonances</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#Compute binary angular frequency in 1/day</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+    <span class="n">v1</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+    <span class="n">v2</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+    <span class="n">m1</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+    <span class="n">m2</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+    <span class="n">omega_b</span> <span class="o">=</span> <span class="mf">2.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">aToP</span><span class="p">(</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">calcSemi</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">v1</span><span class="p">,</span><span class="n">v2</span><span class="p">,</span><span class="n">m1</span><span class="p">,</span><span class="n">m2</span><span class="p">),</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="p">)</span>
+    <span class="n">guess</span> <span class="o">=</span> <span class="mf">0.05</span> <span class="c1">#fsolve initial guess parameter</span>
+
+    <span class="c1">#Allocate space for arrays</span>
+    <span class="n">OLR</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">m_max</span><span class="p">,</span><span class="n">l_max</span><span class="p">))</span>
+    <span class="n">ILR</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">m_max</span><span class="p">,</span><span class="n">l_max</span><span class="p">))</span>
+    <span class="n">CR</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">l_max</span><span class="p">)</span>
+
+    <span class="c1">#Define resonance functions</span>
+    <span class="k">def</span> <span class="nf">OLR_func</span><span class="p">(</span><span class="n">omega_d</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">omega_b</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        
+        <span class="k">return</span> <span class="n">omega_d</span><span class="o">*</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">l</span><span class="p">)</span><span class="o">/</span><span class="n">m</span><span class="p">)</span> <span class="o">-</span> <span class="n">omega_b</span>
+        
+    <span class="c1">#end function        </span>
+        
+    <span class="k">def</span> <span class="nf">ILR_func</span><span class="p">(</span><span class="n">omega_d</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">omega_b</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        
+        <span class="k">return</span> <span class="n">omega_d</span><span class="o">*</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="nb">float</span><span class="p">(</span><span class="n">l</span><span class="p">)</span><span class="o">/</span><span class="n">m</span><span class="p">)</span> <span class="o">-</span> <span class="n">omega_b</span>        
+        
+    <span class="c1">#end function</span>
+
+    <span class="k">def</span> <span class="nf">CR_func</span><span class="p">(</span><span class="n">omega_d</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">omega_b</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        
+        <span class="k">return</span> <span class="n">omega_d</span> <span class="o">-</span> <span class="n">omega_b</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+
+    <span class="c1">#end function</span>
+
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">m_min</span><span class="p">,</span><span class="n">m_max</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">l_min</span><span class="p">,</span><span class="n">l_max</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">OLR</span><span class="p">[</span><span class="n">m</span><span class="o">-</span><span class="n">m_min</span><span class="p">,</span><span class="n">l</span><span class="o">-</span><span class="n">l_min</span><span class="p">]</span> <span class="o">=</span> <span class="n">fsolve</span><span class="p">(</span><span class="n">OLR_func</span><span class="p">,</span><span class="n">guess</span><span class="p">,</span><span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">l</span><span class="p">,</span><span class="n">omega_b</span><span class="p">))</span> 
+            <span class="n">ILR</span><span class="p">[</span><span class="n">m</span><span class="o">-</span><span class="n">m_min</span><span class="p">,</span><span class="n">l</span><span class="o">-</span><span class="n">l_min</span><span class="p">]</span> <span class="o">=</span> <span class="n">fsolve</span><span class="p">(</span><span class="n">ILR_func</span><span class="p">,</span><span class="n">guess</span><span class="p">,</span><span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">l</span><span class="p">,</span><span class="n">omega_b</span><span class="p">))</span>
+            <span class="n">CR</span><span class="p">[</span><span class="n">l</span><span class="o">-</span><span class="n">l_min</span><span class="p">]</span> <span class="o">=</span> <span class="n">fsolve</span><span class="p">(</span><span class="n">CR_func</span><span class="p">,</span><span class="n">guess</span><span class="p">,</span><span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">l</span><span class="p">,</span><span class="n">omega_b</span><span class="p">))</span>
+            
+    <span class="c1">#Convert from 1/day -&gt; au</span>
+    <span class="n">OLR</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">pToA</span><span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="n">OLR</span><span class="p">,</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="p">)</span>
+    <span class="n">ILR</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">pToA</span><span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="n">ILR</span><span class="p">,</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="p">)</span>
+    <span class="n">CR</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">pToA</span><span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="n">CR</span><span class="p">,</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="p">)</span>        
+    
+    <span class="k">return</span> <span class="n">OLR</span><span class="p">,</span> <span class="n">ILR</span><span class="p">,</span> <span class="n">CR</span></div>
+    
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="calcCoMVsRadius"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.calcCoMVsRadius">[docs]</a><span class="k">def</span> <span class="nf">calcCoMVsRadius</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">rBinEdges</span><span class="p">,</span><span class="n">starFlag</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the system&#39;s center of mass as a function of radius.  At a given radius r, use the total enclosed</span>
+<span class="sd">    mass of the star(s) and gas to compute the center of mass (CoM).</span>
+<span class="sd">	</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s: Tipsy-format snapshot readable by pynbody</span>
+<span class="sd">    rBinEdges: array</span>
+<span class="sd">        edges of the array of radii in xy plane</span>
+<span class="sd">    starFlag: bool</span>
+<span class="sd">        whether or not to consider stars in center of mass calculation</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    com: array</span>
+<span class="sd">        Numpy array of len(r) * 3 containing location of CoM in Cartesian coordinates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">stars</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span>
+    <span class="n">gas</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">gas</span>
+    <span class="n">com</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">rBinEdges</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+	
+    <span class="k">if</span> <span class="n">starFlag</span><span class="p">:</span> <span class="c1">#Include stars in center of mass calculation</span>
+        <span class="c1">#Loop through radial points, select gas within that r, calc CoM</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">rBinEdges</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">com</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">computeCOM</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span><span class="n">gas</span><span class="p">,</span><span class="n">cutoff</span><span class="o">=</span><span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">starFlag</span><span class="o">=</span><span class="n">starFlag</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span> <span class="c1">#Gas disk only</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">rBinEdges</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">com</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">computeCOM</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span><span class="n">gas</span><span class="p">,</span><span class="n">cutoff</span><span class="o">=</span><span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">starFlag</span><span class="o">=</span><span class="n">starFlag</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">com</span></div>
+
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="calcPoissonVsRadius"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.calcPoissonVsRadius">[docs]</a><span class="k">def</span> <span class="nf">calcPoissonVsRadius</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">rBinEdges</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a tipsy snapshot and radial bins, compute the Poisson noise, r/sqrt(N_particles), in each radial bin.</span>
+<span class="sd">    &quot;&quot;&quot;</span>	
+    <span class="n">gas</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">gas</span>
+    <span class="n">poisson</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rBinEdges</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>	
+	
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">rBinEdges</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">rMask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="n">rMask</span><span class="p">])</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mf">2.0</span>
+        <span class="k">if</span> <span class="n">N</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>      
+            <span class="n">poisson</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">poisson</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+	
+	<span class="k">return</span> <span class="n">poisson</span></div>
+	
+<span class="c1">#end function</span>
+	
+<div class="viewcode-block" id="calcQ"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.calcQ">[docs]</a><span class="k">def</span> <span class="nf">calcQ</span><span class="p">(</span><span class="n">cs</span><span class="p">,</span><span class="n">kappa</span><span class="p">,</span><span class="n">sigma</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the Toomre Q parameter for a gaseous disk.  Implimented here since pynbody calculates it for a</span>
+<span class="sd">    stellar disk.</span>
+<span class="sd">    Q = (c_s * kappa)/(pi*G*Sigma) &gt; 1 -&gt; axisymmetric stability</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------    </span>
+<span class="sd">    c_s: float</span>
+<span class="sd">        sound speed (cm/s)</span>
+<span class="sd">    Kappa: float</span>
+<span class="sd">        radially epicycle frequency (1/s).  Can also be Omega for a quasi-Keplerian disk</span>
+<span class="sd">    Sigma: float</span>
+<span class="sd">        surface density at some radius (g/cm^2)	</span>
+<span class="sd">	</span>
+<span class="sd">    Output:</span>
+<span class="sd">    Q: unitless</span>
+<span class="sd">        Toomre parameter</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+	
+    <span class="k">return</span> <span class="p">(</span><span class="n">cs</span><span class="o">*</span><span class="n">kappa</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">BigG</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">sigma</span><span class="p">)</span></div>
+	
+<span class="c1">#end function</span>
+	
+<div class="viewcode-block" id="calcQVsRadius"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.calcQVsRadius">[docs]</a><span class="k">def</span> <span class="nf">calcQVsRadius</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">a_in</span><span class="p">,</span><span class="n">a_out</span><span class="p">,</span><span class="n">bins</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a tispy snapshot, compute the Toomre Q parameter at each radial point.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s: Tipsy snapshot</span>
+<span class="sd">    a_in, a_out: floats</span>
+<span class="sd">        Minimum and maximum radial points on which to calculate the profile [AU]	</span>
+<span class="sd">    bins: int</span>
+<span class="sd">        number of radial bins	</span>
+<span class="sd">	</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    r: array, AU</span>
+<span class="sd">    Q: array, unitless</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#Derive quantities in correct units</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">analysis</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">Profile</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">gas</span><span class="p">,</span><span class="nb">max</span><span class="o">=</span><span class="n">a_out</span><span class="p">,</span><span class="nb">min</span><span class="o">=</span><span class="n">a_in</span><span class="p">,</span><span class="n">nbins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s1">&#39;density&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g cm**-2&#39;</span><span class="p">)</span>
+    <span class="n">kappa</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s1">&#39;omega&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;s**-1&#39;</span><span class="p">)</span>
+    <span class="n">cs</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s1">&#39;cs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s1">&#39;rbins&#39;</span><span class="p">]</span>
+	
+    <span class="k">return</span> <span class="n">r</span><span class="p">,</span> <span class="n">calcQ</span><span class="p">(</span><span class="n">cs</span><span class="p">,</span><span class="n">kappa</span><span class="p">,</span><span class="n">sigma</span><span class="p">)</span></div>
+	
+<span class="c1">#end function</span>
+	
+<div class="viewcode-block" id="calcStableSigma"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.calcStableSigma">[docs]</a><span class="k">def</span> <span class="nf">calcStableSigma</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">rd</span><span class="p">,</span><span class="n">Mstar</span><span class="p">,</span><span class="n">Mdisk</span><span class="p">,</span><span class="n">Q</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the surfance density sigma_0 such that if the quasi-keplerian disk</span>
+<span class="sd">    had a surface density of sigma &gt; sigma_0 at an OLR, the disk would be </span>
+<span class="sd">    unstable to a m=1 mode.  Condition comes from eqn. 110 in Shu 1990.</span>
+<span class="sd">    Note: Assumes (b_n - c)^2 ~ 1 as authors did.    </span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    r: array</span>
+<span class="sd">        radii of OLR [AU]</span>
+<span class="sd">    rd: float</span>
+<span class="sd">        Maximum radially extent of the disk [AU]</span>
+<span class="sd">    Mstar, Mdisk: floats</span>
+<span class="sd">        Masses of the central star(s) and disk, respectively [Msol]</span>
+<span class="sd">    Q: float</span>
+<span class="sd">        Toomre Q stability parameter evalutated at rd</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sigma_0: array</span>
+<span class="sd">        critical surfance density [Msol/AU^2]</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="n">sigma_0</span> <span class="o">=</span> <span class="mf">3.0</span><span class="o">*</span><span class="p">(</span><span class="n">Mstar</span> <span class="o">+</span> <span class="n">Mdisk</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">8.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">r</span><span class="o">*</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">sigma_0</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">r</span><span class="o">/</span><span class="n">rd</span><span class="p">,</span><span class="mf">3.0</span><span class="p">)</span>
+    <span class="n">sigma_0</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">4.0</span><span class="o">*</span><span class="n">Q</span><span class="o">*</span><span class="n">Q</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">rd</span><span class="o">/</span><span class="n">r</span><span class="p">,</span><span class="mf">3.0</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">rd</span><span class="o">/</span><span class="n">r</span><span class="p">,</span><span class="mf">1.5</span><span class="p">)))</span>
+    
+    <span class="k">return</span> <span class="n">sigma_0</span></div>
+    
+<div class="viewcode-block" id="orbElemsVsRadius"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.orbElemsVsRadius">[docs]</a><span class="k">def</span> <span class="nf">orbElemsVsRadius</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">rBinEdges</span><span class="p">,</span><span class="n">average</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes the orbital elements for disk particles about a binary system in given radial bins.</span>
+<span class="sd">    Assumes center of mass has v ~ 0</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    s: Tipsy snapshot</span>
+<span class="sd">    rBinEdges: numpy array</span>
+<span class="sd">        Radial bin edges [AU] preferably calculated using binaryUtils.calcDiskRadialBins</span>
+<span class="sd">    average: bool</span>
+<span class="sd">        True -&gt; average over all particles in bin, false -&gt; randomly select 1 particle in bin</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    orbElems: numpy array</span>
+<span class="sd">        6 x len(rBinEdges) - 1 containing orbital elements at each radial bin</span>
+<span class="sd">        as e, a, i, Omega, w, nu</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1">#Read snapshot and pull out values of interest</span>
+    <span class="n">stars</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span>
+    <span class="n">gas</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">gas</span>    
+    <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">stars</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">])</span>
+    <span class="n">zero</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span> 
+    <span class="n">orbElems</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">6</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">rBinEdges</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>    
+    
+    <span class="c1">#Gas orbiting about system center of mass</span>
+    <span class="n">com</span> <span class="o">=</span> <span class="n">computeCOM</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span><span class="n">gas</span><span class="p">)</span>
+   
+    <span class="c1">#Loop over radial bins calculating orbital elements</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">rBinEdges</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">average</span><span class="p">:</span> <span class="c1">#Average over all gas particles in subsection</span>
+            <span class="n">rMask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1">#Include mass of disk interior to given radius</span>
+                <span class="n">mass</span> <span class="o">=</span> <span class="n">M</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="p">]][</span><span class="s1">&#39;mass&#39;</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">mass</span> <span class="o">=</span> <span class="n">M</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">gas</span><span class="p">[</span><span class="n">rMask</span><span class="p">]</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">N</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">orbElems</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">AddBinary</span><span class="o">.</span><span class="n">calcOrbitalElements</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">],</span><span class="n">com</span><span class="p">,</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">],</span><span class="n">zero</span><span class="p">,</span><span class="n">mass</span><span class="p">,</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]),</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="n">N</span>
+            <span class="k">else</span><span class="p">:</span> <span class="c1">#If there are no particles in the bin, set it as a negative number to mask out later</span>
+                <span class="n">orbElems</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
+        <span class="k">else</span><span class="p">:</span> <span class="c1">#Randomly select 1 particle in subsection for calculations</span>
+            <span class="n">rMask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>            
+                <span class="n">mass</span> <span class="o">=</span> <span class="n">M</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gas</span><span class="p">[</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">rBinEdges</span><span class="p">[</span><span class="n">i</span><span class="p">]][</span><span class="s1">&#39;mass&#39;</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">mass</span> <span class="o">=</span> <span class="n">M</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">gas</span><span class="p">[</span><span class="n">rMask</span><span class="p">]</span>            
+            <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">g</span><span class="p">))</span>
+            <span class="n">particle</span> <span class="o">=</span> <span class="n">g</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="n">orbElems</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">calcOrbitalElements</span><span class="p">(</span><span class="n">com</span><span class="p">,</span><span class="n">particle</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">],</span><span class="n">zero</span><span class="p">,</span><span class="n">particle</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">],</span><span class="n">mass</span><span class="p">,</span><span class="n">particle</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">])</span>
+            
+    <span class="k">return</span> <span class="n">orbElems</span></div>
+    
+<span class="c1">#end function    </span>
+    
+<div class="viewcode-block" id="diskPrecession"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.diskPrecession">[docs]</a><span class="k">def</span> <span class="nf">diskPrecession</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">radius</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes the precession of the disk due to the binary quadrupole moment.</span>
+<span class="sd">    The precessions considered are kappa_r and kappa_z corresponding to the</span>
+<span class="sd">    precession of the argument of periapsis and longitude of th ascending node,</span>
+<span class="sd">    respectively.</span>
+<span class="sd">    </span>
+<span class="sd">    Precssion frequency: Omega_p = Omega - Kappa</span>
+<span class="sd">    Omega = sqrt((G*mu/r^3)*(1 + 3*alpha/r^2)) == orbital frequency</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    s: Tipsy snapshot</span>
+<span class="sd">    r: numpy array</span>
+<span class="sd">        array of radial bins centers [AU]</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    Kappa array: numpy array</span>
+<span class="sd">        2 x len(rBinEdges)-1 array containing precession at each radial point in 1/s</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#Compute relevant frequencies</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">0.25</span><span class="p">,</span><span class="s1">&#39;au**2&#39;</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">radius</span><span class="p">,</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>
+    <span class="n">grav</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">4.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span><span class="s1">&#39;au**3 yr**-2 Msol**-1&#39;</span><span class="p">)</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">])</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">])</span>
+    <span class="n">omega</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">grav</span><span class="o">*</span><span class="n">mu</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">3.0</span><span class="o">*</span><span class="n">alpha</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="mi">2</span><span class="p">)))</span>
+    <span class="n">kappa_r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">grav</span><span class="o">*</span><span class="n">mu</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">3.0</span><span class="o">*</span><span class="n">alpha</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="mi">2</span><span class="p">)))</span>
+    <span class="n">kappa_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">grav</span><span class="o">*</span><span class="n">mu</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">9.0</span><span class="o">*</span><span class="n">alpha</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="mi">2</span><span class="p">)))</span>
+    
+    <span class="c1">#Compute precession. &gt; 0 -&gt; preccesion, &lt; 0 -&gt; recession</span>
+    <span class="n">omega_p</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">))),</span><span class="s1">&#39;yr**-1&#39;</span><span class="p">)</span>
+    <span class="n">omega_p</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">omega</span> <span class="o">-</span> <span class="n">kappa_r</span>
+    <span class="n">omega_p</span><span class="p">[</span><span class="mi">1</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">omega</span> <span class="o">-</span> <span class="n">kappa_z</span>
+    
+    <span class="k">return</span> <span class="n">omega_p</span></div>
+    
+<span class="c1">#end function</span>
+    
+<div class="viewcode-block" id="diskAverage"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.diskAverage">[docs]</a><span class="k">def</span> <span class="nf">diskAverage</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">r_out</span><span class="p">,</span><span class="n">bins</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span><span class="n">avgFlag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes the accretion disk mass-averaged for x via the following equation:</span>
+<span class="sd">    integral of 2*pisigma*x*r*dr / integral of 2*pi*sigma*r*dr.</span>
+<span class="sd">    Sigma, e,a... calculated on the fly to ensure that they are all evaluated at</span>
+<span class="sd">    the same location.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s : tipsy snapshot</span>
+<span class="sd">    r_out : float</span>
+<span class="sd">        outer radii for averaging region. If none, use entire disk</span>
+<span class="sd">    bins : int</span>
+<span class="sd">        how many radial bins to calculate quantities over</span>
+<span class="sd">    avgFlag : bool</span>
+<span class="sd">        whether or not to average over all particles in a radial bin</span>
+<span class="sd">        for orbital element calculation</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    y : list</span>
+<span class="sd">        disk-averaged Keplerian orbital elements [e,a,i,Omega,w,nu] in AU, degrees (depending on unit)</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    
+    <span class="c1">#Generate radial surface density profile</span>
+    <span class="c1">#Begin by subtracting off the center of mass position</span>
+    <span class="c1">#cm = computeCOM(s.stars,s.gas,cutoff=r_out,starFlag=True)</span>
+    <span class="c1">#s[&#39;pos&#39;] -= cm</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>
+
+    <span class="c1">#Particle mass</span>
+    <span class="n">m_gas</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">][[</span><span class="mi">0</span><span class="p">]]</span>
+    
+    <span class="n">N</span><span class="p">,</span> <span class="n">rBinEdges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span><span class="nb">range</span><span class="o">=</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span><span class="n">r_out</span><span class="p">))</span>
+    <span class="n">rBinEdges</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">rBinEdges</span><span class="p">,</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">rBinEdges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">rBinEdges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mf">2.0</span>
+    <span class="n">dr</span> <span class="o">=</span> <span class="n">rBinEdges</span><span class="p">[[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">-</span> <span class="n">rBinEdges</span><span class="p">[[</span><span class="mi">0</span><span class="p">]]</span>
+    
+    <span class="c1">#Compute quantities to integrate</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">N</span><span class="o">*</span><span class="n">m_gas</span><span class="o">/</span><span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">r</span><span class="o">*</span><span class="n">dr</span><span class="p">)</span>
+    <span class="c1">#s[&#39;pos&#39;] += cm</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">orbElemsVsRadius</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">rBinEdges</span><span class="p">,</span><span class="n">average</span><span class="o">=</span><span class="n">avgFlag</span><span class="p">)</span>
+    
+    <span class="c1">#Take correct cuts of data</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="n">r_out</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">sig</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span><span class="n">mask</span><span class="p">]</span>
+    
+    <span class="c1">#Compute total mass in region    </span>
+    <span class="n">denom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">trapz</span><span class="p">(</span><span class="n">sig</span><span class="o">*</span><span class="n">r</span><span class="p">,</span><span class="n">r</span><span class="p">)</span>
+    
+    <span class="c1">#Compute mass-averaged x in region</span>
+    <span class="n">num</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">trapz</span><span class="p">(</span><span class="n">sig</span><span class="o">*</span><span class="n">r</span><span class="o">*</span><span class="n">x</span><span class="p">[:],</span><span class="n">r</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">num</span><span class="o">/</span><span class="n">denom</span></div>
+    
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="forcedEccentricity"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binaryUtils.forcedEccentricity">[docs]</a><span class="k">def</span> <span class="nf">forcedEccentricity</span><span class="p">(</span><span class="n">binary_sys</span><span class="p">,</span><span class="n">r</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a binary class object and an array of radial points in the disk, </span>
+<span class="sd">    compute the forced eccentricity defined by Moriwaki et al. 2004 </span>
+<span class="sd">    eqn 9 to first order.  Extra factor of 2 to give e_pumped instead</span>
+<span class="sd">    of e_forced.  Note: This only applies when e_binary != 0 and when</span>
+<span class="sd">    m2/(m1 + m2) != 0.5 (i.e. only applies for eccentric, non-equal mass</span>
+<span class="sd">    binary)</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    binary_sys : binary.Binary class object</span>
+<span class="sd">    r : array</span>
+<span class="sd">        array of radii in AU</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">        e_forced : array</span>
+<span class="sd">            array of len(r)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">binary_sys</span><span class="o">.</span><span class="n">m2</span><span class="o">/</span><span class="p">(</span><span class="n">binary_sys</span><span class="o">.</span><span class="n">m1</span> <span class="o">+</span> <span class="n">binary_sys</span><span class="o">.</span><span class="n">m2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="mf">5.</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">2.0</span><span class="o">*</span><span class="n">mu</span><span class="p">)</span><span class="o">*</span><span class="n">binary_sys</span><span class="o">.</span><span class="n">e</span><span class="o">*</span><span class="n">binary_sys</span><span class="o">.</span><span class="n">a</span><span class="o">/</span><span class="n">r</span></div>
+    
+<span class="c1">#end function</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

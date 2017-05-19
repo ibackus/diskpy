@@ -1,0 +1,510 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.vertical_solver &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.vertical_solver</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Defines the vertical_solver class for solving vertical hydrostatic equilibrium</span>
+<span class="sd">at a fixed radius.</span>
+
+
+<span class="sd">Created on Mon Aug  3 16:01:44 2015</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># Internal imports</span>
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">strip_units</span>
+
+<span class="c1"># External imports</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pynbody</span> <span class="k">as</span> <span class="nn">pb</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pb</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">from</span> <span class="nn">scipy.integrate</span> <span class="k">import</span> <span class="n">cumtrapz</span><span class="p">,</span> <span class="n">trapz</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize.nonlin</span> <span class="k">import</span> <span class="n">NoConvergence</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="k">import</span> <span class="n">newton_krylov</span><span class="p">,</span> <span class="n">fmin</span>
+
+<span class="c1"># Constants</span>
+<span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;G&#39;</span><span class="p">)</span>
+<span class="n">kB</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;k&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="vertical_solver"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.vertical_solver.vertical_solver">[docs]</a><span class="k">class</span> <span class="nc">vertical_solver</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines the class which solves vertical hydrostatic equilibrium for a thin</span>
+<span class="sd">    Keplerian disk orbiting a central star</span>
+<span class="sd">    </span>
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    </span>
+<span class="sd">    &gt;&gt;&gt; IC = ICgen.load(&#39;IC.p&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; R = SimArray(0.5, &#39;au&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; solver = vertical_solver(IC, R)</span>
+<span class="sd">    &gt;&gt;&gt; solver.fit(maxiter=100)</span>
+<span class="sd">    &gt;&gt;&gt; z = solver.results[&#39;z&#39;]</span>
+<span class="sd">    &gt;&gt;&gt; rho = solver.results[&#39;rho&#39;]</span>
+<span class="sd">    </span>
+<span class="sd">    This example loads up an already created initial conditions object then</span>
+<span class="sd">    solves for hydrostatic equilibrium at R=0.5 AU</span>
+<span class="sd">    </span>
+<span class="sd">    A better solver is now implemented. see iterativesolver.IterativeSolver</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">IC</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">rescale_rho</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">rhoguess</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        
+        <span class="c1"># initialize parameters</span>
+        <span class="n">z</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">zscale</span><span class="p">,</span> <span class="n">rhoscale</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">IC</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+        <span class="n">UNITS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;length&#39;</span><span class="p">:</span> <span class="n">zscale</span><span class="p">,</span> <span class="s1">&#39;rho&#39;</span><span class="p">:</span> <span class="n">rhoscale</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">UNITS</span> <span class="o">=</span> <span class="n">UNITS</span>
+        
+        <span class="c1"># Initialize z-position stuff</span>
+        <span class="n">nz</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">dz</span> <span class="o">=</span> <span class="n">z</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">POS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="n">z</span><span class="p">,</span> <span class="s1">&#39;nz&#39;</span><span class="p">:</span> <span class="n">nz</span><span class="p">,</span> <span class="s1">&#39;Z&#39;</span><span class="p">:</span> <span class="n">zscale</span><span class="o">*</span><span class="n">z</span><span class="p">,</span> <span class="s1">&#39;R&#39;</span><span class="p">:</span> <span class="n">R</span><span class="p">,</span> <span class="s1">&#39;dz&#39;</span><span class="p">:</span> <span class="n">dz</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">POS</span> <span class="o">=</span> <span class="n">POS</span>
+        
+        <span class="c1"># Constants used for calculations</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">r</span><span class="o">**</span><span class="mi">3</span> <span class="o">*</span> <span class="n">z</span> <span class="o">*</span> <span class="p">(</span><span class="n">z</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">r</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**-</span><span class="mf">1.5</span>
+        <span class="n">CONSTANTS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;c&#39;</span><span class="p">:</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">:</span> <span class="n">r</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="n">A</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">CONSTANTS</span> <span class="o">=</span> <span class="n">CONSTANTS</span>
+        
+        <span class="c1"># Boolean flag (rescale rho as part of the residual)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rescale_rho</span> <span class="o">=</span> <span class="n">rescale_rho</span>
+        
+        <span class="k">if</span> <span class="n">rhoguess</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Perform initial guess</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_h</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">CONSTANTS</span><span class="p">[</span><span class="s1">&#39;h&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">=</span> <span class="n">rho0</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rho0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rho0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">rhoguess</span><span class="o">/</span><span class="n">rhoscale</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">))</span>
+        
+        <span class="c1"># Initialize empty results</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        
+    <span class="k">def</span> <span class="nf">_h_residual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates sum of the squares of the residuals for a density of the </span>
+<span class="sd">        form exp(-z^2/2h^2) (see rho0)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">POS</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">rho0</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">residual</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">res</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        
+    <span class="k">def</span> <span class="nf">_fit_h</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h0</span><span class="o">=</span><span class="mf">0.3</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fit a functional form to minimize the sum of the squares of the </span>
+<span class="sd">        residual for density of form exp(-z^2/2h^2)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sol</span> <span class="o">=</span> <span class="n">fmin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_h_residual</span><span class="p">,</span> <span class="n">h0</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="nb">print</span> <span class="s1">&#39;h:&#39;</span><span class="p">,</span> <span class="n">sol</span>
+        <span class="k">return</span> <span class="n">sol</span>
+        
+    <span class="k">def</span> <span class="nf">_drho</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rho</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates the derivative of rho with respect to logz</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">dz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">POS</span><span class="p">[</span><span class="s1">&#39;dz&#39;</span><span class="p">]</span>
+        <span class="n">grad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">rho</span><span class="p">,</span> <span class="n">dz</span><span class="p">)</span>
+        <span class="n">grad</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">grad</span>
+        
+    <span class="k">def</span> <span class="nf">_rhoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rho</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates (cumulative) integral of rho over z</span>
+<span class="sd">        (equivalently, the integral of rho*z over logz)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">dz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">POS</span><span class="p">[</span><span class="s1">&#39;dz&#39;</span><span class="p">]</span>
+        
+        <span class="k">return</span> <span class="n">cumtrapz</span><span class="p">(</span><span class="n">rho</span><span class="p">,</span> <span class="n">dx</span> <span class="o">=</span> <span class="n">dz</span><span class="p">,</span> <span class="n">initial</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+        
+    <span class="k">def</span> <span class="nf">_rescale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rho</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        rescales rho such that the integral of rho from 0 to inf = 1/2</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Ignore all negative numbers</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="p">(</span><span class="n">rho</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Rho should integrate to 1 over all space, or 1/2 from 0 to inf</span>
+        <span class="c1"># (in these units)</span>
+        <span class="n">dz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">POS</span><span class="p">[</span><span class="s1">&#39;dz&#39;</span><span class="p">]</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">trapz</span><span class="p">(</span><span class="n">pos</span><span class="o">*</span><span class="n">rho</span><span class="p">,</span> <span class="n">dx</span> <span class="o">=</span> <span class="n">dz</span><span class="p">)</span><span class="o">/</span><span class="mf">0.5</span>
+        <span class="n">rho</span> <span class="o">/=</span> <span class="n">scale</span>
+        <span class="k">return</span> <span class="n">rho</span>
+        
+    <span class="k">def</span> <span class="nf">_setup_results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets up the results to have units, etc...</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">POS</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span>
+        <span class="n">dz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">POS</span><span class="p">[</span><span class="s1">&#39;dz&#39;</span><span class="p">]</span>
+        <span class="c1"># estimate scale height</span>
+        <span class="n">h2</span> <span class="o">=</span> <span class="n">trapz</span><span class="p">(</span><span class="n">rho</span> <span class="o">*</span> <span class="n">z</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="n">dz</span><span class="p">)</span><span class="o">/</span><span class="n">trapz</span><span class="p">(</span><span class="n">rho</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="n">dz</span><span class="p">)</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">h2</span><span class="p">)</span>
+        
+        <span class="c1"># Handle units</span>
+        <span class="n">rho2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">UNITS</span><span class="p">[</span><span class="s1">&#39;rho&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">rho</span>
+        <span class="n">Z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">UNITS</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">z</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">UNITS</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">h</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="n">Z</span><span class="p">,</span> <span class="s1">&#39;rho&#39;</span><span class="p">:</span> <span class="n">rho2</span><span class="p">,</span> <span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="n">H</span><span class="p">}</span>
+        
+<div class="viewcode-block" id="vertical_solver.residual"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.vertical_solver.vertical_solver.residual">[docs]</a>    <span class="k">def</span> <span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rho</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates the residual of the differential equation for rho for all</span>
+<span class="sd">        z</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">A</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">CONSTANTS</span><span class="p">[</span><span class="s1">&#39;A&#39;</span><span class="p">]</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">CONSTANTS</span><span class="p">[</span><span class="s1">&#39;c&#39;</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rescale_rho</span><span class="p">:</span>
+            
+            <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rescale</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+        
+        <span class="n">drho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drho</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">drho</span> <span class="o">+</span> <span class="n">A</span><span class="o">*</span><span class="n">rho</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">c</span><span class="o">*</span><span class="n">rho</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_rhoint</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+        <span class="c1"># penalize positive gradients</span>
+        <span class="n">drhonorm</span> <span class="o">=</span> <span class="n">drho</span><span class="o">/</span><span class="nb">abs</span><span class="p">(</span><span class="n">drho</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">penalty</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rho</span><span class="p">))</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">drhonorm</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">penalty</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="mi">10</span><span class="o">*</span><span class="n">drhonorm</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+        
+        <span class="c1"># weight the residual</span>
+        <span class="n">weight</span> <span class="o">=</span> <span class="mi">1</span>
+            
+        <span class="k">return</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">res</span> <span class="o">*</span> <span class="n">penalty</span></div>
+        
+<div class="viewcode-block" id="vertical_solver.fit"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.vertical_solver.vertical_solver.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Attempts to find the root of the residual of the differential equation </span>
+<span class="sd">        for rho at all z, given the initial guess self.rho0</span>
+<span class="sd">        </span>
+<span class="sd">        Uses a Newton&#39;s method with the Krylov approximation for the Jacobian</span>
+<span class="sd">        (see scipy.optimize.newton_krylov)</span>
+<span class="sd">        </span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        </span>
+<span class="sd">        **kwargs : keyword arguments</span>
+<span class="sd">            Additional arguments passed to the root finder</span>
+<span class="sd">            [see scipy.optimize.newton_krylov]</span>
+<span class="sd">            </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        </span>
+<span class="sd">        rho : array</span>
+<span class="sd">            Dimensionless density, saves it to self.rho</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Set up the default options</span>
+        <span class="n">options</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;maxiter&#39;</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span> <span class="s1">&#39;verbose&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            
+            <span class="n">options</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+        
+        <span class="c1"># initial guess</span>
+        <span class="n">rho0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho0</span>
+        
+        <span class="c1"># Find root</span>
+        <span class="k">try</span><span class="p">:</span>
+            
+            <span class="n">rho</span> <span class="o">=</span> <span class="n">newton_krylov</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">residual</span><span class="p">,</span> <span class="n">rho0</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+            
+        <span class="k">except</span> <span class="n">NoConvergence</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="c1"># Assume it didn&#39;t converge because f_tol was too strict</span>
+            <span class="c1"># Read exception</span>
+            <span class="nb">print</span> <span class="s1">&#39;Didnt converge&#39;</span>
+            <span class="n">rho</span> <span class="o">=</span> <span class="n">err</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">rho</span><span class="p">[</span><span class="n">rho</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Normalize rho</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rescale_rho</span><span class="p">:</span>
+            
+            <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rescale</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+            
+        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">=</span> <span class="n">rho</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_results</span><span class="p">()</span></div>
+        
+<div class="viewcode-block" id="vertical_solver.fitrobust"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.vertical_solver.vertical_solver.fitrobust">[docs]</a>    <span class="k">def</span> <span class="nf">fitrobust</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nh</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">scansize</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Attempts to find the root of the residual of the differential equation </span>
+<span class="sd">        for rho at all z, given the initial guess generated by different values</span>
+<span class="sd">        of h.</span>
+<span class="sd">        </span>
+<span class="sd">        This routine is slower than fit but can avoid local minima.  If fit</span>
+<span class="sd">        doesn&#39;t seem to be converging to the right values, consider using this.</span>
+<span class="sd">        </span>
+<span class="sd">        h is a dimensionless disk height, which is near 1.  This algorithm</span>
+<span class="sd">        scans over values of h to create initial guesses rho0.  fit() is then</span>
+<span class="sd">        called, and the results are stored.  The fit value of rho which is</span>
+<span class="sd">        globally closest to 0 is then used.</span>
+<span class="sd">        </span>
+<span class="sd">        Uses a Newton&#39;s method with the Krylov approximation for the Jacobian</span>
+<span class="sd">        (see scipy.optimize.newton_krylov)</span>
+<span class="sd">        </span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        </span>
+<span class="sd">        nh : int</span>
+<span class="sd">            (optional) Number of h values to scan over</span>
+<span class="sd">        scansize : float</span>
+<span class="sd">            (optional) Sets the range of h values to scan over.  Scans from </span>
+<span class="sd">            h0/scansize to h0*scansize</span>
+<span class="sd">        **kwargs : keyword arguments</span>
+<span class="sd">            Additional arguments passed to the root finder</span>
+<span class="sd">            [see scipy.optimize.newton_krylov]</span>
+<span class="sd">            </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        </span>
+<span class="sd">        rho : array</span>
+<span class="sd">            Dimensionless density, saves it to self.rho</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">nz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">POS</span><span class="p">[</span><span class="s1">&#39;nz&#39;</span><span class="p">]</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">POS</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span>
+        <span class="n">rhos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">nh</span><span class="p">,</span> <span class="n">nz</span><span class="p">])</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nh</span><span class="p">)</span>
+        <span class="n">residual</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nh</span><span class="p">)</span>
+        <span class="n">h0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">CONSTANTS</span><span class="p">[</span><span class="s1">&#39;h&#39;</span><span class="p">]</span>
+        <span class="n">h</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">h0</span><span class="o">/</span><span class="n">scansize</span><span class="p">,</span> <span class="n">h0</span><span class="o">*</span><span class="n">scansize</span><span class="p">,</span> <span class="n">nh</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">h</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">h0</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nh</span><span class="p">):</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">rho0</span> <span class="o">=</span> <span class="n">rho0</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">h</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">rhos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">residual</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">residual</span><span class="p">(</span><span class="n">rhos</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            
+        <span class="c1"># Find best solution</span>
+        <span class="n">best</span> <span class="o">=</span> <span class="n">residual</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">rhos</span><span class="p">[</span><span class="n">best</span><span class="p">]</span>
+        <span class="c1"># Normalize residuals by rhomax</span>
+        <span class="n">residual</span> <span class="o">/=</span> <span class="n">rho</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="c1"># measure height of the solution</span>
+        <span class="n">hmeas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">rho</span><span class="o">*</span><span class="n">z</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="n">rho</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="nb">print</span> <span class="s1">&#39;h(estimate): </span><span class="si">{}</span><span class="se">\n</span><span class="s1">h(best): </span><span class="si">{}</span><span class="se">\n</span><span class="s1">h(measured): </span><span class="si">{}</span><span class="s1">&#39;</span>\
+        <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">h</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">h</span><span class="p">[</span><span class="n">best</span><span class="p">],</span> <span class="n">hmeas</span><span class="p">)</span>
+        <span class="nb">print</span> <span class="s1">&#39;residuals normalized by rho:&#39;</span>
+        <span class="nb">print</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">best: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">residual</span><span class="p">[</span><span class="n">best</span><span class="p">])</span>
+        <span class="nb">print</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">est: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">residual</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">=</span> <span class="n">rho</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_results</span><span class="p">()</span></div></div>
+        
+<div class="viewcode-block" id="dI"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.vertical_solver.dI">[docs]</a><span class="k">def</span> <span class="nf">dI</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">dz</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Derivative of I with respect to z</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">dz</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="setup"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.vertical_solver.setup">[docs]</a><span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="n">IC</span><span class="p">,</span> <span class="n">R</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize values for solving vertical hydrostatic equlibrium.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    IC : IC object</span>
+<span class="sd">        Initial conditions object</span>
+<span class="sd">    R : SimArray</span>
+<span class="sd">        Radius at which to solve hydrostatic equilibrium</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    z : array</span>
+<span class="sd">        Dimensionless z bins, in units of h</span>
+<span class="sd">    r : float</span>
+<span class="sd">        Radius in units of h</span>
+<span class="sd">    c : float</span>
+<span class="sd">        Constant in residual equation</span>
+<span class="sd">    zscale : SimArray</span>
+<span class="sd">        Amount to scale z (all lengths) by to get dimensions back.</span>
+<span class="sd">        ie, Z(actual) = z*zscale</span>
+<span class="sd">    rhoscale : SimArray</span>
+<span class="sd">        Scale for dimensionless rho</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># Load everything from IC</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">sigma</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">T</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">M</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">m</span>
+    <span class="n">zmax</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">rho_calc</span><span class="o">.</span><span class="n">zmax</span>
+    <span class="n">nz</span> <span class="o">=</span> <span class="n">IC</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">rho_calc</span><span class="o">.</span><span class="n">nz</span>
+    
+    <span class="c1"># Set-up constants</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">G</span><span class="o">*</span><span class="n">M</span><span class="o">*</span><span class="n">m</span><span class="o">/</span><span class="p">(</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">G</span><span class="o">*</span><span class="n">m</span><span class="o">/</span><span class="p">(</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">ha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">R</span><span class="o">*</span><span class="n">R</span><span class="o">*</span><span class="n">R</span><span class="o">/</span><span class="n">a</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">b</span><span class="o">*</span><span class="n">ha</span><span class="o">*</span><span class="n">sigma</span>
+    <span class="n">c</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">estHeight</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+    <span class="n">zscale</span> <span class="o">=</span> <span class="n">h</span>
+    <span class="n">rhoscale</span> <span class="o">=</span> <span class="n">sigma</span><span class="o">/</span><span class="n">h</span>
+    
+    <span class="c1"># Set-up z bins</span>
+    <span class="k">if</span> <span class="n">zmax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">zmax</span> <span class="o">=</span> <span class="mi">6</span><span class="o">*</span><span class="n">h</span>
+        
+    <span class="n">zmax</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">((</span><span class="n">zmax</span><span class="o">/</span><span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">))</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">zmax</span><span class="p">,</span> <span class="n">nz</span><span class="p">)</span>
+    
+    <span class="c1"># Make everything dimensionless</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">((</span><span class="n">R</span><span class="o">/</span><span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">))</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">z</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">zscale</span><span class="p">,</span> <span class="n">rhoscale</span></div>
+
+<div class="viewcode-block" id="estHeight"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.vertical_solver.estHeight">[docs]</a><span class="k">def</span> <span class="nf">estHeight</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">R</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Roughly estimates the height of the disk, in both the regime of disk</span>
+<span class="sd">    self gravity dominating and star gravity dominating</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">G</span><span class="o">*</span><span class="n">M</span><span class="o">*</span><span class="n">m</span><span class="o">/</span><span class="p">(</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">G</span><span class="o">*</span><span class="n">m</span><span class="o">/</span><span class="p">(</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">ha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">R</span><span class="o">*</span><span class="n">R</span><span class="o">*</span><span class="n">R</span><span class="o">/</span><span class="n">a</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">ha</span></div>
+    
+<span class="c1">#    if sigma == 0:</span>
+<span class="c1">#        </span>
+<span class="c1">#        print &#39;sigma = 0&#39;</span>
+<span class="c1">#        return ha</span>
+<span class="c1">#    </span>
+<span class="c1">#    hb = (1.0/(b * sigma)) * 0.5</span>
+<span class="c1">#    hb.convert_units(&#39;au&#39;)</span>
+<span class="c1">#    </span>
+<span class="c1">#    wa = a*ha/(R**2 + ha**2)**(3,2)</span>
+<span class="c1">#    wb = b * sigma</span>
+<span class="c1">#    wb.convert_units(wa.units)</span>
+<span class="c1">#    </span>
+<span class="c1">#    norm = wa + wb</span>
+<span class="c1">#    wa /= norm</span>
+<span class="c1">#    wb /= norm</span>
+<span class="c1">#    </span>
+<span class="c1">#    if wb &gt; 0.9:</span>
+<span class="c1">#        </span>
+<span class="c1">#        print &#39;WARNING: disk seems very massive.  The density profile may be bad&#39;</span>
+<span class="c1">#    </span>
+<span class="c1">#    h = (ha*wa + hb*wb)/(wa + wb)</span>
+<span class="c1">#    return h</span>
+    
+<div class="viewcode-block" id="rho0"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.vertical_solver.rho0">[docs]</a><span class="k">def</span> <span class="nf">rho0</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Approximate functional form for rho.  All quantities are dimensionless</span>
+<span class="sd">    </span>
+<span class="sd">    To first order, h should equal 1.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    z : Array</span>
+<span class="sd">        z positions to estimate rho at</span>
+<span class="sd">    h : float</span>
+<span class="sd">        dimensionless scale height.  Default=1</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    rho : array</span>
+<span class="sd">        Dimensionless density</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">z</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">h</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="n">h</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

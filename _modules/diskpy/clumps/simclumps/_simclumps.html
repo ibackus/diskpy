@@ -1,0 +1,752 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.clumps.simclumps._simclumps &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.clumps.simclumps._simclumps</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Defines all the data classes for storing, managing, organizing, and accessing</span>
+<span class="sd">clumps.</span>
+
+<span class="sd">Created on Thu May  7 21:38:26 2015</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">pynbody</span> <span class="k">as</span> <span class="nn">pb</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pb</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="n">SimSnap</span> <span class="o">=</span> <span class="n">pb</span><span class="o">.</span><span class="n">snapshot</span><span class="o">.</span><span class="n">SimSnap</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">warnings</span> <span class="k">import</span> <span class="n">warn</span>
+
+
+<div class="viewcode-block" id="newSimgroup"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.newSimgroup">[docs]</a><span class="k">def</span> <span class="nf">newSimgroup</span><span class="p">(</span><span class="n">simlist</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a new simgroup object from a list of clumplists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="n">nSims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">simlist</span><span class="p">)</span>
+    
+    <span class="n">simgrp</span> <span class="o">=</span> <span class="n">simgroup</span><span class="p">(</span><span class="n">nSims</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">simlist</span><span class="p">):</span>
+        
+        <span class="n">simgrp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">newSim</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">simgrp</span></div>
+
+<div class="viewcode-block" id="newSim"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.newSim">[docs]</a><span class="k">def</span> <span class="nf">newSim</span><span class="p">(</span><span class="n">clumplist</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a sim object from a list of clump dictionaries for an entire</span>
+<span class="sd">    simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">clumplist</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        
+        <span class="k">return</span> <span class="n">sim</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        
+    <span class="n">nClumps</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">clumplist</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">sim</span><span class="p">(</span><span class="n">nClumps</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cl</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">clumplist</span><span class="p">):</span>
+        
+        <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">newClump</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">s</span></div>
+
+<div class="viewcode-block" id="newClump"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.newClump">[docs]</a><span class="k">def</span> <span class="nf">newClump</span><span class="p">(</span><span class="n">clumpDict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a new clump object from a clump dictionary (see clumps.blank_clump</span>
+<span class="sd">    and clumps.build_clumps).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Number of timesteps in this simulation</span>
+    <span class="n">nt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">clumpDict</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">])</span>
+    
+    <span class="c1"># ---Compatability---</span>
+    <span class="c1"># Deal with an unfortunate name convention.  pynbody uses &#39;vel&#39; by default</span>
+    <span class="c1"># to refer to 3D velocity, whereas clumpDicts may use &#39;v&#39;</span>
+    <span class="k">if</span> <span class="s1">&#39;v&#39;</span> <span class="ow">in</span> <span class="n">clumpDict</span><span class="p">:</span>
+        
+        <span class="n">clumpDict</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">clumpDict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;v&#39;</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="s1">&#39;m&#39;</span> <span class="ow">in</span> <span class="n">clumpDict</span><span class="p">:</span>
+        
+        <span class="n">clumpDict</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">clumpDict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;m&#39;</span><span class="p">)</span>
+        
+    <span class="c1"># NaN values for N are unnatural--make them zeros</span>
+    <span class="k">if</span> <span class="s1">&#39;N&#39;</span> <span class="ow">in</span> <span class="n">clumpDict</span><span class="p">:</span>
+        
+        <span class="n">clumpDict</span><span class="p">[</span><span class="s1">&#39;N&#39;</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">clumpDict</span><span class="p">[</span><span class="s1">&#39;N&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="c1"># Initialize a blank clump</span>
+    <span class="n">cl</span> <span class="o">=</span> <span class="n">clump</span><span class="p">(</span><span class="n">nt</span><span class="p">)</span>
+    
+    <span class="c1"># Load all the arrays that are created by default in clump.__init__</span>
+    <span class="n">unloaded_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">clumpDict</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">cl</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        
+        <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">clumpDict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            
+            <span class="n">cl</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">clumpDict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="n">unloaded_keys</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+    
+    <span class="c1"># Try to load any new arrays which are present in clumpDict</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">clumpDict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        
+        <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">unloaded_keys</span><span class="p">:</span>
+            
+            <span class="n">unloaded_keys</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">clumpDict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">ndim</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                
+                <span class="n">ndim</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                
+                <span class="n">ndim</span> <span class="o">=</span> <span class="mi">1</span>
+                
+            <span class="n">cl</span><span class="o">.</span><span class="n">_create_array</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="n">cl</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+            
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unloaded_keys</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        
+        <span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Could not load </span><span class="si">{0}</span><span class="s1"> into clump&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">unloaded_keys</span><span class="p">))</span>
+    
+    <span class="k">return</span> <span class="n">cl</span></div>
+    
+<div class="viewcode-block" id="clump"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.clump">[docs]</a><span class="k">def</span> <span class="nf">clump</span><span class="p">(</span><span class="n">nt</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a clump object, which is basically just a pynbody SimSnap where</span>
+<span class="sd">    time steps are represented by particles.</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    nt : int</span>
+<span class="sd">        Number of time steps in the simulation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">cl</span> <span class="o">=</span> <span class="n">pb</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">s</span><span class="o">=</span><span class="n">nt</span><span class="p">)</span>
+    <span class="n">cl</span><span class="o">.</span><span class="n">_create_arrays</span><span class="p">([</span><span class="s1">&#39;r_clump&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;m&#39;</span><span class="p">,</span> <span class="s1">&#39;T&#39;</span><span class="p">,</span> <span class="s1">&#39;rho&#39;</span><span class="p">],</span> <span class="n">ndim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>\
+    <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">cl</span><span class="o">.</span><span class="n">_create_arrays</span><span class="p">([</span><span class="s1">&#39;L&#39;</span><span class="p">],</span> <span class="n">ndim</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">cl</span><span class="o">.</span><span class="n">_create_array</span><span class="p">(</span><span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">cl</span></div>
+    
+<div class="viewcode-block" id="sim"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.sim">[docs]</a><span class="k">class</span> <span class="nc">sim</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The sim class.  sims are basically just numpy arrays containing clump</span>
+<span class="sd">    objects.  It stores data for all the clumps in a given simulation (for all</span>
+<span class="sd">    available time steps).  Additionally, slicing can be done in different ways</span>
+<span class="sd">    (see below)</span>
+<span class="sd">    </span>
+<span class="sd">    To initialize a blank sim object:</span>
+<span class="sd">    </span>
+<span class="sd">        &gt;&gt;&gt; s = sim(nClumps)</span>
+<span class="sd">        </span>
+<span class="sd">    To generate a sim object from a list of clumpDicts for a simulation (ie</span>
+<span class="sd">    the output of :func:`clumps.clump_tracker`)</span>
+<span class="sd">    </span>
+<span class="sd">        &gt;&gt;&gt; s = newSim(clumplist)</span>
+<span class="sd">        </span>
+<span class="sd">    Where nClumps is the number of clumps in the simulation</span>
+<span class="sd">    </span>
+<span class="sd">    Accessing different quantites:</span>
+<span class="sd">    </span>
+<span class="sd">        &gt;&gt;&gt; s = newSim(clumplist) # create sim object from clumplist</span>
+<span class="sd">        &gt;&gt;&gt; x = s(&#39;x&#39;, t=slice(None)) # get x for all clumps at all times</span>
+<span class="sd">        # Get the mass for the first time step at which the clumps exist</span>
+<span class="sd">        &gt;&gt;&gt; m0 = s(&#39;mass&#39;,t=0,clumpexist=True)</span>
+<span class="sd">        # Get velocity for the final timestep at which a clump exists</span>
+<span class="sd">        &gt;&gt;&gt; vf = s(&#39;vel&#39;, t=-1, clumpexist=True)</span>
+<span class="sd">        # Get masses of all clumps at end of simulation</span>
+<span class="sd">        &gt;&gt;&gt; all_masses = s(&#39;mass&#39;, t=-1)</span>
+<span class="sd">        &gt;&gt;&gt; mask = ~np.isnan(all_masses)</span>
+<span class="sd">        &gt;&gt;&gt; mf = all_masses[mask]</span>
+<span class="sd">        </span>
+<span class="sd">    Print available keys:</span>
+<span class="sd">    </span>
+<span class="sd">        &gt;&gt;&gt; s.keys()</span>
+<span class="sd">        </span>
+<span class="sd">    Select a sub-group of clumps by normal array slicing:</span>
+<span class="sd">    </span>
+<span class="sd">        &gt;&gt;&gt; s1 = s[0:10]</span>
+<span class="sd">        </span>
+<span class="sd">    **CALL FUNCTION ARGUMENTS**</span>
+<span class="sd">    s(key, t=None, clumpexist=False, clump=None)</span>
+<span class="sd">    </span>
+<span class="sd">    key : str</span>
+<span class="sd">        Clump key to access</span>
+<span class="sd">    t : slicer</span>
+<span class="sd">        Anything that can be used to slice a numpy array, eg [1,2,4] or</span>
+<span class="sd">        slice(0,-1).  Slices according to the simulation time</span>
+<span class="sd">    clumpexist : bool</span>
+<span class="sd">        Filter out all quantities by whether the clump exists at that time.</span>
+<span class="sd">        e.g., this makes it easy to select the first timestep when a clump</span>
+<span class="sd">        exists</span>
+<span class="sd">    clump : slicer</span>
+<span class="sd">        Anything that can be used to slice a numpy array, eg [1,2,4] or</span>
+<span class="sd">        slice(0,-1). Slices by clump number</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">subtype</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">buffer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> \
+    <span class="n">strides</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        
+        <span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">subtype</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> \
+        <span class="n">strides</span><span class="p">,</span> <span class="n">order</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">obj</span>
+        
+    <span class="k">def</span> <span class="nf">__array_finalize__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        
+        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> 
+            <span class="n">newSim</span>
+            <span class="k">return</span>
+            
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">clumpexist</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">clump</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># ---------------------------------------</span>
+        <span class="c1"># Initialize</span>
+        <span class="c1"># ---------------------------------------</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">_simslice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clump</span><span class="p">)</span>
+        <span class="n">test_array</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">units</span> <span class="o">=</span> <span class="n">_getunits</span><span class="p">(</span><span class="n">test_array</span><span class="p">)</span>
+        <span class="n">dim</span> <span class="o">=</span> <span class="n">_getdim</span><span class="p">(</span><span class="n">test_array</span><span class="p">)</span>
+        <span class="n">nt</span> <span class="o">=</span> <span class="n">_getnt</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">nt</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Nothing matches t</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        
+        <span class="n">nClumps</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        
+        <span class="n">dummy</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">dummy</span><span class="o">.</span><span class="n">dtype</span>
+        
+        <span class="n">outarray</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init_array</span><span class="p">(</span><span class="n">nClumps</span><span class="p">,</span> <span class="n">nt</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">units</span><span class="p">)</span> 
+        <span class="n">usemask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">nClumps</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        
+        <span class="c1"># ---------------------------------------</span>
+        <span class="c1"># Access the data</span>
+        <span class="c1"># ---------------------------------------</span>
+        <span class="k">for</span> <span class="n">iClump</span><span class="p">,</span> <span class="n">cl</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+            
+            <span class="k">if</span> <span class="n">clumpexist</span><span class="p">:</span>
+                
+                <span class="c1"># only look at the times where the clump exists</span>
+                <span class="n">cl</span> <span class="o">=</span> <span class="n">cl</span><span class="p">[</span><span class="n">cl</span><span class="p">[</span><span class="s1">&#39;exists&#39;</span><span class="p">]]</span>
+                
+            <span class="k">if</span> <span class="n">t</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                
+                <span class="k">try</span><span class="p">:</span>
+                    
+                    <span class="n">cl</span> <span class="o">=</span> <span class="n">cl</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+                    
+                <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+                    
+                    <span class="n">cl</span> <span class="o">=</span> <span class="p">[]</span>
+                
+            <span class="n">nt_use</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nt_use</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                
+                <span class="k">if</span> <span class="n">nt</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    
+                    <span class="n">outarray</span><span class="p">[</span><span class="n">iClump</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="n">nt_use</span><span class="p">]</span> <span class="o">=</span> <span class="n">cl</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                    
+                <span class="k">else</span><span class="p">:</span>
+                    
+                    <span class="n">outarray</span><span class="p">[</span><span class="n">iClump</span><span class="p">]</span> <span class="o">=</span> <span class="n">cl</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                    
+            <span class="k">else</span><span class="p">:</span>
+                
+                <span class="n">usemask</span><span class="p">[</span><span class="n">iClump</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                
+        <span class="c1"># ---------------------------------------</span>
+        <span class="c1"># Filter/return data</span>
+        <span class="c1"># ---------------------------------------</span>
+        <span class="k">if</span> <span class="n">clumpexist</span><span class="p">:</span>
+            
+            <span class="k">return</span> <span class="n">outarray</span><span class="p">[</span><span class="n">usemask</span><span class="p">]</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="k">return</span> <span class="n">outarray</span>
+            
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="n">printstr</span> <span class="o">=</span> <span class="s2">&quot;sim object.  </span><span class="si">{0}</span><span class="s2"> clumps, </span><span class="si">{1}</span><span class="s2"> time steps&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>\
+        <span class="bp">self</span><span class="o">.</span><span class="n">nClumps</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">nt</span><span class="p">())</span>        
+        <span class="k">return</span> <span class="n">printstr</span>
+        
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span>
+        
+            
+    <span class="k">def</span> <span class="nf">_init_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nClumps</span><span class="p">,</span> <span class="n">nt</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize a blank array for multi-clump slicing.  Default fill values</span>
+<span class="sd">        are NaN for floats, -1 for ints, and 0 otherwise.  This is useful</span>
+<span class="sd">        for automatically flagging when clumps do not exist</span>
+<span class="sd">        </span>
+<span class="sd">        **ARGUMENTS**</span>
+<span class="sd">        </span>
+<span class="sd">        nClumps : int</span>
+<span class="sd">            Number of clumps</span>
+<span class="sd">        nt : int</span>
+<span class="sd">            Number of time steps</span>
+<span class="sd">        dim : int</span>
+<span class="sd">            Dimension of the array.  IE 3 for &#39;vel&#39; or 1 for &#39;x&#39;</span>
+<span class="sd">        dtype : dtype</span>
+<span class="sd">            dtype of the array</span>
+<span class="sd">        units : (see pynbody.units)</span>
+<span class="sd">            Units for the array</span>
+<span class="sd">            </span>
+<span class="sd">        **RETURNS**</span>
+<span class="sd">        </span>
+<span class="sd">        An array of a shape suitable for nClumps, nt, and dim</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">nClumps</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">nt</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            
+            <span class="n">shape</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nt</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="n">dim</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            
+            <span class="n">shape</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+            
+            <span class="n">fill_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            
+        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            
+            <span class="n">fill_val</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="n">fill_val</span> <span class="o">=</span> <span class="mi">0</span>
+            
+        <span class="n">outarray</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">fill_val</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">),</span> <span class="n">units</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">outarray</span>
+        
+<div class="viewcode-block" id="sim.keys"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.sim.keys">[docs]</a>    <span class="k">def</span> <span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return keys present in all clumps</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="sim.nClumps"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.sim.nClumps">[docs]</a>    <span class="k">def</span> <span class="nf">nClumps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the number of clumps in the simulation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+        
+<div class="viewcode-block" id="sim.nt"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.sim.nt">[docs]</a>    <span class="k">def</span> <span class="nf">nt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the number of timesteps in the simulation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nClumps</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="k">return</span> <span class="mi">0</span></div></div>
+        
+
+        
+<div class="viewcode-block" id="simgroup"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.simgroup">[docs]</a><span class="k">class</span> <span class="nc">simgroup</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The simgroup class.  Basically just an array containing a bunch of sim</span>
+<span class="sd">    objects.  Meant to contain information for clumps in a suite of simulations</span>
+<span class="sd">    </span>
+<span class="sd">    To initialize a blank sim group:</span>
+<span class="sd">    </span>
+<span class="sd">        &gt;&gt;&gt; sgrp = simgroup(nSims)</span>
+<span class="sd">        </span>
+<span class="sd">    To initialize from a list of simulations (ie a list of the outputs from</span>
+<span class="sd">    :func:`clumps.clumptracker`):</span>
+<span class="sd">    </span>
+<span class="sd">        &gt;&gt;&gt; sgrp = newSimgroup(simlist)</span>
+<span class="sd">        </span>
+<span class="sd">    Accessing different quantites:</span>
+<span class="sd">    </span>
+<span class="sd">        &gt;&gt;&gt; s = newSimgroup(simlist) # create sim object from simlist</span>
+<span class="sd">        &gt;&gt;&gt; x = s(&#39;x&#39;, t=slice(None)) # get x for all clumps at all times</span>
+<span class="sd">        # Get the mass for the first time step at which the clumps exist</span>
+<span class="sd">        &gt;&gt;&gt; m0 = s(&#39;mass&#39;,t=0,clumpexist=True)</span>
+<span class="sd">        # Get velocity for the final timestep at which a clump exists</span>
+<span class="sd">        &gt;&gt;&gt; vf = s(&#39;vel&#39;, t=-1, clumpexist=True)</span>
+<span class="sd">        # Get masses of all clumps at end of simulation</span>
+<span class="sd">        &gt;&gt;&gt; all_masses = s(&#39;mass&#39;, t=-1)</span>
+<span class="sd">        &gt;&gt;&gt; mask = ~np.isnan(all_masses)</span>
+<span class="sd">        &gt;&gt;&gt; mf = all_masses[mask]</span>
+<span class="sd">        </span>
+<span class="sd">    Print available keys:</span>
+<span class="sd">    </span>
+<span class="sd">        &gt;&gt;&gt; s.keys()</span>
+<span class="sd">        </span>
+<span class="sd">    Select a sub-group of simulations by normal array slicing:</span>
+<span class="sd">    </span>
+<span class="sd">        &gt;&gt;&gt; s1 = s[0:10]</span>
+<span class="sd">        </span>
+<span class="sd">    **CALL FUNCTION ARGUMENTS**</span>
+<span class="sd">    s(key, t=None, clumpexist=False, clump=None, sims=None)</span>
+<span class="sd">    </span>
+<span class="sd">    key : str</span>
+<span class="sd">        Clump key to access</span>
+<span class="sd">    t : slicer</span>
+<span class="sd">        Anything that can be used to slice a numpy array, eg [1,2,4] or</span>
+<span class="sd">        slice(0,-1).  Slices according to the simulation time</span>
+<span class="sd">    clumpexist : bool</span>
+<span class="sd">        Filter out all quantities by whether the clump exists at that time.</span>
+<span class="sd">        e.g., this makes it easy to select the first timestep when a clump</span>
+<span class="sd">        exists</span>
+<span class="sd">    clump : slicer</span>
+<span class="sd">        Anything that can be used to slice a numpy array, eg [1,2,4] or</span>
+<span class="sd">        slice(0,-1). Slices by clump number</span>
+<span class="sd">    sims : slicer</span>
+<span class="sd">        Anything that can be used to slice a numpy array, eg [1,2,4] or</span>
+<span class="sd">        slice(0,-1). Slices by simulation number</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">subtype</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">buffer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> \
+    <span class="n">strides</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">sim</span>
+        
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">subtype</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> \
+        <span class="n">strides</span><span class="p">,</span> <span class="n">order</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">obj</span>
+        
+    <span class="k">def</span> <span class="nf">__array_finalize__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        
+        <span class="k">return</span>
+            
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">clumpexist</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">clump</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sims</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Call documentation for simgroups</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Slice the simulation group is needed</span>
+        <span class="n">simgrp</span> <span class="o">=</span> <span class="n">_simgroupslice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sims</span><span class="p">)</span>
+        
+        <span class="c1"># No simulations were selected</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">simgrp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            
+            <span class="k">return</span> <span class="kc">None</span>
+            
+        <span class="c1"># Loop through all the simulations at generate the request arrays</span>
+        <span class="n">outlist</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">iSim</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">simgrp</span><span class="p">):</span>
+            
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># The simulation has a clump.  Now generate the requested array</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">s</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="n">t</span><span class="p">,</span><span class="n">clumpexist</span><span class="p">,</span><span class="n">clump</span><span class="p">)</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># The simulation has no clumps</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="kc">None</span>
+            
+            <span class="c1"># Append output (if it&#39;s not None)</span>
+            <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    
+                    <span class="n">outlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                    
+        <span class="c1"># Concatenate the list of output arrays into a single SimArray</span>
+        <span class="n">outarray</span> <span class="o">=</span> <span class="n">arraylistcat</span><span class="p">(</span><span class="n">outlist</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">outarray</span>
+        
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="n">printstr</span> <span class="o">=</span> <span class="s1">&#39;simgroup object. </span><span class="si">{0}</span><span class="s1"> simulations, </span><span class="si">{1}</span><span class="s1"> clumps&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>\
+        <span class="bp">self</span><span class="o">.</span><span class="n">nsim</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">nClumps</span><span class="p">())</span>
+        
+        <span class="k">return</span> <span class="n">printstr</span>
+    
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span>
+        
+<div class="viewcode-block" id="simgroup.keys"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.simgroup.keys">[docs]</a>    <span class="k">def</span> <span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return keys present in all clumps</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+        
+<div class="viewcode-block" id="simgroup.nsim"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.simgroup.nsim">[docs]</a>    <span class="k">def</span> <span class="nf">nsim</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the number of simulations present here</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+        
+<div class="viewcode-block" id="simgroup.nClumps"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.simgroup.nClumps">[docs]</a>    <span class="k">def</span> <span class="nf">nClumps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">simulation</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            
+            <span class="n">n</span> <span class="o">+=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">nClumps</span><span class="p">()</span>
+            
+        <span class="k">return</span> <span class="n">n</span></div></div>
+        
+    
+<span class="k">def</span> <span class="nf">_keys</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the clump keys present in all things here</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">k</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># There is at least one thing</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+            <span class="c1"># Make sure keys() is defined</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;keys&#39;</span><span class="p">):</span>
+            
+                <span class="n">k</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        
+        <span class="n">k</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
+        <span class="n">k</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+            
+    <span class="k">return</span> <span class="n">k</span>
+    
+<div class="viewcode-block" id="exists"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.exists">[docs]</a><span class="nd">@pb</span><span class="o">.</span><span class="n">derived_array</span>
+<span class="k">def</span> <span class="nf">exists</span><span class="p">(</span><span class="n">sim</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines a pynbody derived array which determines the time steps a clump </span>
+<span class="sd">    exists at</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">sim</span><span class="p">[</span><span class="s1">&#39;N&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="len2"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.len2">[docs]</a><span class="k">def</span> <span class="nf">len2</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A modified version of len() to work with numbers.  Numbers have a length</span>
+<span class="sd">    of 1</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;__len__&#39;</span><span class="p">):</span>
+        
+        <span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span><span class="nb">float</span><span class="p">,</span><span class="n">long</span><span class="p">,</span><span class="nb">complex</span><span class="p">)):</span>
+        
+        <span class="n">length</span> <span class="o">=</span> <span class="mi">1</span>
+        
+    <span class="k">return</span> <span class="n">length</span></div>
+    
+<div class="viewcode-block" id="arraylistcat"><a class="viewcode-back" href="../../../../diskpy.clumps.simclumps.html#diskpy.clumps.simclumps.arraylistcat">[docs]</a><span class="k">def</span> <span class="nf">arraylistcat</span><span class="p">(</span><span class="n">arraylist</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Concatenate a list of like arrays (or SimArrays) into a single array.</span>
+<span class="sd">    Concatenates along the first dimension</span>
+<span class="sd">    Returns None for an empty list</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arraylist</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        
+        <span class="k">return</span> <span class="kc">None</span>
+        
+    <span class="n">nx</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">arraylist</span><span class="p">:</span>
+        
+        <span class="n">nx</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        
+    <span class="n">dummy</span> <span class="o">=</span> <span class="n">arraylist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dummy</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">nx</span>
+    <span class="n">units</span> <span class="o">=</span> <span class="n">_getunits</span><span class="p">(</span><span class="n">dummy</span><span class="p">)</span>
+    
+    <span class="n">outarray</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">),</span> <span class="n">units</span><span class="p">)</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="k">for</span> <span class="n">array</span> <span class="ow">in</span> <span class="n">arraylist</span><span class="p">:</span>
+        
+        <span class="n">outarray</span><span class="p">[</span><span class="n">counter</span><span class="p">:</span><span class="n">counter</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">array</span><span class="p">)]</span> <span class="o">=</span> <span class="n">array</span>
+        <span class="n">counter</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">outarray</span></div>
+    
+<span class="k">def</span> <span class="nf">_simslice</span><span class="p">(</span><span class="n">simulation</span><span class="p">,</span> <span class="n">clump</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A method for slicing a sim, guaranteeing a sim object is returned.</span>
+<span class="sd">    clump is anything that can be used to slice an array</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">clump</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># No slicing required</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">simulation</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Slice according to clump</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">simulation</span><span class="p">[</span><span class="n">clump</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">sim</span><span class="p">):</span>
+        <span class="c1"># Cast s as a sim object</span>
+        <span class="n">dummy</span> <span class="o">=</span> <span class="n">sim</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">dummy</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">dummy</span>
+        
+    <span class="k">return</span> <span class="n">s</span>
+
+<span class="k">def</span> <span class="nf">_simgroupslice</span><span class="p">(</span><span class="n">simgrp</span><span class="p">,</span> <span class="n">sims</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A method for slicing a simgroup, guaranteeing a simgroup object is returned.</span>
+<span class="sd">    sims is anything that can be used to slice an array</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">sims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># No slicing required</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">simgrp</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Slice according to sims</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">simgrp</span><span class="p">[</span><span class="n">sims</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">simgroup</span><span class="p">):</span>
+        <span class="c1"># Cast s as a sim object</span>
+        <span class="n">dummy</span> <span class="o">=</span> <span class="n">simgroup</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">dummy</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">dummy</span>
+        
+    <span class="k">return</span> <span class="n">s</span>
+    
+<span class="k">def</span> <span class="nf">_getunits</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Attempts to get the units of x.  If x has not units, None is returned</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">pb</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        
+        <span class="n">units</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">units</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">units</span> <span class="o">=</span> <span class="kc">None</span>
+        
+    <span class="k">return</span> <span class="n">units</span>
+    
+<span class="k">def</span> <span class="nf">_getdim</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the dimension of an array x.  IE, for &#39;vel&#39; dim=3, for &#39;z&#39;, dim=1</span>
+<span class="sd">    </span>
+<span class="sd">    For x shape (N,)                dim = 0</span>
+<span class="sd">    For x shape (N,m)               dim = m</span>
+<span class="sd">    For x shape (N1, N2, ...,m)     dim = m</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">ndim</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        
+        <span class="n">dim</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">dim</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="k">return</span> <span class="n">dim</span>
+    
+<span class="k">def</span> <span class="nf">_getnt</span><span class="p">(</span><span class="n">simulation</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the total number of time steps the slicer t will create for a simulation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nt_sim</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">nt</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="n">t</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">dummy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nt_sim</span><span class="p">)</span>
+        <span class="n">nt</span> <span class="o">=</span> <span class="n">len2</span><span class="p">(</span><span class="n">dummy</span><span class="p">[</span><span class="n">t</span><span class="p">])</span>
+            
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">nt</span> <span class="o">=</span> <span class="n">nt_sim</span>
+        
+    <span class="k">return</span> <span class="n">nt</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

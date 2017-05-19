@@ -1,0 +1,10 @@
+diskpy\.disk package
+====================
+
+Module contents
+---------------
+
+.. automodule:: diskpy.disk
+    :members:
+    :undoc-members:
+    :show-inheritance:

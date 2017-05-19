@@ -1,0 +1,1512 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.AddBinary &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.AddBinary</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">@dflemin3</span>
+<span class="sd">David Fleming 2015</span>
+
+<span class="sd">This module is useful when considering a two body system in a Keplerian potential.  Uses include </span>
+<span class="sd">binary stars, a satellite orbit a massive primary (m1 &gt;&gt; m2), a satellite orbiting far from a </span>
+<span class="sd">massive central binary, etc.  Functions included in this module can be used to compute orbital</span>
+<span class="sd">elements, convert between Cartersian coordinates and orbital elements and other uses.  </span>
+
+<span class="sd">Note on units:  Functions are optimized to take pynbody.array.SimArray as input types so that</span>
+<span class="sd">they may handle all the different, weird units and array types/shapes.  If you don&#39;t use </span>
+<span class="sd">SimArrays, they *should* work if your inputs are in cgs, but use at your own peril.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1">#Constants and includes</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">optimize</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">strip_units</span>
+
+<span class="c1"># Units/Constants</span>
+<span class="n">Msol</span> <span class="o">=</span> <span class="mf">1.98855e33</span>  <span class="c1"># g/Solar mass</span>
+<span class="n">BigG</span> <span class="o">=</span> <span class="mf">6.67259e-8</span>  <span class="c1"># in cgs</span>
+<span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">BigG</span><span class="p">,</span><span class="s1">&#39;cm**3 g**-1 s**-2&#39;</span><span class="p">)</span>
+<span class="n">YEARSEC</span> <span class="o">=</span> <span class="mf">3.15569e7</span>  <span class="c1"># seconds per year</span>
+<span class="n">DAYSEC</span> <span class="o">=</span> <span class="mi">86400</span>  <span class="c1"># seconds per day</span>
+<span class="n">AUCM</span> <span class="o">=</span> <span class="mf">1.49597571e13</span>  <span class="c1"># cm/au</span>
+<span class="n">RAD2DEG</span> <span class="o">=</span> <span class="mf">180.0</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+<span class="n">SMALL</span> <span class="o">=</span> <span class="mf">1.0e-10</span>  <span class="c1"># less than this is zero enough</span>
+
+<span class="c1"># ICgen-Specific constants (Shouldn&#39;t need to use these!)</span>
+<span class="n">VEL_UNIT</span> <span class="o">=</span> <span class="mf">29.785598165</span>  <span class="c1"># 29.785598165 km/s</span>
+<span class="n">POS_UNIT</span> <span class="o">=</span> <span class="mf">4.84813680873e-9</span>  <span class="c1"># in kpc == 1 au</span>
+
+<span class="c1"># Function prototypes</span>
+
+<span class="c1"># Binary Star Initilization Functions</span>
+
+
+<div class="viewcode-block" id="pToA"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.pToA">[docs]</a><span class="k">def</span> <span class="nf">pToA</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">M</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Converts period (in days) into semimajor axis (in au) given Kepler law</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Period : float</span>
+<span class="sd">        [days]</span>
+<span class="sd">    M : float</span>
+<span class="sd">        COM mass [Msol]</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Semimajor axis a (au)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">conv</span> <span class="o">=</span> <span class="p">(</span><span class="n">DAYSEC</span> <span class="o">*</span> <span class="n">DAYSEC</span> <span class="o">*</span> <span class="n">Msol</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">AUCM</span> <span class="o">*</span> <span class="n">AUCM</span> <span class="o">*</span> <span class="n">AUCM</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">conv</span> <span class="o">*</span> <span class="n">period</span> <span class="o">*</span> <span class="n">period</span> <span class="o">*</span> <span class="n">BigG</span> <span class="o">*</span> <span class="n">M</span> <span class="o">/</span> <span class="p">(</span><span class="mf">4.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">pow</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">3.0</span><span class="p">)</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="aToP"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.aToP">[docs]</a><span class="k">def</span> <span class="nf">aToP</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">M</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a semimajor axis (au), convert into period (in days) given Kepler law</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    a : float</span>
+<span class="sd">        semimajor axis [au]</span>
+<span class="sd">    M : float</span>
+<span class="sd">        mass of system [Msol]</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Period : float</span>
+<span class="sd">        [days]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">conv</span> <span class="o">=</span> <span class="p">(</span><span class="n">AUCM</span> <span class="o">*</span> <span class="n">AUCM</span> <span class="o">*</span> <span class="n">AUCM</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">DAYSEC</span> <span class="o">*</span> <span class="n">DAYSEC</span> <span class="o">*</span> <span class="n">Msol</span><span class="p">)</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="mf">4.0</span> <span class="o">*</span> <span class="n">conv</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">a</span> <span class="o">*</span> <span class="n">a</span> <span class="o">*</span> <span class="n">a</span> <span class="o">/</span> <span class="p">(</span><span class="n">BigG</span> <span class="o">*</span> <span class="n">M</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">P</span><span class="p">)</span></div>
+
+<span class="c1"># end function</span>
+
+<span class="c1">##########################################################################</span>
+<span class="c1">#                                                                                                        #</span>
+<span class="c1">#	Functions for naively initializing binary stars at perihelion with arg peri = 0, LoAN = 0, inc = 0   #</span>
+<span class="c1">#                                                                                                        #</span>
+<span class="c1">##########################################################################</span>
+
+
+<div class="viewcode-block" id="calcPositions"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcPositions">[docs]</a><span class="k">def</span> <span class="nf">calcPositions</span><span class="p">(</span><span class="n">M</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given total mass of system M, semimajor axis a, and percentage of total mass contained in primary star p,</span>
+<span class="sd">    calculate positions of binary components keep COM at origin</span>
+<span class="sd">    (ex: If 1Msol system and MPri = Msec = 0.5 -&gt; M =1 -&gt; p = 0.5)</span>
+<span class="sd">    Assume stars start a perihelion</span>
+<span class="sd">    </span>
+<span class="sd">    Deprecated</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    M : float</span>
+<span class="sd">        Total mass of system (Msol)</span>
+<span class="sd">    a : float</span>
+<span class="sd">        Semimajor axis (au)</span>
+<span class="sd">    e : float</span>
+<span class="sd">        eccentricity</span>
+<span class="sd">    p : float</span>
+<span class="sd">        % of total mass contained in primary (m1)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    x1, x2: float</span>
+<span class="sd">        Semimajor axes of binary stars assuming that they start at perihelion.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Compute masses</span>
+    <span class="n">m1</span> <span class="o">=</span> <span class="n">p</span> <span class="o">*</span> <span class="n">M</span>
+    <span class="n">m2</span> <span class="o">=</span> <span class="p">(</span><span class="n">M</span> <span class="o">-</span> <span class="n">m1</span><span class="p">)</span>
+
+    <span class="c1"># Calculate each star&#39;s semi-major axis a1,a2</span>
+    <span class="n">a1</span> <span class="o">=</span> <span class="p">(</span><span class="n">m2</span> <span class="o">/</span> <span class="n">M</span><span class="p">)</span> <span class="o">*</span> <span class="n">a</span>
+    <span class="n">a2</span> <span class="o">=</span> <span class="p">(</span><span class="n">m1</span> <span class="o">/</span> <span class="n">M</span><span class="p">)</span> <span class="o">*</span> <span class="n">a</span>
+
+    <span class="c1"># Assume both stars star at perihelion (true anomaly = 0)</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">a1</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">e</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">e</span><span class="p">)</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">a2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">e</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcV"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcV">[docs]</a><span class="k">def</span> <span class="nf">calcV</span><span class="p">(</span><span class="n">m1</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">m2</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given total mass M, postions of stars at perihelion x1, x2, and eccentricity e, calculate the velocities of the stars</span>
+<span class="sd">    assuming that they are located at the perihelion and rotate in same direction as disk (CCW)</span>
+<span class="sd">    </span>
+<span class="sd">    Deprecated</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    m1, m2 : floats</span>
+<span class="sd">        masses of primary and secondary (Msol)</span>
+<span class="sd">    x1, x2 : floats</span>
+<span class="sd">        are semimajor axes of primary and secondary (au)</span>
+<span class="sd">    e : float</span>
+<span class="sd">        eccentricity</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    v1, v2 : floats</span>
+<span class="sd">        velocities of m1, m2 in km/s oriented for CCW rotation (in xy plane)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Correct units and conversion factors, sqrt of positive numbers</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span>
+    <span class="n">econv</span> <span class="o">=</span> <span class="p">(</span><span class="n">Msol</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">AUCM</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">*</span> <span class="mi">1000</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+
+    <span class="c1"># Elliptical Orbit: initialize CCW velocity given orbit starts at</span>
+    <span class="c1"># perihelion</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">e</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">e</span><span class="p">)</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="p">(</span><span class="n">m1</span> <span class="o">*</span> <span class="n">m2</span><span class="p">)</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">vp</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">econv</span> <span class="o">*</span> <span class="p">(</span><span class="n">BigG</span> <span class="o">*</span> <span class="n">M</span> <span class="o">*</span> <span class="n">eps</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">a</span><span class="p">))</span>
+    <span class="n">v1</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span> <span class="o">/</span> <span class="n">m1</span><span class="p">)</span> <span class="o">*</span> <span class="n">vp</span>  <span class="c1"># positive y direction for primary</span>
+    <span class="n">v2</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">mu</span> <span class="o">/</span> <span class="n">m2</span><span class="p">)</span> <span class="o">*</span> <span class="n">vp</span>  <span class="c1"># negative y direction for secondary</span>
+
+    <span class="k">return</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcCriticalRadius"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcCriticalRadius">[docs]</a><span class="k">def</span> <span class="nf">calcCriticalRadius</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">m1</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">m2</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the approximate bounds for where we would expect a planet to form</span>
+<span class="sd">    given the conditions of a circumbinary disk around a short-period binary system.</span>
+<span class="sd">    Calculates based on best fit from Holman&amp;Wiegert+1999 (outer/P-type region)</span>
+<span class="sd">    Assumes m1 ~ m2 and NOT m1 &gt;&gt; m2 or m2 &gt;&gt; m1</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    a : float</span>
+<span class="sd">        Semimajor axis a of the binary system (au)</span>
+<span class="sd">    e : float</span>
+<span class="sd">        Eccentricity e of binary system</span>
+<span class="sd">    m1, m2 : floats</span>
+<span class="sd">        Masses of binary components m1, m2 (Msol)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ac, pmac : floats</span>
+<span class="sd">        Lower bounds for circumbinary planet&#39;s distace from binary COM and error terms of the following form:</span>
+<span class="sd">        ac, pmac (error bounds are symmetric) both in au</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Compute mass ratio</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">m2</span> <span class="o">/</span> <span class="p">(</span><span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span><span class="p">)</span>
+
+    <span class="c1"># Compute critical following Holman&amp;Wiegert+1999 with symmetric error for</span>
+    <span class="c1"># the outer region</span>
+    <span class="n">ac</span> <span class="o">=</span> <span class="mf">1.60</span> <span class="o">+</span> <span class="p">(</span><span class="mf">5.10</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="o">-</span><span class="mf">2.22</span> <span class="o">*</span> <span class="n">e</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">4.12</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span> <span class="o">+</span> \
+        <span class="p">(</span><span class="o">-</span><span class="mf">4.27</span> <span class="o">*</span> <span class="n">e</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="o">-</span><span class="mf">5.09</span> <span class="o">*</span> <span class="n">mu</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">4.61</span> <span class="o">*</span> <span class="n">e</span> <span class="o">*</span> <span class="n">e</span> <span class="o">*</span> <span class="n">mu</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span>
+    <span class="n">ac</span> <span class="o">*=</span> <span class="n">a</span>
+    <span class="n">pmac</span> <span class="o">=</span> <span class="mf">0.04</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mf">0.11</span> <span class="o">*</span> <span class="n">e</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.09</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span> <span class="o">-</span> \
+        <span class="p">(</span><span class="o">.</span><span class="mi">17</span> <span class="o">*</span> <span class="n">e</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mf">0.11</span> <span class="o">*</span> <span class="n">mu</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.36</span> <span class="o">*</span> <span class="n">e</span> <span class="o">*</span> <span class="n">e</span> <span class="o">*</span> <span class="n">mu</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span>
+    <span class="n">pmac</span> <span class="o">*=</span> <span class="n">a</span>
+
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">ac</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">pmac</span><span class="p">)</span></div>
+
+<span class="c1"># end function</span>
+
+<span class="c1">##########################################################################</span>
+<span class="c1">#                                                                                                        #</span>
+<span class="c1">#	Functions for computing Keplerian Orbital elements from Cartesian coordinates.  Most useful for      #</span>
+<span class="c1">#	computing for binaries, but general enough to compute for gas particles or whatever.                 #</span>
+<span class="c1">#                                                                                                        #</span>
+<span class="c1">##########################################################################</span>
+
+
+<div class="viewcode-block" id="calcOrbitalElements"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcOrbitalElements">[docs]</a><span class="k">def</span> <span class="nf">calcOrbitalElements</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given as pynbody SimArrays the cental mass(es), the coodinate(s) and velocity(ies) of a CCW orbiting object,</span>
+<span class="sd">    return the following orbital elements: eccentricity, semimajor axis, inclination, longitude of ascending node,</span>
+<span class="sd">    argument of periapsis, and true anomaly.  This function is designed to work for a binary star system but is</span>
+<span class="sd">    general enough to also work for a ~massless gas particle orbiting around a central quasi-Keplerian mass.</span>
+<span class="sd">    </span>
+<span class="sd">    Note: all params not required to be pynbody.array.SimArray, but it is strongly preferred.  Returns floats</span>
+<span class="sd">    to hopefully make this as general as possible</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x1, x2 : SimArrays</span>
+<span class="sd">        Position arrays of primary and secondary x1, x2 (in AU)</span>
+<span class="sd">    v1, v2 : SimArrays</span>
+<span class="sd">        Velocity arrays of primary and secondary v1, v2 (in km/s)</span>
+<span class="sd">    m1, m2 : SimArrays</span>
+<span class="sd">        Masses of primary and secondary m1, m2 (in Msol)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    e : float </span>
+<span class="sd">        Eccentricity (unitless)</span>
+<span class="sd">    a : float</span>
+<span class="sd">        Semimajor Axis in Au</span>
+<span class="sd">    i : float</span>
+<span class="sd">        Inclination in degrees</span>
+<span class="sd">    Omega : float</span>
+<span class="sd">        Longitude of Ascending node in degrees</span>
+<span class="sd">    w : float</span>
+<span class="sd">        Argument of Periapsis in degrees</span>
+<span class="sd">    nu : float </span>
+<span class="sd">        True Anomaly in degrees</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Compute elements.  All unit conversion/processing done in sub functions via SimArrays</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="n">calcEcc</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">calcSemi</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">)</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">calcInc</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span>
+    <span class="n">Omega</span> <span class="o">=</span> <span class="n">calcLongOfAscNode</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">calcArgPeri</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">)</span>
+    <span class="n">nu</span> <span class="o">=</span> <span class="n">calcTrueAnomaly</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">e</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">Omega</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">nu</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcEcc"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcEcc">[docs]</a><span class="k">def</span> <span class="nf">calcEcc</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given as pynbody arrays the masses of the binary system, arrays of the positions and velocities, compute</span>
+<span class="sd">    its orbital eccentricity.</span>
+
+<span class="sd">    Calculates e using following: e = sqrt(1 + (2*e*h^2)/(mu^2)</span>
+<span class="sd">    for h = r x v, mu = G*(m1+m2), e = (v^2)/2 - (mu/|r|)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    All inputs expected to be pynbody simArrays</span>
+<span class="sd">    </span>
+<span class="sd">    x1, x2 : SimArrays</span>
+<span class="sd">        Position arrays of primary and secondary x1, x2 (in AU)</span>
+<span class="sd">    v1, v2 : SimArrays</span>
+<span class="sd">        Velocity arrays of primary and secondary v1, v2 (in km/s)</span>
+<span class="sd">    m1, m2 : SimArrays</span>
+<span class="sd">        Masses of primary and secondary m1, m2 (in Msol)</span>
+<span class="sd">    Flag: bool </span>
+<span class="sd">        Whether or not to internally convert to cgs units</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    e : float</span>
+<span class="sd">        Scalar eccentricity of binary system.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1">#Ensure units are in cgs</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+
+    <span class="n">length</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">computeLenAx</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+
+    <span class="c1"># Relative position vector in cgs</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span><span class="p">)</span>
+    <span class="n">magR</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Compute standard gravitational parameter in cgs</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="p">(</span><span class="n">G</span> <span class="o">*</span> <span class="p">(</span><span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span><span class="p">))</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm**3 s**-2&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute relative velocity vector in cgs with appropriate scale</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">v1</span> <span class="o">-</span> <span class="n">v2</span><span class="p">)</span>
+    <span class="n">magV</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Compute specific orbital energy</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="p">((</span><span class="n">magV</span> <span class="o">*</span> <span class="n">magV</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">mu</span> <span class="o">/</span> <span class="n">magR</span><span class="p">))</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm**2 s**-2&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute specific angular momentum vector</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm**2 s**-1&#39;</span><span class="p">)</span>
+    <span class="n">magH</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm**2 s**-1&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute, return eccentricity</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="p">((</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">eps</span> <span class="o">*</span> <span class="n">magH</span> <span class="o">*</span> <span class="n">magH</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">mu</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)))</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcSemi"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcSemi">[docs]</a><span class="k">def</span> <span class="nf">calcSemi</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for positions and velocity of primary and secondary bodies</span>
+<span class="sd">    and masses, calculates the binary&#39;s semimajor axis.</span>
+
+<span class="sd">    Calculates a using the following: a = -mu/(2*e)</span>
+<span class="sd">    where mu = G*(m1+m2) and e = (v^2)/2 - (mu/|r|) and e != eccentricity</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    x1,x2 : SimArrays</span>
+<span class="sd">        Primary and secondary position arrays [AU]</span>
+<span class="sd">    v1,v2 : SimArrays</span>
+<span class="sd">        Primary and secondary velocity arrays [km/s]</span>
+<span class="sd">    m1,m2 : SimArrays</span>
+<span class="sd">        Primary and secondary masses [Msol]</span>
+<span class="sd">    Flag : bool</span>
+<span class="sd">        Whether or not to internally convert to cgs units</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    a : float</span>
+<span class="sd">        semimajor axis of binary orbit in AU</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1">#Ensure units are in cgs</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+
+    <span class="n">length</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">computeLenAx</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+
+    <span class="c1"># Relative position vector in cgs</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span><span class="p">)</span>
+    <span class="n">magR</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute standard gravitational parameter in cgs</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="p">(</span><span class="n">G</span> <span class="o">*</span> <span class="p">(</span><span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span><span class="p">))</span>
+
+    <span class="c1"># Compute relative velocity vector in cgs with appropriate scale</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">v1</span> <span class="o">-</span> <span class="n">v2</span><span class="p">)</span>
+    <span class="n">magV</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute specific orbital energy</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="p">(</span><span class="n">magV</span> <span class="o">*</span> <span class="n">magV</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">mu</span> <span class="o">/</span> <span class="n">magR</span><span class="p">)</span>
+
+    <span class="c1"># Compute, return semimajor axis in AU (convert from cgs-&gt;AU)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="o">-</span><span class="n">mu</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">eps</span><span class="p">))</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;au&#39;</span><span class="p">)</span> <span class="c1">#/ (AUCM)</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcInc"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcInc">[docs]</a><span class="k">def</span> <span class="nf">calcInc</span><span class="p">(</span><span class="n">x1</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">x2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">v1</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">v2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for positions and velocities of primary and secondaries bodies and masses in</span>
+<span class="sd">    a binary orbit, calculate&#39;s the orbit&#39;s inclination. (Given: Orbit starts in xy plane)</span>
+
+<span class="sd">    i = arccos(h_z/|h|)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    as pynbody SimArrays [preferred units]</span>
+<span class="sd">    </span>
+<span class="sd">    x1,x2 : SimArrays</span>
+<span class="sd">        Primary and secondary position arrays [AU]</span>
+<span class="sd">    v1, v2 : SimArrays</span>
+<span class="sd">        Primary and secondary velocity arrays [km/s]</span>
+<span class="sd">    Flag : bool</span>
+<span class="sd">        Whether or not to internally convert to cgs units</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    i : float</span>
+<span class="sd">        Inclination in degrees</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1">#Ensure units are in cgs</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute length of array we&#39;re dealing with</span>
+    <span class="n">length</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">computeLenAx</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+
+    <span class="c1"># Relative position vector in cgs</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span><span class="p">)</span>
+
+    <span class="c1"># Compute relative velocity vector in cgs with appropriate scale</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">v1</span> <span class="o">-</span> <span class="n">v2</span><span class="p">)</span>
+
+    <span class="c1"># Compute specific angular momentum vector</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+    <span class="n">magH</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm**2 s**-1&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span><span class="p">(</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">h_z</span> <span class="o">=</span> <span class="n">h</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">h_z</span> <span class="o">=</span> <span class="n">h</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+
+    <span class="c1"># Orbit is CCW (h_z &lt; 0) so take fabs to have i &gt;= 0</span>
+    <span class="n">h_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">h_z</span><span class="p">)</span>
+
+    <span class="c1"># Compute i, convert to degrees</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="n">h_z</span> <span class="o">/</span> <span class="n">magH</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">i</span> <span class="o">*</span> <span class="n">RAD2DEG</span>  <span class="c1"># return in degrees</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcLongOfAscNode"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcLongOfAscNode">[docs]</a><span class="k">def</span> <span class="nf">calcLongOfAscNode</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for positions and velocity of primary and secondary bodies</span>
+<span class="sd">    and masses, calculates the binary&#39;s longitude of the ascending node Omega.</span>
+<span class="sd">    Usage note: Intended for binary system, but pass x2 = v2 = 0 to use with any</span>
+<span class="sd">    location in the disk.</span>
+
+<span class="sd">    Calculates Omega using the following: Omega = arccos(n_x/|n|) n_y &gt; 0</span>
+<span class="sd">    Omega = 2*pi - arccos(n_x/|n|) n_y &lt; 0</span>
+<span class="sd">    where n = (0,0,1) x h for h = r x v</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------    </span>
+<span class="sd">    Assumed as pynbody SimArrays in simulation units (AU, scaled velocity, etc)</span>
+<span class="sd">    </span>
+<span class="sd">    x1,x2 : SimArrays</span>
+<span class="sd">        Primary and secondary position arrays [AU]</span>
+<span class="sd">    v1,v2 :  SimArrays</span>
+<span class="sd">        Primary and secondary velocity arrays [km/s]</span>
+<span class="sd">    Flag : bool</span>
+<span class="sd">        whether or not to convert to cgs.  if false, already in cgs</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Omega : SimArray</span>
+<span class="sd">        longitude of the ascending node in degrees</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1">#Ensure units are in cgs</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Define unit vectors pointing along z, x and y axes respectively</span>
+    <span class="c1"># Also ensure function can handle any number of values</span>
+    <span class="n">length</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">computeLenAx</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+
+    <span class="n">k</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">length</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">length</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">length</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span><span class="p">(</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">j</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">i</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">k</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">j</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="c1"># Relative position vector in cgs</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span><span class="p">)</span>
+
+    <span class="c1"># Compute relative velocity vector in cgs with appropriate scale</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">v1</span> <span class="o">-</span> <span class="n">v2</span><span class="p">)</span>
+
+    <span class="c1"># Compute specific angular momentum vector</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm**2 s**-1&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute vector pointing to ascending node</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm**2 s**-1&#39;</span><span class="p">)</span>
+    <span class="c1">#magN = np.linalg.norm(n, axis=ax)</span>
+    <span class="n">magN</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm**2 s**-1&#39;</span><span class="p">)</span>    
+
+    <span class="c1"># Compute LoAN</span>
+    <span class="n">inc</span> <span class="o">=</span> <span class="n">calcInc</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span><span class="o">/</span><span class="n">RAD2DEG</span>
+    <span class="n">Omega</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="n">dotProduct</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="o">/</span> <span class="n">magN</span><span class="p">),</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="n">Omega</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="o">==</span> <span class="n">Omega</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="c1">#Filter nans</span>
+
+    <span class="c1"># If inclination is ~0, define LoAN as 0</span>
+    <span class="n">Omega</span><span class="p">[</span><span class="n">inc</span> <span class="o">&lt;</span> <span class="n">SMALL</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="c1"># Fix phase due to arccos return range</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Omega</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">dotProduct</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.0</span>
+        <span class="n">Omega</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="n">Omega</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">dotProduct</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="n">Omega</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="n">Omega</span>
+
+    <span class="c1"># Convert to degrees, return</span>
+    <span class="k">return</span> <span class="n">Omega</span> <span class="o">*</span> <span class="n">RAD2DEG</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcEccVector"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcEccVector">[docs]</a><span class="k">def</span> <span class="nf">calcEccVector</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for positions and velocity of primary and secondary bodies</span>
+<span class="sd">    and masses, calculates the eccentricity vector in the reduced two body system.</span>
+<span class="sd">    Usage note: Intended for binary system, but pass x2 = v2 = 0 to use with any</span>
+<span class="sd">    location in the disk.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x1,x2 : SimArrays</span>
+<span class="sd">        Primary and secondary position arrays [length]</span>
+<span class="sd">    v1, v2 : SimArrays</span>
+<span class="sd">        Primary and secondary velocity arrays [velocity]</span>
+<span class="sd">    m1,m2 : SimArrays</span>
+<span class="sd">        Primary and secondary masses [mass]</span>
+<span class="sd">    Flag : bool</span>
+<span class="sd">        Whether or not to internally convert to cgs units</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Ecc : SimArray</span>
+<span class="sd">        Eccentricity vector in cgs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1">#Ensure units are in cgs</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Determine length of arrays</span>
+    <span class="n">length</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">computeLenAx</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+
+    <span class="c1"># Relative position vector in cgs</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span><span class="p">)</span>
+    <span class="n">magR</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">),</span><span class="mi">1</span><span class="p">),</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute standard gravitational parameter in cgs</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="p">(</span><span class="n">G</span> <span class="o">*</span> <span class="p">(</span><span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">),</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Compute relative velocity vector in cgs with appropriate scale</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">v1</span> <span class="o">-</span> <span class="n">v2</span><span class="p">)</span>
+
+    <span class="c1"># Compute specific angular momentum vector</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm**2 s**-1&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute, return eccentricity vector</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm**3 s**-2&#39;</span><span class="p">)</span> <span class="o">/</span> <span class="n">mu</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">r</span> <span class="o">/</span> <span class="n">magR</span><span class="p">)</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcArgPeri"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcArgPeri">[docs]</a><span class="k">def</span> <span class="nf">calcArgPeri</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for positions and velocity of primary and secondary bodies</span>
+<span class="sd">    and masses, calculates the eccentricity vector in the reduced two body system.</span>
+<span class="sd">    Usage note: Intended for binary system, but pass x2 = v2 = 0 to use with any</span>
+<span class="sd">    location in the disk.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Assumed as pynbody SimArrays [preferred units]</span>
+<span class="sd">    </span>
+<span class="sd">    x1,x2 : SimArrays</span>
+<span class="sd">        Primary and secondary position arrays [AU]</span>
+<span class="sd">    v1,v2 : SimArrays</span>
+<span class="sd">        Primary and secondary velocity arrays [km/s]</span>
+<span class="sd">    m1, m2 : SimArrays</span>
+<span class="sd">        Primary and secondary masses [Msol]</span>
+<span class="sd">    Flag : bool</span>
+<span class="sd">        Whether or not to internally convert to cgs units</span>
+<span class="sd">        If flag == false, input assumed to be in cgs</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    w : float</span>
+<span class="sd">        Argument of pericenter in degrees</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1">#Ensure units are in cgs</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute eccentricity vector</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="n">calcEccVector</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">magE</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">length</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">computeLenAx</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+
+    <span class="c1"># Define unit vector pointing along z axis</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">length</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">length</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">k</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="c1"># Define specific angular momentum vector</span>
+    <span class="c1"># Relative position vector in cgs</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span><span class="p">)</span>
+
+    <span class="c1"># Compute relative velocity vector in cgs with appropriate scale</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">v1</span> <span class="o">-</span> <span class="n">v2</span><span class="p">)</span>
+
+    <span class="c1"># Compute specific angular momentum vector</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+
+    <span class="c1"># Compute vector pointing to ascending node</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+    <span class="c1">#magN = np.linalg.norm(n, axis=ax)    </span>
+    <span class="n">magN</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm**3 s**-1&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Ensure no divide by zero errors?</span>
+    <span class="c1">#magN[magN &lt; SMALL] = 1.0</span>
+
+    <span class="c1"># Compute argument of periapsis</span>
+    <span class="n">inc</span> <span class="o">=</span> <span class="n">calcInc</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span><span class="o">/</span><span class="n">RAD2DEG</span>
+    <span class="n">arg</span> <span class="o">=</span> <span class="n">dotProduct</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">magN</span> <span class="o">*</span> <span class="n">magE</span><span class="p">)</span>
+    
+    <span class="c1"># Bounds check arg, set nans to 0    </span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="n">arg</span><span class="p">),</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="n">w</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="o">==</span> <span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="c1"># Fix w because of arccos range</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">dotProduct</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.0</span>
+    <span class="n">w</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="n">w</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">w</span><span class="p">[</span><span class="n">inc</span> <span class="o">&lt;</span> <span class="n">SMALL</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># For orbit in a plane</span>
+
+    <span class="c1">#Return in degrees</span>
+    <span class="k">return</span> <span class="n">w</span> <span class="o">*</span> <span class="n">RAD2DEG</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcTrueAnomaly"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcTrueAnomaly">[docs]</a><span class="k">def</span> <span class="nf">calcTrueAnomaly</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for positions and velocity of primary and secondary bodies</span>
+<span class="sd">    and masses, calculates the true anomaly in the reduced two body system.</span>
+<span class="sd">    Usage note: Intended for binary system, but pass x2 = v2 = 0 to use with any</span>
+<span class="sd">    location in the disk.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Assumed as pynbody SimArrays [preferred units]</span>
+<span class="sd">    </span>
+<span class="sd">    x1,x2 : SimArrays</span>
+<span class="sd">        Primary and secondary position arrays [AU]</span>
+<span class="sd">    v1,v2 : SimArrays</span>
+<span class="sd">        Primary and secondary velocity arrays [km/s]</span>
+<span class="sd">    m1, m2 : SimArrays</span>
+<span class="sd">        Primary and secondary masses [Msol]</span>
+<span class="sd">    Flag: bool</span>
+<span class="sd">        Whether or not to internally convert to cgs units</span>
+<span class="sd">        if flag is false, input assumed to be in cgs</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    nu: float</span>
+<span class="sd">        True anomaly in degrees</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1">#Ensure units are in cgs</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute length, correct axis</span>
+    <span class="n">length</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">computeLenAx</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+
+    <span class="c1"># Compute eccentricity vector</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="n">calcEccVector</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">magE</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+
+    <span class="c1"># Compute radius vector</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">v1</span> <span class="o">-</span> <span class="n">v2</span><span class="p">)</span>
+    <span class="n">magR</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">),</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Compute true anomaly making sure I can handle single numbers or arrays</span>
+    <span class="n">nu</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="n">dotProduct</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">magE</span> <span class="o">*</span> <span class="n">magR</span><span class="p">)),</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    
+    <span class="c1">#Correct results due to arccos range, nans    </span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">dotProduct</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.0</span>    
+    <span class="n">nu</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="n">nu</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">nu</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="o">==</span> <span class="n">nu</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="c1"># Convert to degrees, return</span>
+    <span class="k">return</span> <span class="n">nu</span> <span class="o">*</span> <span class="n">RAD2DEG</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcEccentricAnomaly"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcEccentricAnomaly">[docs]</a><span class="k">def</span> <span class="nf">calcEccentricAnomaly</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for positions and velocity of primary and secondary bodies</span>
+<span class="sd">    and masses, calculates the eccentric anomaly in the reduced two body system.</span>
+<span class="sd">    Usage note: Intended for binary system, but pass x2 = v2 = 0 to use with any</span>
+<span class="sd">    location in the disk.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Assumed as pynbody SimArrays [preferred units]</span>
+<span class="sd">    </span>
+<span class="sd">    x1,x2 : SimArrays</span>
+<span class="sd">        Primary and secondary position arrays [AU]</span>
+<span class="sd">    v1,v2 : SimArrays</span>
+<span class="sd">        Primary and secondary velocity arrays [km/s]</span>
+<span class="sd">    m1, m2 : SimArrays</span>
+<span class="sd">        Primary and secondary masses [Msol]</span>
+<span class="sd">    Flag : bool</span>
+<span class="sd">        Whether or not to internally convert to cgs units</span>
+<span class="sd">        if flag is false, input assumed to be in cgs</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    E : float</span>
+<span class="sd">        Eccentric anomaly in degrees</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1">#Ensure units are in cgs</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+            
+    <span class="n">e</span> <span class="o">=</span> <span class="n">calcEcc</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">nu</span> <span class="o">=</span> <span class="n">calcTrueAnomaly</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># Calc E</span>
+    <span class="n">nu</span> <span class="o">=</span> <span class="n">nu</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span><span class="p">)</span>  <span class="c1"># convert to radians for numpy functions</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">((</span><span class="n">e</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">nu</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">nu</span><span class="p">)))</span>
+
+    <span class="c1"># Make sure this can handle single numbers or arrays</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">E</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">nu</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="ow">and</span> <span class="n">nu</span> <span class="o">&lt;</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">:</span>
+            <span class="n">E</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="n">E</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">E</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">nu</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">nu</span> <span class="o">&lt;</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="n">E</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">nu</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">nu</span> <span class="o">&lt;</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)]</span>
+
+    <span class="c1"># Return E in degrees</span>
+    <span class="k">return</span> <span class="n">E</span> <span class="o">*</span> <span class="n">RAD2DEG</span></div>
+
+
+<div class="viewcode-block" id="calcMeanAnomaly"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcMeanAnomaly">[docs]</a><span class="k">def</span> <span class="nf">calcMeanAnomaly</span><span class="p">(</span><span class="n">x1</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">x2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">v1</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">v2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">m1</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">m2</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for positions and velocity of primary and secondary bodies</span>
+<span class="sd">    and masses, calculates the Mean anomaly in the reduced two body system.</span>
+<span class="sd">    Usage note: Intended for binary system, but pass x2 = v2 = 0 to use with any</span>
+<span class="sd">    location in the disk.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Assumed as pynbody SimArrays [preferred units]</span>
+<span class="sd">    </span>
+<span class="sd">    x1,x2 : SimArrays</span>
+<span class="sd">        Primary and secondary position arrays [AU]</span>
+<span class="sd">    v1,v2 : SimArrays</span>
+<span class="sd">        Primary and secondary velocity arrays [km/s]</span>
+<span class="sd">    m1, m2 : SimArrays</span>
+<span class="sd">        Primary and secondary masses [Msol]</span>
+<span class="sd">    Flag : bool</span>
+<span class="sd">        Whether or not to internally convert to cgs units</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    M : float</span>
+<span class="sd">        Mean anomaly in degrees</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1">#Ensure units are in cgs</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="n">calcEcc</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">E</span> <span class="o">=</span> <span class="n">calcEccentricAnomaly</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="n">calcEcc</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">E</span> <span class="o">=</span> <span class="n">calcEccentricAnomaly</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># Calculate Mean Anomaly</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="n">E</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span><span class="p">)</span>  <span class="c1"># Convert E to radians for numpy</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">E</span> <span class="o">-</span> <span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+
+    <span class="c1"># Return M in degrees</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">M</span> <span class="o">*</span> <span class="n">RAD2DEG</span><span class="p">)</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="trueToMean"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.trueToMean">[docs]</a><span class="k">def</span> <span class="nf">trueToMean</span><span class="p">(</span><span class="n">nu</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given the true anomaly nu in degrees and the eccentricity e, compute the mean anomaly M in degrees.</span>
+<span class="sd">    Can take arbitary units.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nu : float</span>
+<span class="sd">        True anomaly (degrees)</span>
+<span class="sd">    e : float</span>
+<span class="sd">        eccentricity</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    M:  float</span>
+<span class="sd">        mean anomaly (degrees)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Compute eccentric anomaly E</span>
+    <span class="n">nu</span> <span class="o">=</span> <span class="n">nu</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span><span class="p">)</span>  <span class="c1"># convert to radians for numpy functions</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">((</span><span class="n">e</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">nu</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">nu</span><span class="p">)))</span>
+
+    <span class="c1"># Make sure this can handle single numbers or arrays</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">E</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">nu</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="ow">and</span> <span class="n">nu</span> <span class="o">&lt;</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">:</span>
+            <span class="n">E</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="n">E</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">E</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">nu</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">nu</span> <span class="o">&lt;</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="n">E</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">nu</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">nu</span> <span class="o">&lt;</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)]</span>
+
+    <span class="c1"># Compute, return M</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">E</span> <span class="o">-</span> <span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">M</span> <span class="o">*</span> <span class="n">RAD2DEG</span><span class="p">)</span></div>
+
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="calcMeanMotion"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcMeanMotion">[docs]</a><span class="k">def</span> <span class="nf">calcMeanMotion</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for positions and velocity of primary and secondary bodies</span>
+<span class="sd">    and masses, calculates the Mean motion in the reduced two body system.</span>
+<span class="sd">    Usage note: Intended for binary system, but pass x2 = v2 = 0 to use with any</span>
+<span class="sd">    location in the disk.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Assumed as pynbody SimArrays [preferred units]</span>
+<span class="sd">    </span>
+<span class="sd">    x1,x2 : SimArrays</span>
+<span class="sd">        Primary and secondary position arrays [AU]</span>
+<span class="sd">    v1,v2 : SimArrays</span>
+<span class="sd">        Primary and secondary velocity arrays [km/s]</span>
+<span class="sd">    m1, m2 : SimArrays</span>
+<span class="sd">        Primary and secondary masses [Msol]</span>
+<span class="sd">    Flag : bool</span>
+<span class="sd">        Whether or not to internally convert to cgs units</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    n : SimArray</span>
+<span class="sd">        Mean motion in 1/s</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1">#Ensure units are in cgs</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+        
+    <span class="c1">#Put binary in reduced mass frame, compute, return</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">calcSemi</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">v1</span><span class="p">,</span><span class="n">v2</span><span class="p">,</span><span class="n">m1</span><span class="p">,</span><span class="n">m2</span><span class="p">,</span><span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span><span class="s1">&#39;au&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">G</span> <span class="o">*</span> <span class="p">(</span><span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mu</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span></div>
+    
+<span class="c1">#end function</span>
+
+<span class="c1">##########################################################################</span>
+<span class="c1">#                                                                                               #</span>
+<span class="c1">#	Functions for computing Cartesian coordinates from Keplerian orbital elements.              #</span>
+<span class="c1">#                                                                                               #</span>
+<span class="c1">##########################################################################</span>
+
+
+<div class="viewcode-block" id="keplerToCartesian"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.keplerToCartesian">[docs]</a><span class="k">def</span> <span class="nf">keplerToCartesian</span><span class="p">(</span>
+        <span class="n">a</span><span class="p">,</span>
+        <span class="n">e</span><span class="p">,</span>
+        <span class="n">i</span><span class="p">,</span>
+        <span class="n">Omega</span><span class="p">,</span>
+        <span class="n">w</span><span class="p">,</span>
+        <span class="n">M</span><span class="p">,</span>
+        <span class="n">m1</span><span class="p">,</span>
+        <span class="n">m2</span><span class="p">,</span>
+        <span class="n">angleFlag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">scaleFlag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    TODO: make SimArray compatible</span>
+<span class="sd">    Given the Keplerian orbital elements, compute the cartesian coordinates of the object orbiting</span>
+<span class="sd">    in the reduced mass frame.  Note: Requires all angles in degrees unless noted.</span>
+
+<span class="sd">    Note: A little redudant that I compute M when I typically already know the true anomaly nu, but most</span>
+<span class="sd">    other schemes know M initially instead of nu so I&#39;ll keep it for compatibility&#39;s sake.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    a : float</span>
+<span class="sd">        Semimajor axis (AU)</span>
+<span class="sd">    e : float</span>
+<span class="sd">        Eccentricity</span>
+<span class="sd">    i : float</span>
+<span class="sd">        inclination (degrees)</span>
+<span class="sd">    Omega : float</span>
+<span class="sd">        Longitude of Ascending Node (degrees)</span>
+<span class="sd">    w : float</span>
+<span class="sd">        Argument of Pericenter (degrees)</span>
+<span class="sd">    M : float</span>
+<span class="sd">        Mean Anomaly (degrees)</span>
+<span class="sd">    m1, m2 : float</span>
+<span class="sd">        Masses of central object(s) (Msol)</span>
+<span class="sd">    angleFlag, scaleFlag : bools</span>
+<span class="sd">        Tells code to convert degrees-&gt;rad and/or scale velocity to sim units, respectively</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    x : numpy array</span>
+<span class="sd">        Position array of the object in reduced mass frame (AU)</span>
+<span class="sd">    v : numpy array</span>
+<span class="sd">        velocity array (km/s) with VEL_UNIT scaling factor optional</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Compute length to allow for multiple objects</span>
+    <span class="n">length</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">computeLenAx</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+
+    <span class="c1"># Convert everything to radians!</span>
+    <span class="k">if</span> <span class="n">angleFlag</span><span class="p">:</span>
+        <span class="n">i</span> <span class="o">/=</span> <span class="n">RAD2DEG</span>
+        <span class="n">Omega</span> <span class="o">/=</span> <span class="n">RAD2DEG</span>
+        <span class="n">w</span> <span class="o">/=</span> <span class="n">RAD2DEG</span>
+        <span class="n">M</span> <span class="o">/=</span> <span class="n">RAD2DEG</span>
+
+    <span class="c1"># Convert M-&gt;E by solving M = E-esinE for E</span>
+    <span class="c1"># Rearrange to E - esinE - M = 0 to solve for root</span>
+    <span class="k">def</span> <span class="nf">F</span><span class="p">(</span><span class="n">E</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">ecc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">E</span> <span class="o">-</span> <span class="n">ecc</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">E</span><span class="p">)</span> <span class="o">-</span> <span class="n">m</span>
+
+    <span class="c1"># Compute eccentric anomaly in radians</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="n">optimize</span><span class="o">.</span><span class="n">newton</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
+
+    <span class="c1"># Compute unit vectors P, Q along axes of PQW frame</span>
+    <span class="c1"># These vectors will transform to proper barycentric frame given i, Omega,</span>
+    <span class="c1"># w orbital params</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">length</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">length</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">P</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">w</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">Omega</span><span class="p">[:])</span> <span class="o">-</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">w</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">i</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">Omega</span><span class="p">[:])</span>
+        <span class="n">P</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">w</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">Omega</span><span class="p">[:])</span> <span class="o">+</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">w</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">i</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">Omega</span><span class="p">[:])</span>
+        <span class="n">P</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">w</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">i</span><span class="p">[:])</span>
+        <span class="n">Q</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">w</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">Omega</span><span class="p">[:])</span> <span class="o">-</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">w</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">i</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">Omega</span><span class="p">[:])</span>
+        <span class="n">Q</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">w</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">Omega</span><span class="p">[:])</span> <span class="o">+</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">w</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">i</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">Omega</span><span class="p">[:])</span>
+        <span class="n">Q</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">i</span><span class="p">[:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">w</span><span class="p">[:])</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">P</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">Omega</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">*</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">Omega</span><span class="p">)</span>
+        <span class="n">P</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">Omega</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">*</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">Omega</span><span class="p">)</span>
+        <span class="n">P</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">Omega</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">*</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">Omega</span><span class="p">)</span>
+        <span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">Omega</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">*</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">Omega</span><span class="p">)</span>
+        <span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+
+    <span class="c1"># Compute Standard Gravitational Parameter in cgs assuming masses in Msol</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">BigG</span> <span class="o">*</span> <span class="p">(</span><span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span><span class="p">)</span> <span class="o">*</span> <span class="n">Msol</span>
+
+    <span class="c1"># Compute radius vector in AU...assumes a already in AU!</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">E</span><span class="p">)</span> <span class="o">-</span> <span class="n">e</span><span class="p">)</span> <span class="o">*</span> <span class="n">P</span> <span class="o">+</span> <span class="n">a</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">e</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">E</span><span class="p">)</span> <span class="o">*</span> <span class="n">Q</span>
+
+    <span class="c1"># Compute velocity vector</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">E</span><span class="p">)))</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="o">-</span><span class="n">a</span> <span class="o">*</span> <span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">E</span><span class="p">)</span> <span class="o">*</span> <span class="n">tmp</span> <span class="o">*</span> <span class="n">P</span>
+    <span class="n">v</span> <span class="o">+=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">e</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">E</span><span class="p">)</span> <span class="o">*</span> <span class="n">tmp</span> <span class="o">*</span> <span class="n">Q</span>
+
+    <span class="c1"># Convert v to km/s and in sim units if flag says yes</span>
+    <span class="n">conv</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">AUCM</span><span class="p">)</span> <span class="o">*</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="mf">1000.0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">scaleFlag</span><span class="p">:</span>
+        <span class="n">v</span> <span class="o">*=</span> <span class="n">conv</span> <span class="o">/</span> <span class="n">VEL_UNIT</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">v</span> <span class="o">*=</span> <span class="n">conv</span>
+
+    <span class="k">return</span> <span class="n">r</span><span class="p">,</span> <span class="n">v</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="reduceToPhysical"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.reduceToPhysical">[docs]</a><span class="k">def</span> <span class="nf">reduceToPhysical</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function converts from reduced mass coordinates to physical, origin-centered coords</span>
+<span class="sd">    Works for arbitrary units, number of objects with coordinates as long as m1+m2 = central mass.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    r : array</span>
+<span class="sd">        radius vector</span>
+<span class="sd">    v : array</span>
+<span class="sd">        velocity vector</span>
+<span class="sd">    m1, m2 : floats</span>
+<span class="sd">        mass of central object</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    --------</span>
+<span class="sd">    x1, x2 : arrays</span>
+<span class="sd">        position vectors of 2 mutually orbiting objects</span>
+<span class="sd">    v1, v2 : arrays</span>
+<span class="sd">        velocity vectors of 2 mutually orbiting objects</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Compute reduced mass</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="p">(</span><span class="n">m1</span> <span class="o">*</span> <span class="n">m2</span><span class="p">)</span> <span class="o">/</span> <span class="n">M</span>
+
+    <span class="c1"># Compute positions of the form:  x2----origin--x1 where m1 &gt;= m2</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span> <span class="o">/</span> <span class="n">m1</span><span class="p">)</span> <span class="o">*</span> <span class="n">r</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">mu</span> <span class="o">/</span> <span class="n">m2</span><span class="p">)</span> <span class="o">*</span> <span class="n">r</span>
+
+    <span class="c1"># Compute velocities for CCW orbit such that m2 v_y &lt; 0, m1 v_y &gt; 0 at</span>
+    <span class="c1"># pericenter</span>
+    <span class="n">v1</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span> <span class="o">/</span> <span class="n">m1</span><span class="p">)</span> <span class="o">*</span> <span class="n">v</span>
+    <span class="n">v2</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">mu</span> <span class="o">/</span> <span class="n">m2</span><span class="p">)</span> <span class="o">*</span> <span class="n">v</span>
+
+    <span class="k">return</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="initializeBinary"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.initializeBinary">[docs]</a><span class="k">def</span> <span class="nf">initializeBinary</span><span class="p">(</span>
+        <span class="n">a</span><span class="p">,</span>
+        <span class="n">e</span><span class="p">,</span>
+        <span class="n">i</span><span class="p">,</span>
+        <span class="n">Omega</span><span class="p">,</span>
+        <span class="n">w</span><span class="p">,</span>
+        <span class="n">M</span><span class="p">,</span>
+        <span class="n">m1</span><span class="p">,</span>
+        <span class="n">m2</span><span class="p">,</span>
+        <span class="n">angleFlag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">scaleFlag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given the initial Kepler orbital parameters, compute the Cartesian positions and velocities</span>
+<span class="sd">    for 2 mutually orbiting stars (binaries!).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Keplerian orbital elements : floats</span>
+<span class="sd">        in Au, degrees (see above for more details)</span>
+<span class="sd">    m1,m2 : floats</span>
+<span class="sd">        Masses of central objects (Msol)</span>
+<span class="sd">    angleFlag : bool</span>
+<span class="sd">        whether or not to convert from degrees-&gt;radians (True = convert)</span>
+<span class="sd">    scaleFlag : bool</span>
+<span class="sd">        whether or not to put v in sim units (True = do it/default option)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    x1, x2 : array</span>
+<span class="sd">        Positions of 2 objects about origin (Au)</span>
+<span class="sd">    v1, v2 : array</span>
+<span class="sd">        Velocities of 2 objects about origin (km/s in Sim Units)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">r</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">keplerToCartesian</span><span class="p">(</span>
+        <span class="n">a</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">Omega</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">angleFlag</span><span class="p">,</span> <span class="n">scaleFlag</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">reduceToPhysical</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">)</span></div>
+
+<span class="c1"># end function</span>
+
+<span class="c1">##########################################################################</span>
+<span class="c1">#                                                                                               #</span>
+<span class="c1">#	Misc functions I found useful to impliment for the above even more useful functions.       #</span>
+<span class="c1">#                                                                                               #</span>
+<span class="c1">##########################################################################</span>
+
+
+<div class="viewcode-block" id="compute_L"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.compute_L">[docs]</a><span class="k">def</span> <span class="nf">compute_L</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given an objects semimajor axis a, eccentricity e, and mass around which it</span>
+<span class="sd">    is orbiting, M compute it&#39;s angular momentum assuming a quasi-Keplerian</span>
+<span class="sd">    orbit</span>
+<span class="sd">    </span>
+<span class="sd">    L = mu*sqrt(G*M*a*(1-e^2))</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    a : SimArray</span>
+<span class="sd">        semimajor axis</span>
+<span class="sd">    e : float (or array of float or SimArray with units = &quot;1&quot;)</span>
+<span class="sd">        eccentricity</span>
+<span class="sd">    m1 : SimArray</span>
+<span class="sd">        mass of (primary) central body</span>
+<span class="sd">    m2 : SimArray</span>
+<span class="sd">        mass of secondary body</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    L : SimArray</span>
+<span class="sd">        Keplerian angular momentum in cgs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#Ensure cgs units</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s2">&quot;cm&quot;</span><span class="p">)</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="p">(</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="p">((</span><span class="n">m1</span><span class="o">*</span><span class="n">m2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="p">))</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mu</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">G</span><span class="o">*</span><span class="n">M</span><span class="o">*</span><span class="n">a</span><span class="o">*</span><span class="p">(</span><span class="mf">1.0</span><span class="o">-</span><span class="n">e</span><span class="o">*</span><span class="n">e</span><span class="p">))</span></div>
+
+<span class="c1">#end function</span>
+    
+<div class="viewcode-block" id="compute_E"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.compute_E">[docs]</a><span class="k">def</span> <span class="nf">compute_E</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given an objects semimajor axis a and mass around which it</span>
+<span class="sd">    is orbiting, M compute it&#39;s total energy assuming a quasi-Keplerian</span>
+<span class="sd">    orbit</span>
+<span class="sd">    </span>
+<span class="sd">    E = -0.5*G*m1*m2/a</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    a : SimArray</span>
+<span class="sd">        semimajor axis</span>
+<span class="sd">    m1 : SimArray</span>
+<span class="sd">        mass of (primary) central body</span>
+<span class="sd">    m2 : SimArray</span>
+<span class="sd">        mass of secondary body</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    E : SimArray</span>
+<span class="sd">        Keplerian total energy in cgs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#Ensure cgs</span>
+    <span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+    <span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>    
+    
+    <span class="k">return</span> <span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="n">G</span><span class="o">*</span><span class="n">m1</span><span class="o">*</span><span class="n">m2</span><span class="o">/</span><span class="n">a</span></div>
+    
+<span class="c1">#end function</span>
+
+<div class="viewcode-block" id="accretionEDot"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.accretionEDot">[docs]</a><span class="k">def</span> <span class="nf">accretionEDot</span><span class="p">(</span><span class="n">Binary</span><span class="p">,</span> <span class="n">M_dot</span><span class="p">,</span> <span class="n">dt</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a Binary object and an accretion rate (assumed to be in M_sol/yr), compute the theoretical rate of change of the</span>
+<span class="sd">    binary&#39;s eccentricity in 1/second.</span>
+<span class="sd">    Assumptions:</span>
+<span class="sd">    -radius, velocity of binary nearly constant over accretion (found to more or less apply via empirical measurements)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Binary: binary object class</span>
+<span class="sd">    Mdot: float</span>
+<span class="sd">        accretion rate in M_sol/yr</span>
+<span class="sd">    dt: float</span>
+<span class="sd">        time interval</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------    </span>
+<span class="sd">    de/dt : float</span>
+<span class="sd">        change in eccentricity in 1/second</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Convert relevant quantities into cgs</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">Binary</span><span class="o">.</span><span class="n">a</span> <span class="o">*</span> <span class="n">AUCM</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="n">Binary</span><span class="o">.</span><span class="n">e</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="p">(</span><span class="n">Binary</span><span class="o">.</span><span class="n">m1</span> <span class="o">+</span> <span class="n">Binary</span><span class="o">.</span><span class="n">m2</span><span class="p">)</span> <span class="o">*</span> <span class="n">Msol</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">BigG</span> <span class="o">*</span> <span class="n">M</span>
+    <span class="n">Mdot</span> <span class="o">=</span> <span class="n">M_dot</span><span class="o">*</span><span class="n">Msol</span>
+    <span class="c1">#dm = Mdot*dt</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">e</span><span class="p">)</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="o">-</span><span class="n">mu</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">a</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">BigG</span> <span class="o">*</span> <span class="n">M</span> <span class="o">/</span> <span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">e</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">e</span><span class="p">)))</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">r</span> <span class="o">*</span> <span class="n">v</span>
+    <span class="c1">#Hdot = BigG*dm*dt/r</span>
+    <span class="n">Hdot</span> <span class="o">=</span> <span class="n">Mdot</span> <span class="o">*</span> <span class="n">r</span> <span class="o">*</span> <span class="n">v</span> <span class="o">/</span> <span class="n">M</span>
+
+    <span class="n">edot</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">eps</span> <span class="o">*</span> <span class="n">h</span> <span class="o">*</span> <span class="n">Hdot</span> <span class="o">/</span> <span class="p">(</span><span class="n">mu</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span>
+    <span class="n">edot</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">eps</span> <span class="o">*</span> <span class="n">h</span> <span class="o">*</span> <span class="n">h</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">mu</span> <span class="o">*</span> <span class="n">mu</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">edot</span></div>
+
+<span class="c1"># end function</span>
+
+<div class="viewcode-block" id="binaryPrecession"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.binaryPrecession">[docs]</a><span class="k">def</span> <span class="nf">binaryPrecession</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">r_in</span><span class="p">,</span><span class="n">r_out</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes the period of the binary precession due to an axisymmetric disk</span>
+<span class="sd">    given by Rafikov 2013.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s : Tipsy snapshot</span>
+<span class="sd">    r_in, r_out : float</span>
+<span class="sd">        inner and outer radii of the circumbinary disk [AU]</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    T : SimArray</span>
+<span class="sd">        Period of binary argument of periastron precession in yr</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+    <span class="n">v1</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+    <span class="n">v2</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+    <span class="n">m1</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+    <span class="n">m2</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>    
+    
+    <span class="c1"># Define required parameters in cgs</span>
+    <span class="n">M_bin</span> <span class="o">=</span> <span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span>
+    <span class="n">M_disk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>    
+    <span class="n">a</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">calcSemi</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">v1</span><span class="p">,</span><span class="n">v2</span><span class="p">,</span><span class="n">m1</span><span class="p">,</span><span class="n">m2</span><span class="p">,</span><span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span><span class="s1">&#39;au&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span> <span class="c1">#semimajor axis in cm</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">calcMeanMotion</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1">#mean motion in 1/s    </span>
+    <span class="n">r_in</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">r_in</span><span class="p">,</span><span class="s1">&#39;au&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+    <span class="n">r_out</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">r_out</span><span class="p">,</span><span class="s1">&#39;au&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>    
+    
+    <span class="n">T</span> <span class="o">=</span> <span class="mf">8.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="p">(</span><span class="n">M_bin</span><span class="o">/</span><span class="n">M_disk</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">r_out</span><span class="p">,</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">r_in</span><span class="p">,</span><span class="mf">2.5</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mf">0.5</span><span class="o">*</span><span class="n">n</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">T</span><span class="p">)</span><span class="o">/</span><span class="n">YEARSEC</span></div>
+    
+<span class="c1">#end function</span>
+
+
+<div class="viewcode-block" id="calcCircularFrequency"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcCircularFrequency">[docs]</a><span class="k">def</span> <span class="nf">calcCircularFrequency</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for positions and velocity of primary and secondary bodies</span>
+<span class="sd">    and masses, calculates the circular frequency in the reduced two body system.</span>
+<span class="sd">    Usage note: Intended for binary system, but pass x2 = v2 = 0 to use with any</span>
+<span class="sd">    location in the disk.</span>
+
+<span class="sd">    omega = (L_z)/(R^2) which assumes spherical symmetry (ok assumption here)</span>
+<span class="sd">    L = sqrt(G*M*a*(1-e^2) for ~Keplerian</span>
+
+<span class="sd">    Deprecated (just use sqrt(G*M/a^3))...why did I make this?</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Assumed as pynbody SimArrays in simulation units (AU, scaled velocity, etc)</span>
+<span class="sd">    </span>
+<span class="sd">    x1,x2 : arrays</span>
+<span class="sd">        Primary and secondary position arrays (in AU)</span>
+<span class="sd">    v1, v2 : arrays</span>
+<span class="sd">        Primary and secondary velocity arrays (km/s)</span>
+<span class="sd">    m1, m2 : floats</span>
+<span class="sd">        Primary and secondary masses (Msol)</span>
+<span class="sd">    Flag : Whether or not to internally convert to cgs units</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    omega: float</span>
+<span class="sd">        Circular frequency in 1/days</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="n">calcEcc</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">calcSemi</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">*</span> <span class="n">AUCM</span>
+    
+    <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+        <span class="c1"># Remove units since input is pynbody SimArray</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">x1</span><span class="p">))</span> <span class="o">*</span> <span class="n">AUCM</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">x2</span><span class="p">))</span> <span class="o">*</span> <span class="n">AUCM</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">v1</span><span class="p">))</span> <span class="o">*</span> <span class="mi">1000</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">VEL_UNIT</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">v2</span><span class="p">))</span> <span class="o">*</span> <span class="mi">1000</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">VEL_UNIT</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">m1</span><span class="p">))</span> <span class="o">*</span> <span class="n">Msol</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">m2</span><span class="p">))</span> <span class="o">*</span> <span class="n">Msol</span>
+
+    <span class="n">length</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">computeLenAx</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+
+    <span class="c1"># Calculate angular momentum assuming all arrays are nx3</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span>
+    <span class="n">rMag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dotProduct</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">r</span><span class="p">))</span>
+    <span class="c1">#e = ...    </span>
+    <span class="c1">#a = calcSemi(x1, x2, v1, v2, m1, m2, flag=False) * AUCM</span>
+    <span class="n">L</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">BigG</span> <span class="o">*</span> <span class="p">(</span><span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span><span class="p">)</span> <span class="o">*</span> <span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">e</span> <span class="o">*</span> <span class="n">e</span><span class="p">))</span>
+
+    <span class="c1"># Convert from 1/s to 1/day, return</span>
+    <span class="k">return</span> <span class="n">L</span> <span class="o">*</span> <span class="n">DAYSEC</span> <span class="o">/</span> <span class="p">(</span><span class="n">rMag</span> <span class="o">*</span> <span class="n">rMag</span><span class="p">)</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcCOM"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcCOM">[docs]</a><span class="k">def</span> <span class="nf">calcCOM</span><span class="p">(</span><span class="n">m1</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">m2</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">x1</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">x2</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given pynbody arrays for the mass and position of the two binary stars,</span>
+<span class="sd">    function calculates the CoM of the two particles in order to check that</span>
+<span class="sd">    it&#39;s still roughly 0.</span>
+<span class="sd">    </span>
+<span class="sd">    Deprecated</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    (as pynbody SimArrays)</span>
+<span class="sd">    m1, m2 : SimArrays</span>
+<span class="sd">        Primary and secondary mass arrays (in Msol)</span>
+<span class="sd">    x1, x2 : SimArrays</span>
+<span class="sd">        Primary and secondary position arrays (in AU)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    center of mass: array</span>
+<span class="sd">        Center of mass position vector (numpy array in AU)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Strip units from inputs</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">x1</span><span class="p">))</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">x2</span><span class="p">))</span>
+    <span class="n">m1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">m1</span><span class="p">))</span>
+    <span class="n">m2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">strip_units</span><span class="p">(</span><span class="n">m2</span><span class="p">))</span>
+
+    <span class="c1"># Compute,return CoM</span>
+    <span class="k">return</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">m1</span> <span class="o">+</span> <span class="n">m2</span><span class="p">))</span> <span class="o">*</span> <span class="p">((</span><span class="n">m1</span> <span class="o">*</span> <span class="n">x1</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">m2</span> <span class="o">*</span> <span class="n">x2</span><span class="p">))</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="calcRocheLobe"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.calcRocheLobe">[docs]</a><span class="k">def</span> <span class="nf">calcRocheLobe</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given the mass ratio q = m1/m2 and the semimajor axis in AU, compute the radius of the Roche lobe</span>
+<span class="sd">    around m1 given the Eggleton approximation http://en.wikipedia.org/wiki/Roche_lobe</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    q : float</span>
+<span class="sd">        Binary mass ratio q = m1/m2</span>
+<span class="sd">    a : float</span>
+<span class="sd">        Binary semimajor axis a (in AU)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    r : float</span>
+<span class="sd">        Radius of Roche lobe around m1 (in AU)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">num</span> <span class="o">=</span> <span class="mf">0.49</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="mf">2.</span> <span class="o">/</span> <span class="mf">3.</span><span class="p">)</span>
+    <span class="n">denom</span> <span class="o">=</span> <span class="mf">0.6</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="mf">2.</span> <span class="o">/</span> <span class="mf">3.</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="mf">1.</span> <span class="o">/</span> <span class="mf">3.</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">num</span> <span class="o">/</span> <span class="n">denom</span><span class="p">)</span> <span class="o">*</span> <span class="n">a</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="dotProduct"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.dotProduct">[docs]</a><span class="k">def</span> <span class="nf">dotProduct</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given n x m numpy arrays, compute the dot product row-wise.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    a,b : n x m numpy array</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dot product : numpy array </span>
+<span class="sd">        n rows containing dot products</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Don&#39;t trust user, make sure a, b are numpy arrays of same shape</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+    <span class="k">assert</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="s2">&quot;Input arrays must be same shape.&quot;</span>
+
+    <span class="c1"># Determine correct axis to perform operation on</span>
+    <span class="n">l</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">computeLenAx</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+    <span class="c1"># Numpy multiplies element wise!</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">b</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span></div>
+
+<span class="c1"># end function</span>
+
+
+<div class="viewcode-block" id="computeLenAx"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.AddBinary.computeLenAx">[docs]</a><span class="k">def</span> <span class="nf">computeLenAx</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given an numpy array, check to see if it&#39;s length is 1 (aka it&#39;s a float, or int or whatever) or otherwise and return</span>
+<span class="sd">    it&#39;s length and the axis over which calculations like normalization and cross product is to be taken.  This function</span>
+<span class="sd">    is useful when you expect data arrays of the form x = [n,3] with weird combinations of lists/numpy arrays</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">()</span> <span class="ow">or</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">),)):</span>  <span class="c1"># Just a float</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">))):</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">length</span><span class="p">,</span> <span class="n">ax</span></div>
+
+<span class="c1"># end function</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

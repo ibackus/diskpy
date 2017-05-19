@@ -1,0 +1,406 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.calc_temp &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.calc_temp</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Calculates the temperature at a given r for a power law:</span>
+<span class="sd">    T = T0(r/r0)^Tpower</span>
+<span class="sd">If r_in has no units, au are assumed</span>
+
+<span class="sd">Created on Wed Jan 29 13:20:04 2014</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">strip_units</span><span class="p">,</span> <span class="n">match_units</span>
+
+<div class="viewcode-block" id="T"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.calc_temp.T">[docs]</a><span class="k">class</span> <span class="nc">T</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates temperature as a function of radius.  Updating the settings </span>
+<span class="sd">    contained in the ICobject will automatically cause T to be calculated</span>
+<span class="sd">    accordingly.  ICobject should contain the attribute &#39;settings&#39;.  Settings</span>
+<span class="sd">    for temperature are contained in settings.physical</span>
+<span class="sd">    </span>
+<span class="sd">    USAGE:</span>
+<span class="sd">    </span>
+<span class="sd">    T = calc_temp.T(ICobject)       # Generate function to calculate T</span>
+<span class="sd">    </span>
+<span class="sd">    T(r)        # Calculate T at r</span>
+<span class="sd">    </span>
+<span class="sd">    There are multiple kinds of available temperature profiles.  They are set</span>
+<span class="sd">    in ICobject.settings.physical.kind.  They are:</span>
+<span class="sd">    </span>
+<span class="sd">    &#39;powerlaw&#39; : (default)</span>
+<span class="sd">        Follows a power law, T = T0 * (r/r0)**Tpower</span>
+<span class="sd">        Settings needed:</span>
+<span class="sd">            T0</span>
+<span class="sd">            r0</span>
+<span class="sd">            Tpower</span>
+<span class="sd">            Tmin (optional)</span>
+<span class="sd">            Tmax (optional)</span>
+<span class="sd">            </span>
+<span class="sd">    &#39;MQWS&#39;</span>
+<span class="sd">        Mimics Mayer, Quinn et. all 2004 ICs.  Settings needed:</span>
+<span class="sd">            T0</span>
+<span class="sd">            r0 (same as r_in in the paper)</span>
+<span class="sd">            Tmin</span>
+<span class="sd">            Tmax (optional)</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ICobj</span><span class="p">):</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="n">ICobj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adiabatic_ready</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">kind</span>
+        
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+        
+        <span class="c1"># Load settings</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span>
+        
+        <span class="c1"># Calculate the basic temperature profile</span>
+        <span class="n">Tout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_nocut</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+        
+        <span class="c1"># Handle an adiabatic equation of state</span>
+        <span class="c1"># The interior cutoff affects the choice of temperature profile</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">eos</span> <span class="o">==</span> <span class="s1">&#39;adiabatic&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">adiabatic_ready</span><span class="p">:</span>
+            
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                
+                <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+                
+            <span class="n">nr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">r_a</span>
+            
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">nr</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">):</span>
+                
+                <span class="n">Tout</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_adiabatic</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span>
+                
+            <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">mask</span><span class="p">):</span>
+                
+                <span class="n">Tout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_adiabatic</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">Tout</span>
+        
+    <span class="k">def</span> <span class="nf">_est_r_adiabatic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates the radius at which the temperature profile should be made</span>
+<span class="sd">        adiabatic (for adiabatic disks only!).  This is defined the be the</span>
+<span class="sd">        first radius at which the entropy gradient switches from negative</span>
+<span class="sd">        to positive</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        </span>
+<span class="sd">        r_adiabatic : SimArray</span>
+<span class="sd">            radius</span>
+<span class="sd">        </span>
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        </span>
+<span class="sd">        Entropy gradients are estimated assuming:</span>
+<span class="sd">        </span>
+<span class="sd">        * Star gravity dominates disk self-gravity</span>
+<span class="sd">        </span>
+<span class="sd">        * Disk is thin</span>
+<span class="sd">        </span>
+<span class="sd">        * No vertical temperature gradient</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ICobj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;sigma&#39;</span><span class="p">):</span>
+            
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">,</span> <span class="s1">&#39;Sigma not found in initial conditions object&#39;</span>
+            
+        <span class="n">gamma</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">gamma</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="n">gamma</span> <span class="o">-</span> <span class="mf">1.</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">gamma</span> <span class="o">+</span> <span class="mf">1.</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="n">p</span>        
+        <span class="n">r</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">r_bins</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T_nocut</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+        <span class="n">r1</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+        <span class="c1"># Entropy/mass (up to a multiplicative and an additive constant)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">a</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1.5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">r1</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span>
+        <span class="c1"># Entropy gradient (up to a multiplicative constant)</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="c1"># Find all negative to positive zero crossings</span>
+        <span class="n">neg</span> <span class="o">=</span> <span class="n">ds</span> <span class="o">&lt;</span> <span class="mi">0</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">neg</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">neg</span><span class="p">[</span><span class="mi">1</span><span class="p">:])[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ind</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            
+            <span class="nb">print</span> <span class="s1">&#39;WARNING: Multiple r_adiabatics found.  Selecting the lowest&#39;</span>
+            <span class="n">r_adiabatic</span> <span class="o">=</span> <span class="n">r</span><span class="p">[[</span><span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">]]]</span>
+            
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">ind</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            
+            <span class="nb">print</span> <span class="s1">&#39;WARNING: could not find r_adiabatic&#39;</span>
+            <span class="n">r_adiabatic</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([</span><span class="mf">0.</span><span class="p">],</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="n">r_adiabatic</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+            
+        <span class="k">return</span> <span class="n">r_adiabatic</span>
+        
+    <span class="k">def</span> <span class="nf">_est_Tscale</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates the temperature scaling factor for the adiabatic temperature</span>
+<span class="sd">        profile so that the adiabatic temperature matches the user-set temp</span>
+<span class="sd">        at r_adiabatic.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">Tscale</span> <span class="o">=</span> <span class="mf">1.</span>
+        
+        <span class="n">T0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_nocut</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r_adiabatic</span><span class="p">)</span>
+        <span class="n">T1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_adiabatic</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r_adiabatic</span><span class="p">)</span>
+        
+        <span class="n">A</span> <span class="o">=</span> <span class="n">T0</span><span class="o">/</span><span class="n">T1</span>
+<span class="c1">#        p = self.p</span>
+<span class="c1">#        </span>
+<span class="c1">#        r = self.r_adiabatic.in_units(&#39;au&#39;)</span>
+<span class="c1">#        T0 = self.T_nocut(r)</span>
+<span class="c1">#        r = strip_units(r)</span>
+<span class="c1">#        sigma = self._parent.sigma(r)</span>
+<span class="c1">#        sigma.convert_units(&#39;Msol au**-2&#39;)</span>
+<span class="c1">#        sigma = strip_units(sigma)</span>
+<span class="c1">#        </span>
+<span class="c1">#        A = T0 * (sigma**2/r**3)**-p</span>
+        <span class="k">return</span> <span class="n">A</span>
+        
+            
+<div class="viewcode-block" id="T.T_nocut"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.calc_temp.T.T_nocut">[docs]</a>    <span class="k">def</span> <span class="nf">T_nocut</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the temperature as a function of r ignoring any interior</span>
+<span class="sd">        cutoff.  The interior cutoff would affect T for adiabatic disks</span>
+<span class="sd">        </span>
+<span class="sd">        Paramters</span>
+<span class="sd">        ---------</span>
+<span class="sd">        </span>
+<span class="sd">        r : array, SimArray, or float</span>
+<span class="sd">            radius (or radii) at which to calculate the temperature</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        </span>
+<span class="sd">        T : SimArray</span>
+<span class="sd">            temperature</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Load settings</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s1">&#39;kind&#39;</span><span class="p">):</span>
+            <span class="c1"># Add this check for backwards compatibility.  Previous versions</span>
+            <span class="c1"># only had one kind of temperature profile</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="s1">&#39;powerlaw&#39;</span>
+            
+        <span class="n">T0</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">T0</span>
+        <span class="n">Tmin</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">Tmin</span>
+        <span class="n">r0</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">r0</span>
+        <span class="n">kind</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">kind</span>
+        
+        <span class="c1"># Calculate T(r)</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">r0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span><span class="o">/</span><span class="n">r0</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="s1">&#39;1&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="c1"># Powerlaw temperature (default)</span>
+        <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;powerlaw&#39;</span><span class="p">:</span>
+            
+            <span class="n">Tpower</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">Tpower</span>
+            <span class="n">Tout</span> <span class="o">=</span> <span class="n">T0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">Tpower</span><span class="p">)</span>
+            <span class="n">Tout</span><span class="p">[</span><span class="n">Tout</span> <span class="o">&lt;</span> <span class="n">Tmin</span><span class="p">]</span> <span class="o">=</span> <span class="n">Tmin</span>
+            
+        <span class="c1"># MQWS temperature profile</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;mqws&#39;</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;MQWS&#39;</span><span class="p">):</span>
+            
+            <span class="c1"># NOTE: I&#39;m not sure how exactly they generate the temperature</span>
+            <span class="c1"># profile.  The quoted equation doesn&#39;t match their figures</span>
+            <span class="n">Tout</span> <span class="o">=</span> <span class="n">T0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="o">*</span><span class="n">a</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">Tmin</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="s1">&#39;Could not find temperature kind </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">kind</span><span class="p">)</span>
+            
+        <span class="c1"># Apply max Temp cutoff</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s1">&#39;Tmax&#39;</span><span class="p">):</span>
+            <span class="n">Tmax</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">Tmax</span>
+            <span class="n">Tout</span><span class="p">[</span><span class="n">Tout</span> <span class="o">&gt;</span> <span class="n">Tmax</span><span class="p">]</span> <span class="o">=</span> <span class="n">Tmax</span>
+        
+        <span class="k">return</span> <span class="n">Tout</span></div>
+    
+<div class="viewcode-block" id="T.setup_interior"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.calc_temp.T.setup_interior">[docs]</a>    <span class="k">def</span> <span class="nf">setup_interior</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets up the interior temperature profile.</span>
+<span class="sd">        </span>
+<span class="sd">        For an adiabatic disk, this is an adiabatic profile inside of the</span>
+<span class="sd">        cutoff.  Otherwise, nothing is done.</span>
+<span class="sd">        </span>
+<span class="sd">        Requires that sigma already be calculated</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">ICobj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span>
+        
+        <span class="k">if</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">eos</span> <span class="o">==</span> <span class="s1">&#39;adiabatic&#39;</span><span class="p">:</span>
+            
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;sigma&#39;</span><span class="p">):</span>
+                
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Cannot setup interior temp profile: sigma &#39;</span>
+                <span class="s1">&#39;needs to be calculated first&#39;</span><span class="p">)</span>
+                
+<span class="c1">#            gamma = ICobj.settings.physical.gamma</span>
+<span class="c1">#            p = (gamma - 1.)/(gamma + 1.)</span>
+<span class="c1">#            </span>
+<span class="c1">#            self.p = p</span>
+<span class="c1">#            self.gamma = gamma</span>
+<span class="c1">#            self.r_adiabatic = self._est_r_adiabatic()</span>
+<span class="c1">#            self.Tscale = self._est_Tscale()</span>
+            
+            <span class="n">r_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_est_r_adiabatic</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_a</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span><span class="p">(</span><span class="n">r_a</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">T_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_nocut</span><span class="p">(</span><span class="n">r_a</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">r_a</span> <span class="o">=</span> <span class="n">r_a</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adiabatic_ready</span> <span class="o">=</span> <span class="kc">True</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="k">pass</span></div>
+        
+<div class="viewcode-block" id="T.T_adiabatic"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.calc_temp.T.T_adiabatic">[docs]</a>    <span class="k">def</span> <span class="nf">T_adiabatic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates the adiabatic temperature profile as a function of r</span>
+<span class="sd">        </span>
+<span class="sd">        setup_interior must be run first</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+<span class="c1">#        if not self.adiabatic_ready:</span>
+<span class="c1">#            </span>
+<span class="c1">#            # Try to setup the adiabatic profile</span>
+<span class="c1">#            self.setup_interior()</span>
+            
+<span class="c1">#        p = self.p</span>
+<span class="c1">#        A = self.Tscale</span>
+<span class="c1">#        print A</span>
+<span class="c1">#        </span>
+<span class="c1">#        r = match_units(r, &#39;au&#39;)[0]</span>
+<span class="c1">#        sigma = self._parent.sigma(r)</span>
+<span class="c1">#        sigma.convert_units(&#39;Msol au**-2&#39;)</span>
+<span class="c1">#        sigma = strip_units(sigma)</span>
+<span class="c1">#        r = strip_units(r)</span>
+<span class="c1">#        return A * ((sigma**2)/(r**3))**p</span>
+            
+        <span class="n">b</span> <span class="o">=</span> <span class="mf">1.5</span>
+        
+        <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">sigma</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+        <span class="n">r_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">r_a</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">r_a</span><span class="o">.</span><span class="n">units</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span><span class="o">/</span><span class="n">r_a</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+        <span class="n">sigma_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_a</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma</span><span class="o">/</span><span class="n">sigma_a</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+        
+        <span class="n">x</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        
+        <span class="n">gamma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">gamma</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="n">gamma</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">gamma</span><span class="o">+</span><span class="mf">1.</span><span class="p">)</span>
+        
+        <span class="n">T_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_a</span>
+        
+        <span class="n">T</span> <span class="o">=</span> <span class="n">T_a</span> <span class="o">*</span> <span class="p">(</span><span class="n">y</span><span class="o">**</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">p</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span><span class="o">**-</span><span class="n">b</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">T</span></div></div>
+        
+<span class="c1">#        r = strip_units(match_units(r,&#39;au&#39;)[0])</span>
+<span class="c1">#        </span>
+<span class="c1">#        return A * (r**2)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

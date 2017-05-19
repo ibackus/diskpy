@@ -1,0 +1,521 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.pdmath package &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="diskpy.plot package" href="diskpy.plot.html" />
+    <link rel="prev" title="diskpy.disk package" href="diskpy.disk.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.plot.html" title="diskpy.plot package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.disk.html" title="diskpy.disk package"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" accesskey="U">diskpy package</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="diskpy-pdmath-package">
+<h1>diskpy.pdmath package<a class="headerlink" href="#diskpy-pdmath-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-diskpy.pdmath">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diskpy.pdmath" title="Permalink to this headline">¶</a></h2>
+<p>Created on Thu Jul 16 14:25:56 2015</p>
+<p>&#64;author: ibackus</p>
+<dl class="function">
+<dt id="diskpy.pdmath.extrap1d">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">extrap1d</code><span class="sig-paren">(</span><em>x</em>, <em>y</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#extrap1d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.extrap1d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates a linear interpolation of x and y and does a linear
+extrapolation for points outside of x and y.
+Uses scipy.interpolate.interp1d</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.meshinterp">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">meshinterp</code><span class="sig-paren">(</span><em>xedges</em>, <em>y</em>, <em>z</em>, <em>kind=’linear’</em>, <em>bounds_error=False</em>, <em>fill_value=0</em>, <em>assume_sorted=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#meshinterp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.meshinterp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a 2D interpolating function for z defined on a non-uniform mesh
+Handles units</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>xedges</strong> : array</p>
+<blockquote>
+<div><p>1D array defining the x bin edges, monotonically increasing</p>
+</div></blockquote>
+<p><strong>y</strong> : array</p>
+<blockquote>
+<div><p>2D array defining y values.  shape (nx, ny), where nx is the number
+of xedges and ny is the number of y-points at each x-bin
+So, y[i, :] are the monotonically increasing y values at xedges[i]</p>
+</div></blockquote>
+<p><strong>z</strong> : array</p>
+<blockquote>
+<div><p>2D array of z(x,y).  shape (nx, ny) = y.shape</p>
+</div></blockquote>
+<p><strong>kind</strong> : str</p>
+<blockquote>
+<div><p>(optional) Sets the kind of interpolation to perform
+[see scipy.interpolate.interp1d]</p>
+</div></blockquote>
+<p><strong>bounds_error</strong> : bool</p>
+<blockquote>
+<div><p>(optional) Flag to raise error if values outside of y are called
+[see scipy.interpolate.interp1d]</p>
+</div></blockquote>
+<p><strong>fill_value</strong> : float</p>
+<blockquote>
+<div><p>(optional) Sets the value to fill with if bounds_error = True
+[see scipy.interpolate.interp1d]</p>
+</div></blockquote>
+<p><strong>assume_sorted</strong> : bool</p>
+<blockquote>
+<div><p>[see scipy.interpolate.interp1d]</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">meshspline(x, y): callable interpolation function</p>
+<blockquote class="last">
+<div><p>Function which can be called on x, y pairs to give the interpolated
+value of z.  Values outside of the range of y are set to fill_value.
+x values outside the range of xedges are set to the boundary of xedges</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.smoothstep">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">smoothstep</code><span class="sig-paren">(</span><em>x</em>, <em>degree=5</em>, <em>rescale=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#smoothstep"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.smoothstep" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates a smooth step function y(x) evaluated at the data points x.
+x should be a numpy array or float.</p>
+<p>y(x) is a polynomial of order ‘degree’ (default is 5).  degree must be an
+odd number between 3 and 25 (inclusive).  The higher the order, the
+sharper the step is.</p>
+<dl class="docutils">
+<dt>y(x) is defined by:</dt>
+<dd>y(0) = 0
+y(1) = 1
+The first (degree - 1)/2 derivatives are 0 at y = 0,1</dd>
+</dl>
+<p><strong>* ARGUMENTS *</strong></p>
+<ul class="simple">
+<li>x * Points at which to evaluate the smoothstep</li>
+<li><dl class="first docutils">
+<dt>degree * Degree of the smooth step.  Must be odd number between 3 and 25</dt>
+<dd>default = 5</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>rescale *  Rescale x to be between 0 and 1.  Default = False.  If True,</dt>
+<dd>x MUST be an array (greater than length 1)</dd>
+</dl>
+</li>
+</ul>
+<p><strong>* RETURNS *</strong></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.digitize_threshold">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">digitize_threshold</code><span class="sig-paren">(</span><em>x</em>, <em>min_per_bin=0</em>, <em>bins=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#digitize_threshold"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.digitize_threshold" title="Permalink to this definition">¶</a></dt>
+<dd><p>Digitizes x according to bins, similar to numpy.digitize, but requires
+that there are at least min_per_bin entries in each bin.  Bins that do not
+have enough entries are combined with adjacent bins until they meet the
+requirement.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>x <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd>Input array to be binned.  Must be 1-dimensional</dd>
+<dt>min_per_bin <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Minimum number of entries per bin.  Default = 0</dd>
+<dt>bins <span class="classifier-delimiter">:</span> <span class="classifier">int or sequence of scalars, optional</span></dt>
+<dd>[same as for np.histogram]
+If bins is an int, it defines the number of equal-width bins in the
+given range (10, by default). If bins is a sequence, it defines the
+bin edges, including the rightmost edge, allowing for non-uniform bin
+widths.</dd>
+</dl>
+<p><strong>RETURNS</strong></p>
+<p>A tuple containing:
+ind : array_like</p>
+<blockquote>
+<div>Indices of the bin each element of x falls into, such that:
+bin_edges[i] &lt;= x[i] &lt; bin_edges[i+1]
+(See np.digitize, this uses the same convention)</div></blockquote>
+<dl class="docutils">
+<dt>bin_edges: array_like</dt>
+<dd>The edges of the bins</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.binned_mean">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">binned_mean</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>bins=10</em>, <em>nbins=None</em>, <em>binedges=None</em>, <em>weights=None</em>, <em>weighted_bins=False</em>, <em>ret_bin_edges=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#binned_mean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.binned_mean" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bins y according to x and takes the average for each bin.</p>
+<p>bins can either be an integer (the number of bins to use) or an array of
+binedges.  bins will be overridden by nbins or binedges</p>
+<p>Optionally (for compatibility reasons) if binedges is specified, the
+x-bins are defined by binedges.  Otherwise the x-bins are determined by
+nbins</p>
+<p>If weights = None, equal weights are assumed for the average, otherwise
+weights for each data point should be specified</p>
+<p>y_err (error in y) is calculated as the standard deviation in y for each
+bin, divided by sqrt(N), where N is the number of counts in each bin</p>
+<p>IF weighted_bins is True, the bin centers are calculated as a center of
+mass</p>
+<p>NaNs are ignored for the input.  Empty bins are returned with nans</p>
+<p>RETURNS a tuple of (bin_centers, y_mean, y_err) if ret_bin_edges=False
+else, Returns (bin_edges, y_mean, y_err)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.kepler_pos">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">kepler_pos</code><span class="sig-paren">(</span><em>pos</em>, <em>vel</em>, <em>t</em>, <em>Mstar</em>, <em>order=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#kepler_pos"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.kepler_pos" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimate position at future time t assuming an elliptical keplerian orbit</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.resolvedbins">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">resolvedbins</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>minbins=200</em>, <em>ftol=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#resolvedbins"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.resolvedbins" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a sub-view of x that allows y to be resolved up to ftol.  Since
+f will only be sampled at x, x should be very (overly) high resolution.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x</strong> : array or SimArray</p>
+<blockquote>
+<div><p>initial bin positions to try.  should be many more than required</p>
+</div></blockquote>
+<p><strong>y</strong> : array or SimArray</p>
+<blockquote>
+<div><p>y(x), same shape as x.  the function values to resolve</p>
+</div></blockquote>
+<p><strong>minbins</strong> : int</p>
+<blockquote>
+<div><p>Minimum number of bins to return.  IF the ftol is met but there are 
+not enough bins, ftol is decreased</p>
+</div></blockquote>
+<p><strong>ftol</strong> : SimArray, float</p>
+<blockquote>
+<div><p>Function tolerance.  Maximum difference between the interpolated, 
+subsampled y(x) and the full-ly resolved version</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>x2</strong> : array or SimArray</p>
+<blockquote class="last">
+<div><p>A subview of x that provides the required resolution</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.dA">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">dA</code><span class="sig-paren">(</span><em>redges</em>, <em>thetaedges</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#dA"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.dA" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the area of bins in cylindrical coordinates as</p>
+<div class="math">
+\[dA = r(\Delta r) (\Delta \theta)\]</div>
+<p>on a grid of r, theta values</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>redges, thetaedges</strong> : array like</p>
+<blockquote>
+<div><p>1D arrays of the binedges in r, theta.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>dA</strong> : array</p>
+<blockquote class="last">
+<div><p>2D array of dA values over r, theta.  dA[i,j] corresponds to r[i]
+theta[j]</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.setupbins">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">setupbins</code><span class="sig-paren">(</span><em>x</em>, <em>bins=10</em>, <em>spacing=’linear’</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#setupbins"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.setupbins" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up bins for data x (similar to numpy.histogram).  If bins is an 
+integer, the min/max are set to include all data and bins are spaced 
+according to spacing (‘linear’ or ‘log’)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x</strong> : arraylike</p>
+<blockquote>
+<div><p>Data to be binned or [xmin, xmax] if x has two elements</p>
+</div></blockquote>
+<p><strong>bins</strong> : int or array-like</p>
+<blockquote>
+<div><p>Number of bins or binedges to use</p>
+</div></blockquote>
+<p><strong>spacing</strong> : str</p>
+<blockquote>
+<div><p>‘linear’ or ‘log’.  The spacing to use</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>binedges</strong> : array</p>
+<blockquote class="last">
+<div><p>Bin edges</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.bin2dsum">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">bin2dsum</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>z</em>, <em>xbins=10</em>, <em>ybins=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#bin2dsum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.bin2dsum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bins x,y using bin2d and sums z in those bins</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x, y, z: array-like</strong></p>
+<blockquote>
+<div><p>x, y, and z values.  Bins are in x-y, z values are summed</p>
+</div></blockquote>
+<p><strong>xbins, ybins: int or array-like</strong></p>
+<blockquote>
+<div><p>(see bin2d) Number of bins or bin edges</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>zbinned</strong> : array-like</p>
+<blockquote>
+<div><p>2D array of z-values, summed in the bins.  zbinned[i,j] gives the value
+of z summed in xbin[i], ybin[j]</p>
+</div></blockquote>
+<p><strong>xedges, yedges</strong> : array</p>
+<blockquote class="last">
+<div><p>1D arrays of binedges in x,y</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.bin2d">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">bin2d</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>xbins=10</em>, <em>ybins=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#bin2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.bin2d" title="Permalink to this definition">¶</a></dt>
+<dd><p>2-dimensional binning of x, y
+Works as a 2-D extension of numpy.digitize but also automatically sets-up
+binedges</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x, y</strong> : array-like</p>
+<blockquote>
+<div><p>x, y values to bin according to</p>
+</div></blockquote>
+<p><strong>xbins, ybins</strong> : int OR list/array like</p>
+<blockquote>
+<div><p>Either the number of bins or the binedges to use</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>ind</strong> : list of arrays</p>
+<blockquote>
+<div><p>The x,y bin indices each entry belongs to.  ind[0][i] gives the x-bin
+of the ith entry.  ind[1][i] gives the y-bin of the ith entry</p>
+</div></blockquote>
+<p>xedges, yedges: arrays</p>
+<blockquote class="last">
+<div><p>Bin edges used</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.cdf">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">cdf</code><span class="sig-paren">(</span><em>x</em>, <em>pdf</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#cdf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.cdf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates the cumalitive distribution fuction from the pdf.  The pdf does
+not need to be normalized.  Sections where the pdf=0 are dropped so that
+the cdf is monotonically increasing.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x</strong> : 1D array-like</p>
+<blockquote>
+<div><p>positions the pdf is evaluated at</p>
+</div></blockquote>
+<p><strong>pdf</strong> : 1D array</p>
+<blockquote>
+<div><p>Probability distribution function.  Does not need to be normalized</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>x</strong> : array-like</p>
+<blockquote>
+<div><p>Positions, potentially shorter than input x or pdf</p>
+</div></blockquote>
+<p><strong>cdf</strong> : array-like</p>
+<blockquote class="last">
+<div><p>Cumulative distribution function.  Same shape as output x</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.weighted_avg_and_std">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">weighted_avg_and_std</code><span class="sig-paren">(</span><em>values</em>, <em>weights</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#weighted_avg_and_std"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.weighted_avg_and_std" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the weighted average and standard deviation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>values, weights</strong> : SimArray-like</p>
+<blockquote>
+<div><p>Numpy ndarrays with the same shape or SimArrays</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>average, std</strong> : SimArray-like</p>
+<blockquote class="last">
+<div><p>Weighted average and standard deviation.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.pdmath.interp1dunits">
+<code class="descclassname">diskpy.pdmath.</code><code class="descname">interp1dunits</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/pdmath/_math.html#interp1dunits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.pdmath.interp1dunits" title="Permalink to this definition">¶</a></dt>
+<dd><p>A thin wrapper around scipy.interpolate.interp1d that respects pynbody
+units.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">diskpy.pdmath package</a><ul>
+<li><a class="reference internal" href="#module-diskpy.pdmath">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="diskpy.disk.html"
+                        title="previous chapter">diskpy.disk package</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="diskpy.plot.html"
+                        title="next chapter">diskpy.plot package</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/diskpy.pdmath.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.plot.html" title="diskpy.plot package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.disk.html" title="diskpy.disk package"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" >diskpy package</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

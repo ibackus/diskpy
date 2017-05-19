@@ -1,0 +1,789 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.disk package &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="diskpy.pdmath package" href="diskpy.pdmath.html" />
+    <link rel="prev" title="diskpy.clumps.simclumps package" href="diskpy.clumps.simclumps.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.pdmath.html" title="diskpy.pdmath package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.clumps.simclumps.html" title="diskpy.clumps.simclumps package"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" accesskey="U">diskpy package</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="diskpy-disk-package">
+<h1>diskpy.disk package<a class="headerlink" href="#diskpy-disk-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-diskpy.disk">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diskpy.disk" title="Permalink to this headline">¶</a></h2>
+<p>init for diskpy.disk</p>
+<p>Created on Thu Jul 16 15:42:44 2015</p>
+<p>&#64;author: ibackus</p>
+<dl class="function">
+<dt id="diskpy.disk.centerdisk">
+<code class="descclassname">diskpy.disk.</code><code class="descname">centerdisk</code><span class="sig-paren">(</span><em>snapshot</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_utils.html#centerdisk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.centerdisk" title="Permalink to this definition">¶</a></dt>
+<dd><p>Centers a disk on the center of mass puts it into rest frame</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.snapshot_defaults">
+<code class="descclassname">diskpy.disk.</code><code class="descname">snapshot_defaults</code><span class="sig-paren">(</span><em>snapshot</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_utils.html#snapshot_defaults"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.snapshot_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>Applies various defaults to tipsy snapshots of protoplanetary disk 
+simulations. These include:</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">-Sets nice units        </div>
+<div class="line">-Calculates particle smoothing lengths using mass and rho </div>
+<div class="line-block">
+<div class="line">(if available)        </div>
+</div>
+<div class="line">-Centers on snapshot center-of-mass</div>
+<div class="line">-Puts in rest frame</div>
+</div>
+</div></blockquote>
+<p>Changes the snapshot in place</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.Q">
+<code class="descclassname">diskpy.disk.</code><code class="descname">Q</code><span class="sig-paren">(</span><em>snapshot</em>, <em>molecular_mass=2.0</em>, <em>bins=100</em>, <em>use_velocity=False</em>, <em>use_omega=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_profiles.html#Q"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.Q" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the Toomre Q as a function of r, assuming radial temperature
+profile and kappa ~= omega</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>snapshot</strong> : tipsy snapshot</p>
+<p><strong>molecular_mass</strong> : float</p>
+<blockquote>
+<div><p>Mean molecular mass (for sound speed).  Default = 2.0</p>
+</div></blockquote>
+<p><strong>bins</strong> : int or array</p>
+<blockquote>
+<div><p>Either the number of bins or the bin edges</p>
+</div></blockquote>
+<p><strong>use_velocity</strong> : Bool</p>
+<blockquote>
+<div><p>Determines whether to use the particles’ velocities to calculate orbital
+velocity.  Useful if the circular orbital velocities are set in the
+snapshot.</p>
+</div></blockquote>
+<p><strong>use_omega</strong> : Bool</p>
+<blockquote>
+<div><p>Default=True.  Use omega as a proxy for kappa to reduce noise</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>Q</strong> : array</p>
+<blockquote>
+<div><p>Toomre Q as a function of r</p>
+</div></blockquote>
+<p><strong>r_edges</strong> : array</p>
+<blockquote class="last">
+<div><p>Radial bin edges</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.Qeff">
+<code class="descclassname">diskpy.disk.</code><code class="descname">Qeff</code><span class="sig-paren">(</span><em>snapshot</em>, <em>molecular_mass=2.0</em>, <em>bins=100</em>, <em>use_velocity=False</em>, <em>use_omega=True</em>, <em>alpha=0.1766</em>, <em>beta=2.121</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_profiles.html#Qeff"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.Qeff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates the effective Toomre Q as a function of r, defined as:</p>
+<div class="math">
+\[Q_{eff} = \beta Q (h/R)^{\alpha}\]</div>
+<p>See Q and h for the estimates of Q and h.</p>
+<p>The values for alpha and beta are from Backus &amp; Quinn, 2016 and are 
+appropriate for an isothermal disk.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>snapshot</strong> : tipsy snapshot</p>
+<p><strong>molecular_mass</strong> : float</p>
+<blockquote>
+<div><p>Mean molecular mass (for sound speed).  Default = 2.0</p>
+</div></blockquote>
+<p><strong>bins</strong> : int or array</p>
+<blockquote>
+<div><p>Either the number of bins or the bin edges</p>
+</div></blockquote>
+<p><strong>use_velocity</strong> : Bool</p>
+<blockquote>
+<div><p>Determines whether to use the particles’ velocities to calculate orbital
+velocity.  Useful if the circular orbital velocities are set in the
+snapshot.</p>
+</div></blockquote>
+<p><strong>use_omega</strong> : Bool</p>
+<blockquote>
+<div><p>Default=True.  Use omega as a proxy for kappa to reduce noise</p>
+</div></blockquote>
+<p><strong>alpha</strong> : float</p>
+<blockquote>
+<div><p>Powerlaw for height dependence</p>
+</div></blockquote>
+<p><strong>beta</strong> : float</p>
+<blockquote>
+<div><p>Normalization such that disks fragment for Qeff = 1</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>Qeff</strong> : array</p>
+<blockquote>
+<div><p>Effective Toomre Q as a function of r</p>
+</div></blockquote>
+<p><strong>r_edges</strong> : array</p>
+<blockquote class="last">
+<div><p>Radial bin edges</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.kappa">
+<code class="descclassname">diskpy.disk.</code><code class="descname">kappa</code><span class="sig-paren">(</span><em>f</em>, <em>bins=100</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_profiles.html#kappa"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.kappa" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimate the epicyclic frequency from velocity</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>f</strong> : TipsySnap</p>
+<blockquote>
+<div><p><cite>f</cite> is a Simulation snapshot</p>
+</div></blockquote>
+<p><strong>bins</strong> : int or array-like</p>
+<blockquote>
+<div><p>Either the number of bins to use or the bin edges</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>kappa</strong> : SimArray</p>
+<blockquote>
+<div><p>epicyclic frequency</p>
+</div></blockquote>
+<p><strong>r_edges</strong> : SimArray</p>
+<blockquote class="last">
+<div><p>binedges used</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.height">
+<code class="descclassname">diskpy.disk.</code><code class="descname">height</code><span class="sig-paren">(</span><em>snapshot</em>, <em>bins=100</em>, <em>center_on_star=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_profiles.html#height"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.height" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the characteristic height (h) of a flared disk as a function
+of cylindrical radius (r).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>snapshot</strong> : TipsySnap</p>
+<blockquote>
+<div><p>Simulation snapshot for a flared disk</p>
+</div></blockquote>
+<p><strong>bins</strong> : int or array_like</p>
+<blockquote>
+<div><p>Specifies the bins to use.  If int, specifies the number of bins.  If
+array_like, specifies the bin edges</p>
+</div></blockquote>
+<p><strong>center_on_star</strong> : bool</p>
+<blockquote>
+<div><p>If true (DEFAULT), cylindrical r is calculated relative to the star</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>r_edges</strong> : SimArray</p>
+<blockquote>
+<div><p>Radial bin edges used for calculating h.  Length N+1</p>
+</div></blockquote>
+<p><strong>h</strong> : SimArray</p>
+<blockquote class="last">
+<div><p>Height as a function of r, calculated as the RMS of z over a bin.
+Length N</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.sigma">
+<code class="descclassname">diskpy.disk.</code><code class="descname">sigma</code><span class="sig-paren">(</span><em>snapshot</em>, <em>bins=100</em>, <em>cmFlag=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_profiles.html#sigma"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.sigma" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates surface density vs r (relative to the center of mass)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>snapshot</strong> : tipsy snapshot</p>
+<p><strong>bins</strong> : int, list, array…</p>
+<blockquote>
+<div><p>(optional) Either the number of bins to use or the binedges to use</p>
+</div></blockquote>
+<p><strong>cmFlag</strong> : bool</p>
+<blockquote>
+<div><p>(optional) Calculate relative to the center of mass</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>sigma</strong> : SimArray</p>
+<blockquote>
+<div><p>Surface density as a function of r</p>
+</div></blockquote>
+<p><strong>r_bins</strong> : SimArray</p>
+<blockquote class="last">
+<div><p>Radial bin edges</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.rho0_est">
+<code class="descclassname">diskpy.disk.</code><code class="descname">rho0_est</code><span class="sig-paren">(</span><em>h</em>, <em>sigma</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_math.html#rho0_est"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.rho0_est" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates the midplane density vs r as</p>
+<div class="math">
+\[\rho(z=0) = \frac{\Sigma}{h \sqrt{2 \pi}}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>h, sigma</strong> : array(s)/SimArrays (same shape)</p>
+<blockquote class="last">
+<div><p>Disk height and surface density (estimated)</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.h_est">
+<code class="descclassname">diskpy.disk.</code><code class="descname">h_est</code><span class="sig-paren">(</span><em>r</em>, <em>M</em>, <em>m</em>, <em>T</em>, <em>gamma=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_math.html#h_est"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.h_est" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates disk height <span class="math">\(h=c_{s}/\Omega\)</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>r</strong> : SimArray, array, float</p>
+<blockquote>
+<div><p>Disk radii to calculate h at</p>
+</div></blockquote>
+<p><strong>M</strong> : SimArray, float</p>
+<blockquote>
+<div><p>Central star mass</p>
+</div></blockquote>
+<p><strong>m</strong> : SimArray, float</p>
+<blockquote>
+<div><p>Mean molecular mass (with units of mass)</p>
+</div></blockquote>
+<p><strong>T</strong> : SimArray, array, float</p>
+<blockquote>
+<div><p>Temperature as a function of r</p>
+</div></blockquote>
+<p><strong>gamma</strong> : float</p>
+<blockquote>
+<div><p>(optional) Adiabatic index to be used.  If temperature is not a
+functino of z, gamma should equal 1 (isothermal)</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>h</strong> : SimArray, float, array</p>
+<blockquote class="last">
+<div><p>Disk height vs. r (1st order estimate)</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.powerspectrum">
+<code class="descclassname">diskpy.disk.</code><code class="descname">powerspectrum</code><span class="sig-paren">(</span><em>f</em>, <em>mMax=30</em>, <em>rbins=50</em>, <em>paramname=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_spirals.html#powerspectrum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.powerspectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>The density power spectrum along the angular direction, summed along the
+radial direction.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>f</strong> : SimSnap or str</p>
+<blockquote>
+<div><p>Snapshot of a disk OR filename for snapshot</p>
+</div></blockquote>
+<p><strong>mMax</strong> : int</p>
+<blockquote>
+<div><p>Maximum fourier mode to calculate</p>
+</div></blockquote>
+<p><strong>rbins</strong> : int or array</p>
+<blockquote>
+<div><p>Number of radial bins or the binedges to use</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>m</strong> : array</p>
+<blockquote>
+<div><p>Array of the fourier modes from 0 to mMax (integers)</p>
+</div></blockquote>
+<p><strong>power</strong> : array</p>
+<blockquote class="last">
+<div><p>Power in the fourier modes, summed along radial direction.  Power is
+take to be the square of the surface density fourier transform</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.powerspectrum_t">
+<code class="descclassname">diskpy.disk.</code><code class="descname">powerspectrum_t</code><span class="sig-paren">(</span><em>flist</em>, <em>mMax=30</em>, <em>rbins=50</em>, <em>paramname=None</em>, <em>parallel=True</em>, <em>spacing=’linear’</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_spirals.html#powerspectrum_t"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.powerspectrum_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the power spectrum along the angular direction for a whole
+simulation (see powerspectrum).</p>
+<p>Loops through snapshots in a simulation, in parallel.  Uses the same radial
+and angular bins for every timestep</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>flist</strong> : list</p>
+<blockquote>
+<div><p>A list of filenames OR of SimSnaps for a simulation</p>
+</div></blockquote>
+<p><strong>mMax</strong> : int</p>
+<blockquote>
+<div><p>Maximum fourier mode to calculate</p>
+</div></blockquote>
+<p><strong>rbins</strong> : int or array</p>
+<blockquote>
+<div><p>Number of radial bins or the binedges to use</p>
+</div></blockquote>
+<p><strong>paramname</strong> : str</p>
+<blockquote>
+<div><p>Filename of .param file.  Used for loading if flist is a list of 
+filenames</p>
+</div></blockquote>
+<p><strong>parallel</strong> : bool</p>
+<blockquote>
+<div><p>Flag to perform this in parallel or not</p>
+</div></blockquote>
+<p><strong>spacing</strong> : str</p>
+<blockquote>
+<div><p>If rbins is an int, this defines whether to use ‘log’ or ‘linear’ 
+binspacing</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>m</strong> : array</p>
+<blockquote>
+<div><p>Number of the fourier modes</p>
+</div></blockquote>
+<p><strong>power</strong> : SimArray</p>
+<blockquote class="last">
+<div><p>Power spectrum vs time along the angular direction</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.sigmafft">
+<code class="descclassname">diskpy.disk.</code><code class="descname">sigmafft</code><span class="sig-paren">(</span><em>f</em>, <em>rbins=50</em>, <em>thetabins=50</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_spirals.html#sigmafft"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.sigmafft" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the fourier transform of the surface density along the angular
+direction.  Works by binning sigma in r, theta (using sigmacylindrical) and
+doing a fourier transform along the theta axis.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>f</strong> : SimSnap</p>
+<blockquote>
+<div><p>Simulation snapshot of a disk</p>
+</div></blockquote>
+<p><strong>rbins, thetabins</strong> : int or array like</p>
+<blockquote>
+<div><p>Number of bins or binedges to use</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>rmesh</strong> : SimArray</p>
+<blockquote>
+<div><p>2D Meshgrid of radial binedges</p>
+</div></blockquote>
+<p><strong>mmesh</strong> : Array</p>
+<blockquote>
+<div><p>2D meshgrid of m binedges, where m is an integer (the mth fourier mode)</p>
+</div></blockquote>
+<p><strong>sigfft</strong> : SimArray</p>
+<blockquote class="last">
+<div><p>2D meshgrid of surface density fourier transformed along the angular
+direction.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>The returned arrays are indexed such that array[i,j] gives the value of
+array at radial bin i and theta bin j.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.sigmacylindrical">
+<code class="descclassname">diskpy.disk.</code><code class="descname">sigmacylindrical</code><span class="sig-paren">(</span><em>f</em>, <em>rbins=50</em>, <em>thetabins=50</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_spirals.html#sigmacylindrical"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.sigmacylindrical" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates the surface density, binned in cylindrical coordinates</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>f</strong> : SimSnap (see pynbody)</p>
+<blockquote>
+<div><p>Snapshot of a disk</p>
+</div></blockquote>
+<p><strong>rbins, thetabins</strong> : int or arraylike</p>
+<blockquote>
+<div><p>Number of bins or binedges.  Theta is calculated between 0 and 2 pi</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>rmesh</strong> : SimArray</p>
+<blockquote>
+<div><p>2D Meshgrid of radial binedges</p>
+</div></blockquote>
+<p><strong>thetamesh</strong> : Array</p>
+<blockquote>
+<div><p>2D meshgrid of angle binedges</p>
+</div></blockquote>
+<p><strong>sigma</strong> : SimArray</p>
+<blockquote class="last">
+<div><p>2D meshgrid of surface density.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>The returned arrays are indexed such that array[i,j] gives the value of
+array at radial bin i and theta bin j.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.spiralpower">
+<code class="descclassname">diskpy.disk.</code><code class="descname">spiralpower</code><span class="sig-paren">(</span><em>f</em>, <em>rbins=50</em>, <em>thetabins=50</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_spirals.html#spiralpower"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.spiralpower" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates the spiral power (non-axisymmetric power) as a function of radius
+Power is calculated as the standard deviation of the surface density 
+along the angular direction.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>f</strong> : SimSnap</p>
+<blockquote>
+<div><p>Simulation snapshot</p>
+</div></blockquote>
+<p><strong>rbins, thetabins</strong> : int or arraylike</p>
+<blockquote>
+<div><p>Number of bins OR the bins</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>power</strong> : SimArray</p>
+<blockquote>
+<div><p>Non-axisymmetric power as a function of r</p>
+</div></blockquote>
+<p><strong>r</strong> : SimArray</p>
+<blockquote class="last">
+<div><p>Radial binedges used</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.spiralpower_t">
+<code class="descclassname">diskpy.disk.</code><code class="descname">spiralpower_t</code><span class="sig-paren">(</span><em>flist</em>, <em>rbins=100</em>, <em>thetabins=100</em>, <em>binspacing=’log’</em>, <em>rlim=None</em>, <em>paramname=None</em>, <em>center=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_spirals.html#spiralpower_t"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.spiralpower_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates the spiral power as a function of r and t for a whole simulation.
+Calculated using spiralpower</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>flist</strong> : list</p>
+<blockquote>
+<div><p>List of SimSnaps or a filelist</p>
+</div></blockquote>
+<p><strong>rbins, thetabins</strong> : int or arraylike</p>
+<blockquote>
+<div><p>Number of bins OR bins to use</p>
+</div></blockquote>
+<p><strong>binspacing</strong> : str</p>
+<blockquote>
+<div><p>‘log’ or ‘linear’.  Spacing of radial bins to use</p>
+</div></blockquote>
+<p><strong>rlim</strong> : list or array</p>
+<blockquote>
+<div><p>If rbins is an int, sets the min and max to consider</p>
+</div></blockquote>
+<p><strong>paramname</strong> : str</p>
+<blockquote>
+<div><p>Optional filename of the param file, used for pynbody.load</p>
+</div></blockquote>
+<p><strong>center</strong> : bool</p>
+<blockquote>
+<div><p>Shift snapshot center of mass to origin and place it in rest frame</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>power</strong> : SimArray</p>
+<blockquote>
+<div><p>power as a function of t and r.  power[i] gives power vs r at time i</p>
+</div></blockquote>
+<p><strong>t</strong> : SimArray</p>
+<blockquote>
+<div><p>Time of each snapshot in years</p>
+</div></blockquote>
+<p><strong>redges</strong> : SimArray</p>
+<blockquote class="last">
+<div><p>Radial binedges used</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.pSpiralpower_t">
+<code class="descclassname">diskpy.disk.</code><code class="descname">pSpiralpower_t</code><span class="sig-paren">(</span><em>simdirs</em>, <em>fprefix</em>, <em>rbins=100</em>, <em>thetabins=100</em>, <em>binspacing=’log’</em>, <em>rlim=None</em>, <em>paramnames=None</em>, <em>center=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_spirals.html#pSpiralpower_t"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.pSpiralpower_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parallel implementation of spiralpower_t for looping over simulation 
+diretories.  Assumes simulation outputs are standard ChaNGa format.  
+Only simdirs and paramnames
+can change from simulation to simulation.  See spiralpower_t for other
+parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>simdirs</strong> : list or arraylike</p>
+<blockquote>
+<div><p>list of simulation directories (strings)</p>
+</div></blockquote>
+<p><strong>fprefix</strong> : str or list</p>
+<blockquote>
+<div><p>prefix or prefixes of simulation snapshots (see pychanga.get_fnames)</p>
+</div></blockquote>
+<p><strong>**kwargs</strong></p>
+<blockquote>
+<div><p>See spiralpower_t for other parameters</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>output</strong> : dict</p>
+<blockquote class="last">
+<div><p>Output for every simulation (see spiralpower_t)</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.setDustfrac">
+<code class="descclassname">diskpy.disk.</code><code class="descname">setDustfrac</code><span class="sig-paren">(</span><em>f</em>, <em>dustFrac=0.01</em>, <em>scale_mass=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_dust.html#setDustfrac"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.setDustfrac" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the dust fraction to a SimSnap or sub-snap, and optionally scale the
+mass to keep the original mass (e.g. star mass or gas mass) constant.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>f</strong> : SimSnap</p>
+<blockquote>
+<div><p>Snapshot or sub-snap</p>
+</div></blockquote>
+<p><strong>dustFrac</strong> : number or array-like</p>
+<blockquote>
+<div><p>Dust fraction to apply</p>
+</div></blockquote>
+<p><strong>scale_mass</strong> : bool</p>
+<blockquote class="last">
+<div><p>If true, the mass will be scaled to keep the non-dust mass constant.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.disk.add_dust_sim">
+<code class="descclassname">diskpy.disk.</code><code class="descname">add_dust_sim</code><span class="sig-paren">(</span><em>f</em>, <em>param</em>, <em>gasDustFrac=0.01</em>, <em>starDustFrac=0.0</em>, <em>scaleGasMass=True</em>, <em>scaleStarMass=True</em>, <em>grainSize=‘1 mm’</em>, <em>grainDensity=‘3 g cm**-3’</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/disk/_dust.html#add_dust_sim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.disk.add_dust_sim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a single size of dust to a simulation.  Changes are applied in-place
+to the snapshot and the param dict.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>f</strong> : SimSnap</p>
+<blockquote>
+<div><p>Simulation snapshot</p>
+</div></blockquote>
+<p><strong>param</strong> : dict</p>
+<blockquote>
+<div><p>Param dictionary (see diskpy.utils.configparser).</p>
+</div></blockquote>
+<p><strong>gasDustFrac, starDustFrac</strong> : number or array-like</p>
+<blockquote>
+<div><p>Sets the gas fraction for the gas, star.  If None, no dust fraction
+is set.</p>
+</div></blockquote>
+<p><strong>scaleGasMass, scaleStarMass</strong> : bool</p>
+<blockquote>
+<div><p>Scale the gas, star mass to keep it constant after adding dust.
+For example, this can be useful to keep the gas pressure constant.</p>
+</div></blockquote>
+<p><strong>grainSize</strong> : number, SimArray, str</p>
+<blockquote>
+<div><p>The grain size (i.e. radius).  Assumed units (if none are supplied) are
+‘mm’</p>
+</div></blockquote>
+<p><strong>grainDensity</strong> : number, SimArray, str</p>
+<blockquote class="last">
+<div><p>Intrinsic grain density (e.g. for silica).  Assumed units if non are
+supplied are g/cm^3</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">diskpy.disk package</a><ul>
+<li><a class="reference internal" href="#module-diskpy.disk">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="diskpy.clumps.simclumps.html"
+                        title="previous chapter">diskpy.clumps.simclumps package</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="diskpy.pdmath.html"
+                        title="next chapter">diskpy.pdmath package</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/diskpy.disk.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.pdmath.html" title="diskpy.pdmath package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.clumps.simclumps.html" title="diskpy.clumps.simclumps package"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" >diskpy package</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

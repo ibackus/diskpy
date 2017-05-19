@@ -1,0 +1,10 @@
+diskpy\.pychanga\.hyak package
+==============================
+
+Module contents
+---------------
+
+.. automodule:: diskpy.pychanga.hyak
+    :members:
+    :undoc-members:
+    :show-inheritance:

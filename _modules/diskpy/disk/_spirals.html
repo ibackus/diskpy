@@ -1,0 +1,534 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.disk._spirals &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.disk._spirals</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Implements functions for estimate spiral density wave power in PPDs</span>
+
+<span class="sd">Created on Mon Nov  2 13:11:22 2015</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="k">import</span> <span class="n">Pool</span><span class="p">,</span> <span class="n">cpu_count</span>
+
+<span class="kn">from</span> <span class="nn">diskpy.pdmath</span> <span class="k">import</span> <span class="n">bin2dsum</span><span class="p">,</span> <span class="n">dA</span><span class="p">,</span> <span class="n">setupbins</span>
+<span class="kn">from</span> <span class="nn">diskpy.disk</span> <span class="k">import</span> <span class="n">centerdisk</span>
+<span class="kn">from</span> <span class="nn">diskpy.pychanga</span> <span class="k">import</span> <span class="n">snapshot_time</span><span class="p">,</span> <span class="n">get_fnames</span>
+
+<span class="k">def</span> <span class="nf">_spiralpower_t</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">spiralpower_t</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="pSpiralpower_t"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.pSpiralpower_t">[docs]</a><span class="k">def</span> <span class="nf">pSpiralpower_t</span><span class="p">(</span><span class="n">simdirs</span><span class="p">,</span> <span class="n">fprefix</span><span class="p">,</span> <span class="n">rbins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">thetabins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">binspacing</span><span class="o">=</span><span class="s1">&#39;log&#39;</span><span class="p">,</span> \
+<span class="n">rlim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">paramnames</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parallel implementation of spiralpower_t for looping over simulation </span>
+<span class="sd">    diretories.  Assumes simulation outputs are standard ChaNGa format.  </span>
+<span class="sd">    Only simdirs and paramnames</span>
+<span class="sd">    can change from simulation to simulation.  See spiralpower_t for other</span>
+<span class="sd">    parameters</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    simdirs : list or arraylike</span>
+<span class="sd">        list of simulation directories (strings)</span>
+<span class="sd">    fprefix : str or list</span>
+<span class="sd">        prefix or prefixes of simulation snapshots (see pychanga.get_fnames)</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        See spiralpower_t for other parameters</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    output : dict</span>
+<span class="sd">        Output for every simulation (see spiralpower_t)</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nSim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">simdirs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">paramnames</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">):</span>
+        
+        <span class="n">paramnames</span> <span class="o">=</span> <span class="n">nSim</span><span class="o">*</span><span class="p">[</span><span class="n">paramnames</span><span class="p">]</span>
+        
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fprefix</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">):</span>
+        
+        <span class="n">fprefix</span> <span class="o">=</span> <span class="n">nSim</span> <span class="o">*</span> <span class="p">[</span><span class="n">fprefix</span><span class="p">]</span>
+        
+    
+    <span class="c1"># Generate the list of arguments for each simulation</span>
+    <span class="n">arglist</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nSim</span><span class="p">):</span>
+        
+        <span class="n">flist</span> <span class="o">=</span> <span class="n">get_fnames</span><span class="p">(</span><span class="n">fprefix</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">simdirs</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">paramname</span> <span class="o">=</span> <span class="n">paramnames</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">arglist</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">flist</span><span class="p">,</span> <span class="n">rbins</span><span class="p">,</span> <span class="n">thetabins</span><span class="p">,</span> <span class="n">binspacing</span><span class="p">,</span> <span class="n">rlim</span><span class="p">,</span> <span class="n">paramname</span><span class="p">,</span> \
+        <span class="n">center</span><span class="p">])</span>
+        
+    <span class="n">pool</span> <span class="o">=</span> <span class="n">Pool</span><span class="p">(</span><span class="n">cpu_count</span><span class="p">())</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        
+        <span class="n">results</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_spiralpower_t</span><span class="p">,</span> <span class="n">arglist</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        
+    <span class="k">finally</span><span class="p">:</span>
+        
+        <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        
+    <span class="n">power</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+        
+        <span class="n">power</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">t</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        
+    <span class="n">output</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;power&#39;</span><span class="p">:</span><span class="n">power</span><span class="p">,</span> <span class="s1">&#39;t&#39;</span><span class="p">:</span> <span class="n">t</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">:</span> <span class="n">r</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">output</span></div>
+
+<div class="viewcode-block" id="spiralpower_t"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.spiralpower_t">[docs]</a><span class="k">def</span> <span class="nf">spiralpower_t</span><span class="p">(</span><span class="n">flist</span><span class="p">,</span> <span class="n">rbins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">thetabins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">binspacing</span><span class="o">=</span><span class="s1">&#39;log&#39;</span><span class="p">,</span> <span class="n">rlim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                  <span class="n">paramname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimates the spiral power as a function of r and t for a whole simulation.</span>
+<span class="sd">    Calculated using spiralpower</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    flist : list</span>
+<span class="sd">        List of SimSnaps or a filelist</span>
+<span class="sd">    rbins, thetabins : int or arraylike</span>
+<span class="sd">        Number of bins OR bins to use</span>
+<span class="sd">    binspacing : str</span>
+<span class="sd">        &#39;log&#39; or &#39;linear&#39;.  Spacing of radial bins to use</span>
+<span class="sd">    rlim : list or array</span>
+<span class="sd">        If rbins is an int, sets the min and max to consider</span>
+<span class="sd">    paramname : str</span>
+<span class="sd">        Optional filename of the param file, used for pynbody.load</span>
+<span class="sd">    center : bool</span>
+<span class="sd">        Shift snapshot center of mass to origin and place it in rest frame</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    power : SimArray</span>
+<span class="sd">        power as a function of t and r.  power[i] gives power vs r at time i</span>
+<span class="sd">    t : SimArray</span>
+<span class="sd">        Time of each snapshot in years</span>
+<span class="sd">    redges : SimArray</span>
+<span class="sd">        Radial binedges used</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nSim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flist</span><span class="p">)</span>
+    <span class="c1"># Check to see if flist is a list of filenames</span>
+    <span class="n">do_load</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">flist</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">str</span><span class="p">):</span>
+        
+        <span class="n">do_load</span> <span class="o">=</span> <span class="kc">True</span>
+    
+    <span class="c1"># ----------------------------------------------------</span>
+    <span class="c1"># If radial bins have not been supplied, set them up</span>
+    <span class="c1"># ----------------------------------------------------</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rbins</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="c1"># rbins is the number of bins to use</span>
+    
+        <span class="k">if</span> <span class="n">rlim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            
+            <span class="c1"># Limits have not been set</span>
+            <span class="k">if</span> <span class="n">do_load</span><span class="p">:</span>
+                <span class="n">f</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">flist</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">paramname</span><span class="o">=</span><span class="n">paramname</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">f</span> <span class="o">=</span> <span class="n">flist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">rmin</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="n">rmax</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="c1"># the limits are set</span>
+            <span class="n">rmin</span> <span class="o">=</span> <span class="n">rlim</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">rmax</span> <span class="o">=</span> <span class="n">rlim</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            
+        <span class="c1"># Now set up the bins</span>
+        <span class="k">if</span> <span class="n">binspacing</span> <span class="o">==</span> <span class="s1">&#39;log&#39;</span><span class="p">:</span>
+            
+            <span class="n">rbins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">rmin</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">rmax</span><span class="p">),</span> <span class="n">rbins</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+            
+        <span class="k">elif</span> <span class="n">binspacing</span> <span class="o">==</span> <span class="s1">&#39;linear&#39;</span><span class="p">:</span>
+            
+            <span class="n">rbins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">rmin</span><span class="p">,</span> <span class="n">rmax</span><span class="p">,</span> <span class="n">rbins</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s1">&#39;Unrecognized binspacing </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">binspacing</span><span class="p">)</span>
+            
+    <span class="c1"># ----------------------------------------------------</span>
+    <span class="c1"># Calculate power vs time</span>
+    <span class="c1"># ----------------------------------------------------</span>
+    <span class="n">power</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nSim</span><span class="p">),</span> <span class="s1">&#39;yr&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Loop through simulation</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">flist</span><span class="p">):</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            
+            <span class="k">if</span> <span class="n">do_load</span><span class="p">:</span>
+                
+                <span class="nb">print</span> <span class="n">i</span>
+                <span class="n">f</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">paramname</span><span class="o">=</span><span class="n">paramname</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">center</span><span class="p">:</span>
+                
+                <span class="n">centerdisk</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="n">p</span><span class="p">,</span> <span class="n">r</span> <span class="o">=</span> <span class="n">spiralpower</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">rbins</span><span class="p">,</span> <span class="n">thetabins</span><span class="p">)</span>
+            <span class="n">power</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="n">t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot_time</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">paramname</span><span class="o">=</span><span class="n">paramname</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;yr&#39;</span><span class="p">)</span>
+            
+        <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            
+            <span class="c1"># Couldn&#39;t load the file for some reason</span>
+            <span class="nb">print</span> <span class="s1">&#39;Could not load file...setting power and t to NaN&#39;</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rbins</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">power</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="n">t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        
+    <span class="c1"># Re-format power as a SimArray (or array if no units)</span>
+    <span class="k">if</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">power</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        
+        <span class="n">units</span> <span class="o">=</span> <span class="n">power</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span>
+        <span class="n">power</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">power</span><span class="p">,</span> <span class="n">units</span><span class="p">)</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">power</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">power</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">rbins</span></div>
+    
+
+<div class="viewcode-block" id="spiralpower"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.spiralpower">[docs]</a><span class="k">def</span> <span class="nf">spiralpower</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">rbins</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">thetabins</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimates the spiral power (non-axisymmetric power) as a function of radius</span>
+<span class="sd">    Power is calculated as the standard deviation of the surface density </span>
+<span class="sd">    along the angular direction.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    f : SimSnap</span>
+<span class="sd">        Simulation snapshot</span>
+<span class="sd">    rbins, thetabins : int or arraylike</span>
+<span class="sd">        Number of bins OR the bins</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    power : SimArray</span>
+<span class="sd">        Non-axisymmetric power as a function of r</span>
+<span class="sd">    r : SimArray</span>
+<span class="sd">        Radial binedges used</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">rmesh</span><span class="p">,</span> <span class="n">thetamesh</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">sigmacylindrical</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">rbins</span><span class="p">,</span> <span class="n">thetabins</span><span class="p">)</span>
+    <span class="n">power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">rmesh</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="k">return</span> <span class="n">power</span><span class="p">,</span> <span class="n">r</span></div>
+    
+<div class="viewcode-block" id="powerspectrum_t"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.powerspectrum_t">[docs]</a><span class="k">def</span> <span class="nf">powerspectrum_t</span><span class="p">(</span><span class="n">flist</span><span class="p">,</span> <span class="n">mMax</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">rbins</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">paramname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">spacing</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the power spectrum along the angular direction for a whole</span>
+<span class="sd">    simulation (see powerspectrum).</span>
+<span class="sd">    </span>
+<span class="sd">    Loops through snapshots in a simulation, in parallel.  Uses the same radial</span>
+<span class="sd">    and angular bins for every timestep</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    flist : list</span>
+<span class="sd">        A list of filenames OR of SimSnaps for a simulation</span>
+<span class="sd">    mMax : int</span>
+<span class="sd">        Maximum fourier mode to calculate</span>
+<span class="sd">    rbins : int or array</span>
+<span class="sd">        Number of radial bins or the binedges to use</span>
+<span class="sd">    paramname : str</span>
+<span class="sd">        Filename of .param file.  Used for loading if flist is a list of </span>
+<span class="sd">        filenames</span>
+<span class="sd">    parallel : bool</span>
+<span class="sd">        Flag to perform this in parallel or not</span>
+<span class="sd">    spacing : str</span>
+<span class="sd">        If rbins is an int, this defines whether to use &#39;log&#39; or &#39;linear&#39; </span>
+<span class="sd">        binspacing</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    m : array</span>
+<span class="sd">        Number of the fourier modes</span>
+<span class="sd">    power : SimArray</span>
+<span class="sd">        Power spectrum vs time along the angular direction</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Set-up radial bins (use the same ones at all time steps)</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">flist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        
+        <span class="n">f</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">paramname</span><span class="o">=</span><span class="n">paramname</span><span class="p">)</span>
+        
+    <span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span>
+    <span class="n">rbins</span> <span class="o">=</span> <span class="n">setupbins</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">rbins</span><span class="p">,</span> <span class="n">spacing</span><span class="p">)</span>
+    
+    <span class="c1"># Prepare arguments</span>
+    <span class="n">nFiles</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flist</span><span class="p">)</span>
+    <span class="n">mMax</span> <span class="o">=</span> <span class="p">[</span><span class="n">mMax</span><span class="p">]</span> <span class="o">*</span> <span class="n">nFiles</span>
+    <span class="n">rbins</span> <span class="o">=</span> <span class="p">[</span><span class="n">rbins</span><span class="p">]</span> <span class="o">*</span> <span class="n">nFiles</span>
+    <span class="n">paramname</span> <span class="o">=</span> <span class="p">[</span><span class="n">paramname</span><span class="p">]</span> <span class="o">*</span> <span class="n">nFiles</span>
+    
+    <span class="n">args</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="n">flist</span><span class="p">,</span> <span class="n">mMax</span><span class="p">,</span> <span class="n">rbins</span><span class="p">,</span> <span class="n">paramname</span><span class="p">)</span>
+    
+    <span class="c1"># Calculate power</span>
+    <span class="k">if</span> <span class="n">parallel</span><span class="p">:</span>
+        
+        <span class="n">pool</span> <span class="o">=</span> <span class="n">Pool</span><span class="p">(</span><span class="n">cpu_count</span><span class="p">())</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_powerspectrum</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">flist</span><span class="p">:</span>
+            
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">powerspectrum</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">mMax</span><span class="p">,</span> <span class="n">rbins</span><span class="p">,</span> <span class="n">paramname</span><span class="p">))</span>
+            
+    <span class="c1"># Format returns</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">power_units</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">units</span>
+    <span class="n">nr</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">power</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">nFiles</span><span class="p">,</span> <span class="n">nr</span><span class="p">]),</span> <span class="n">power_units</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+        
+        <span class="n">power</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        
+    <span class="k">return</span> <span class="n">m</span><span class="p">,</span> <span class="n">power</span></div>
+
+<span class="k">def</span> <span class="nf">_powerspectrum</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    
+    <span class="k">return</span> <span class="n">powerspectrum</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+<div class="viewcode-block" id="powerspectrum"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.powerspectrum">[docs]</a><span class="k">def</span> <span class="nf">powerspectrum</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">mMax</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">rbins</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">paramname</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The density power spectrum along the angular direction, summed along the</span>
+<span class="sd">    radial direction.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    f : SimSnap or str</span>
+<span class="sd">        Snapshot of a disk OR filename for snapshot</span>
+<span class="sd">    mMax : int</span>
+<span class="sd">        Maximum fourier mode to calculate</span>
+<span class="sd">    rbins : int or array</span>
+<span class="sd">        Number of radial bins or the binedges to use</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    m : array</span>
+<span class="sd">        Array of the fourier modes from 0 to mMax (integers)</span>
+<span class="sd">    power : array</span>
+<span class="sd">        Power in the fourier modes, summed along radial direction.  Power is</span>
+<span class="sd">        take to be the square of the surface density fourier transform</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        
+        <span class="n">f</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">paramname</span><span class="o">=</span><span class="n">paramname</span><span class="p">)</span>
+        
+    <span class="n">r</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">sigtransform</span> <span class="o">=</span> <span class="n">sigmafft</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">rbins</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">mMax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span>
+    <span class="n">power</span> <span class="o">=</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">sigtransform</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">m</span><span class="p">,</span> <span class="n">power</span></div>
+
+<div class="viewcode-block" id="sigmafft"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.sigmafft">[docs]</a><span class="k">def</span> <span class="nf">sigmafft</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">rbins</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">thetabins</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the fourier transform of the surface density along the angular</span>
+<span class="sd">    direction.  Works by binning sigma in r, theta (using sigmacylindrical) and</span>
+<span class="sd">    doing a fourier transform along the theta axis.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    f : SimSnap</span>
+<span class="sd">        Simulation snapshot of a disk</span>
+<span class="sd">    rbins, thetabins : int or array like</span>
+<span class="sd">        Number of bins or binedges to use</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    rmesh : SimArray</span>
+<span class="sd">        2D Meshgrid of radial binedges</span>
+<span class="sd">    mmesh : Array</span>
+<span class="sd">        2D meshgrid of m binedges, where m is an integer (the mth fourier mode)</span>
+<span class="sd">    sigfft : SimArray</span>
+<span class="sd">        2D meshgrid of surface density fourier transformed along the angular</span>
+<span class="sd">        direction.</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    </span>
+<span class="sd">    The returned arrays are indexed such that array[i,j] gives the value of</span>
+<span class="sd">    array at radial bin i and theta bin j.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">rmesh</span><span class="p">,</span> <span class="n">thetamesh</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">sigmacylindrical</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">rbins</span><span class="p">,</span> <span class="n">thetabins</span><span class="p">)</span>
+    <span class="n">sigfft</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfft</span><span class="p">(</span><span class="n">sigma</span><span class="p">),</span> <span class="n">sigma</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+    <span class="n">nm</span> <span class="o">=</span> <span class="n">sigfft</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># Normalize sigma</span>
+    <span class="n">sigfft</span> <span class="o">/=</span> <span class="p">(</span><span class="n">nm</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="c1"># Make r, m meshes</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">nm</span><span class="p">)</span>
+    <span class="n">rmesh2</span><span class="p">,</span> <span class="n">mmesh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">rmesh</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">m</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">rmesh2</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">mmesh</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">sigfft</span></div>
+
+<div class="viewcode-block" id="sigmacylindrical"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.sigmacylindrical">[docs]</a><span class="k">def</span> <span class="nf">sigmacylindrical</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">rbins</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">thetabins</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimates the surface density, binned in cylindrical coordinates</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    f : SimSnap (see pynbody)</span>
+<span class="sd">        Snapshot of a disk</span>
+<span class="sd">    rbins, thetabins : int or arraylike</span>
+<span class="sd">        Number of bins or binedges.  Theta is calculated between 0 and 2 pi</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    rmesh : SimArray</span>
+<span class="sd">        2D Meshgrid of radial binedges</span>
+<span class="sd">    thetamesh : Array</span>
+<span class="sd">        2D meshgrid of angle binedges</span>
+<span class="sd">    sigma : SimArray</span>
+<span class="sd">        2D meshgrid of surface density.</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    </span>
+<span class="sd">    The returned arrays are indexed such that array[i,j] gives the value of</span>
+<span class="sd">    array at radial bin i and theta bin j.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]))</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">theta</span> <span class="o">%</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+    <span class="c1"># Default theta bin edges are 0 to 2 pi, evenly spaced</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">thetabins</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        
+        <span class="n">thetabins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">thetabins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        
+    <span class="c1"># Now bin/sum particle masses</span>
+    <span class="n">msum</span><span class="p">,</span> <span class="n">redges</span><span class="p">,</span> <span class="n">thetaedges</span> <span class="o">=</span> <span class="n">bin2dsum</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">],</span> <span class="n">rbins</span><span class="p">,</span> <span class="n">thetabins</span><span class="p">)</span>
+    <span class="c1"># sigma = mass/area</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">msum</span> <span class="o">/</span> <span class="n">dA</span><span class="p">(</span><span class="n">redges</span><span class="p">,</span> <span class="n">thetaedges</span><span class="p">)</span>
+    <span class="c1"># Do mesh grid</span>
+    <span class="n">rmesh</span><span class="p">,</span> <span class="n">thetamesh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">redges</span><span class="p">,</span> <span class="n">thetaedges</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+        <span class="n">rmesh</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">rmesh</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rmesh</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">thetamesh</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">sigma</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

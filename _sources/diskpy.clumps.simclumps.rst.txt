@@ -1,0 +1,10 @@
+diskpy\.clumps\.simclumps package
+=================================
+
+Module contents
+---------------
+
+.. automodule:: diskpy.clumps.simclumps
+    :members:
+    :undoc-members:
+    :show-inheritance:

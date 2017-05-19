@@ -1,0 +1,338 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.clumps.simclumps package &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="diskpy.disk package" href="diskpy.disk.html" />
+    <link rel="prev" title="diskpy.clumps.clumpfinding package" href="diskpy.clumps.clumpfinding.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.disk.html" title="diskpy.disk package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.clumps.clumpfinding.html" title="diskpy.clumps.clumpfinding package"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" >diskpy package</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="diskpy.clumps.html" accesskey="U">diskpy.clumps package</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="diskpy-clumps-simclumps-package">
+<h1>diskpy.clumps.simclumps package<a class="headerlink" href="#diskpy-clumps-simclumps-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-diskpy.clumps.simclumps">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diskpy.clumps.simclumps" title="Permalink to this headline">¶</a></h2>
+<p>Created on Sat Jul 18 15:36:26 2015</p>
+<p>&#64;author: ibackus</p>
+<dl class="function">
+<dt id="diskpy.clumps.simclumps.newSimgroup">
+<code class="descclassname">diskpy.clumps.simclumps.</code><code class="descname">newSimgroup</code><span class="sig-paren">(</span><em>simlist</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#newSimgroup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.newSimgroup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a new simgroup object from a list of clumplists.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.simclumps.newSim">
+<code class="descclassname">diskpy.clumps.simclumps.</code><code class="descname">newSim</code><span class="sig-paren">(</span><em>clumplist</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#newSim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.newSim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a sim object from a list of clump dictionaries for an entire
+simulation.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.simclumps.newClump">
+<code class="descclassname">diskpy.clumps.simclumps.</code><code class="descname">newClump</code><span class="sig-paren">(</span><em>clumpDict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#newClump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.newClump" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a new clump object from a clump dictionary (see clumps.blank_clump
+and clumps.build_clumps).</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.simclumps.clump">
+<code class="descclassname">diskpy.clumps.simclumps.</code><code class="descname">clump</code><span class="sig-paren">(</span><em>nt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#clump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.clump" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a clump object, which is basically just a pynbody SimSnap where
+time steps are represented by particles.</p>
+<p><strong>ARGUMENTS</strong></p>
+<dl class="docutils">
+<dt>nt <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Number of time steps in the simulation</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="diskpy.clumps.simclumps.sim">
+<em class="property">class </em><code class="descclassname">diskpy.clumps.simclumps.</code><code class="descname">sim</code><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#sim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.sim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></p>
+<p>The sim class.  sims are basically just numpy arrays containing clump
+objects.  It stores data for all the clumps in a given simulation (for all
+available time steps).  Additionally, slicing can be done in different ways
+(see below)</p>
+<p>To initialize a blank sim object:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">s</span> <span class="o">=</span> <span class="n">sim</span><span class="p">(</span><span class="n">nClumps</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To generate a sim object from a list of clumpDicts for a simulation (ie
+the output of <code class="xref py py-func docutils literal"><span class="pre">clumps.clump_tracker()</span></code>)</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">s</span> <span class="o">=</span> <span class="n">newSim</span><span class="p">(</span><span class="n">clumplist</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Where nClumps is the number of clumps in the simulation</p>
+<p>Accessing different quantites:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">s</span> <span class="o">=</span> <span class="n">newSim</span><span class="p">(</span><span class="n">clumplist</span><span class="p">)</span> <span class="c1"># create sim object from clumplist</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">s</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span> <span class="c1"># get x for all clumps at all times</span>
+<span class="go"># Get the mass for the first time step at which the clumps exist</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">m0</span> <span class="o">=</span> <span class="n">s</span><span class="p">(</span><span class="s1">&#39;mass&#39;</span><span class="p">,</span><span class="n">t</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">clumpexist</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go"># Get velocity for the final timestep at which a clump exists</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vf</span> <span class="o">=</span> <span class="n">s</span><span class="p">(</span><span class="s1">&#39;vel&#39;</span><span class="p">,</span> <span class="n">t</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">clumpexist</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go"># Get masses of all clumps at end of simulation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">all_masses</span> <span class="o">=</span> <span class="n">s</span><span class="p">(</span><span class="s1">&#39;mass&#39;</span><span class="p">,</span> <span class="n">t</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">all_masses</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mf</span> <span class="o">=</span> <span class="n">all_masses</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Print available keys:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">s</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Select a sub-group of clumps by normal array slicing:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">s1</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>CALL FUNCTION ARGUMENTS</strong>
+s(key, t=None, clumpexist=False, clump=None)</p>
+<dl class="docutils">
+<dt>key <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Clump key to access</dd>
+<dt>t <span class="classifier-delimiter">:</span> <span class="classifier">slicer</span></dt>
+<dd>Anything that can be used to slice a numpy array, eg [1,2,4] or
+slice(0,-1).  Slices according to the simulation time</dd>
+<dt>clumpexist <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>Filter out all quantities by whether the clump exists at that time.
+e.g., this makes it easy to select the first timestep when a clump
+exists</dd>
+<dt>clump <span class="classifier-delimiter">:</span> <span class="classifier">slicer</span></dt>
+<dd>Anything that can be used to slice a numpy array, eg [1,2,4] or
+slice(0,-1). Slices by clump number</dd>
+</dl>
+<dl class="method">
+<dt id="diskpy.clumps.simclumps.sim.keys">
+<code class="descname">keys</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#sim.keys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.sim.keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return keys present in all clumps</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="diskpy.clumps.simclumps.sim.nClumps">
+<code class="descname">nClumps</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#sim.nClumps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.sim.nClumps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the number of clumps in the simulation</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="diskpy.clumps.simclumps.sim.nt">
+<code class="descname">nt</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#sim.nt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.sim.nt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the number of timesteps in the simulation</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="diskpy.clumps.simclumps.simgroup">
+<em class="property">class </em><code class="descclassname">diskpy.clumps.simclumps.</code><code class="descname">simgroup</code><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#simgroup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.simgroup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></p>
+<p>The simgroup class.  Basically just an array containing a bunch of sim
+objects.  Meant to contain information for clumps in a suite of simulations</p>
+<p>To initialize a blank sim group:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sgrp</span> <span class="o">=</span> <span class="n">simgroup</span><span class="p">(</span><span class="n">nSims</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To initialize from a list of simulations (ie a list of the outputs from
+<code class="xref py py-func docutils literal"><span class="pre">clumps.clumptracker()</span></code>):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sgrp</span> <span class="o">=</span> <span class="n">newSimgroup</span><span class="p">(</span><span class="n">simlist</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Accessing different quantites:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">s</span> <span class="o">=</span> <span class="n">newSimgroup</span><span class="p">(</span><span class="n">simlist</span><span class="p">)</span> <span class="c1"># create sim object from simlist</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">s</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span> <span class="c1"># get x for all clumps at all times</span>
+<span class="go"># Get the mass for the first time step at which the clumps exist</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">m0</span> <span class="o">=</span> <span class="n">s</span><span class="p">(</span><span class="s1">&#39;mass&#39;</span><span class="p">,</span><span class="n">t</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">clumpexist</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go"># Get velocity for the final timestep at which a clump exists</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vf</span> <span class="o">=</span> <span class="n">s</span><span class="p">(</span><span class="s1">&#39;vel&#39;</span><span class="p">,</span> <span class="n">t</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">clumpexist</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go"># Get masses of all clumps at end of simulation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">all_masses</span> <span class="o">=</span> <span class="n">s</span><span class="p">(</span><span class="s1">&#39;mass&#39;</span><span class="p">,</span> <span class="n">t</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">all_masses</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mf</span> <span class="o">=</span> <span class="n">all_masses</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Print available keys:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">s</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Select a sub-group of simulations by normal array slicing:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">s1</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>CALL FUNCTION ARGUMENTS</strong>
+s(key, t=None, clumpexist=False, clump=None, sims=None)</p>
+<dl class="docutils">
+<dt>key <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Clump key to access</dd>
+<dt>t <span class="classifier-delimiter">:</span> <span class="classifier">slicer</span></dt>
+<dd>Anything that can be used to slice a numpy array, eg [1,2,4] or
+slice(0,-1).  Slices according to the simulation time</dd>
+<dt>clumpexist <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>Filter out all quantities by whether the clump exists at that time.
+e.g., this makes it easy to select the first timestep when a clump
+exists</dd>
+<dt>clump <span class="classifier-delimiter">:</span> <span class="classifier">slicer</span></dt>
+<dd>Anything that can be used to slice a numpy array, eg [1,2,4] or
+slice(0,-1). Slices by clump number</dd>
+<dt>sims <span class="classifier-delimiter">:</span> <span class="classifier">slicer</span></dt>
+<dd>Anything that can be used to slice a numpy array, eg [1,2,4] or
+slice(0,-1). Slices by simulation number</dd>
+</dl>
+<dl class="method">
+<dt id="diskpy.clumps.simclumps.simgroup.keys">
+<code class="descname">keys</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#simgroup.keys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.simgroup.keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return keys present in all clumps</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="diskpy.clumps.simclumps.simgroup.nClumps">
+<code class="descname">nClumps</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#simgroup.nClumps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.simgroup.nClumps" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="diskpy.clumps.simclumps.simgroup.nsim">
+<code class="descname">nsim</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#simgroup.nsim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.simgroup.nsim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of simulations present here</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.simclumps.exists">
+<code class="descclassname">diskpy.clumps.simclumps.</code><code class="descname">exists</code><span class="sig-paren">(</span><em>sim</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#exists"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines a pynbody derived array which determines the time steps a clump 
+exists at</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.simclumps.len2">
+<code class="descclassname">diskpy.clumps.simclumps.</code><code class="descname">len2</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#len2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.len2" title="Permalink to this definition">¶</a></dt>
+<dd><p>A modified version of len() to work with numbers.  Numbers have a length
+of 1</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="diskpy.clumps.simclumps.arraylistcat">
+<code class="descclassname">diskpy.clumps.simclumps.</code><code class="descname">arraylistcat</code><span class="sig-paren">(</span><em>arraylist</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diskpy/clumps/simclumps/_simclumps.html#arraylistcat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#diskpy.clumps.simclumps.arraylistcat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concatenate a list of like arrays (or SimArrays) into a single array.
+Concatenates along the first dimension
+Returns None for an empty list</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">diskpy.clumps.simclumps package</a><ul>
+<li><a class="reference internal" href="#module-diskpy.clumps.simclumps">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="diskpy.clumps.clumpfinding.html"
+                        title="previous chapter">diskpy.clumps.clumpfinding package</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="diskpy.disk.html"
+                        title="next chapter">diskpy.disk package</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/diskpy.clumps.simclumps.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="diskpy.disk.html" title="diskpy.disk package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="diskpy.clumps.clumpfinding.html" title="diskpy.clumps.clumpfinding package"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="diskpy.html" >diskpy package</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="diskpy.clumps.html" >diskpy.clumps package</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

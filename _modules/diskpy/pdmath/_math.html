@@ -1,0 +1,1031 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.pdmath._math &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.pdmath._math</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Thu Jul 16 14:26:07 2015</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.interpolate</span> <span class="k">as</span> <span class="nn">interp</span>
+<span class="kn">from</span> <span class="nn">scipy.integrate</span> <span class="k">import</span> <span class="n">cumtrapz</span>
+<span class="n">interp1d</span> <span class="o">=</span> <span class="n">interp</span><span class="o">.</span><span class="n">interp1d</span>
+<span class="kn">import</span> <span class="nn">pynbody</span> <span class="k">as</span> <span class="nn">pb</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pb</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">strip_units</span><span class="p">,</span> <span class="n">match_units</span>
+
+<span class="k">def</span> <span class="nf">_loadcoeffs</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Loads hermite polynomial coefficients stored in fname and returns them</span>
+<span class="sd">    as a dictionary, where the keys are the degree of the polynomial and the</span>
+<span class="sd">    values are the coefficients</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># Load up the hermite spline (polynomial) coefficients</span>
+    <span class="n">f</span> <span class="o">=</span><span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+
+    <span class="n">coeffs_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">order_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+
+        <span class="n">l</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+        <span class="n">order_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)):</span>
+
+            <span class="n">l</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+        <span class="n">coeffs_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span><span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float&#39;</span><span class="p">))</span>
+
+    <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">order_list</span><span class="p">)</span>
+    <span class="n">coeffs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">order</span><span class="p">)):</span>
+        
+        <span class="n">coeffs</span><span class="p">[</span><span class="n">order</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">coeffs_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        
+    <span class="k">return</span> <span class="n">coeffs</span>
+
+<span class="c1"># Load hermite coefficients</span>
+<span class="n">_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+<span class="n">_coeffsfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_dir</span><span class="p">,</span> <span class="s1">&#39;hermite_spline_coeffs.dat&#39;</span><span class="p">)</span>
+<span class="n">hermite_coeffs</span> <span class="o">=</span> <span class="n">_loadcoeffs</span><span class="p">(</span><span class="n">_coeffsfile</span><span class="p">)</span>
+
+<div class="viewcode-block" id="interp1dunits"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.interp1dunits">[docs]</a><span class="k">def</span> <span class="nf">interp1dunits</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A thin wrapper around scipy.interpolate.interp1d that respects pynbody</span>
+<span class="sd">    units.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">yspl</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">splunits</span><span class="p">(</span><span class="n">x1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A spline interpolant that respects units.</span>
+<span class="sd">        See scipy.interpolate.interp1d</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">pb</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">x1</span><span class="p">):</span>
+            
+            <span class="n">x1</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+            
+        <span class="n">y1</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">yspl</span><span class="p">(</span><span class="n">x1</span><span class="p">),</span> <span class="n">y</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">y1</span>
+    
+    <span class="k">return</span> <span class="n">splunits</span></div>
+
+<div class="viewcode-block" id="weighted_avg_and_std"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.weighted_avg_and_std">[docs]</a><span class="k">def</span> <span class="nf">weighted_avg_and_std</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">weights</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the weighted average and standard deviation.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    values, weights : SimArray-like</span>
+<span class="sd">        Numpy ndarrays with the same shape or SimArrays</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    average, std : SimArray-like</span>
+<span class="sd">        Weighted average and standard deviation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">average</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span>
+    <span class="c1"># Fast and numerically precise</span>
+    <span class="n">variance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">((</span><span class="n">values</span><span class="o">-</span><span class="n">average</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span>  
+    <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pb</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
+        <span class="n">average</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">average</span><span class="p">,</span> <span class="n">values</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">std</span><span class="p">,</span> <span class="n">values</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">average</span><span class="p">,</span> <span class="n">std</span></div>
+
+<div class="viewcode-block" id="dA"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.dA">[docs]</a><span class="k">def</span> <span class="nf">dA</span><span class="p">(</span><span class="n">redges</span><span class="p">,</span> <span class="n">thetaedges</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the area of bins in cylindrical coordinates as</span>
+<span class="sd">    </span>
+<span class="sd">    .. math:: dA = r(\\Delta r) (\\Delta \\theta)</span>
+<span class="sd">    </span>
+<span class="sd">    on a grid of r, theta values</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    redges, thetaedges : array like</span>
+<span class="sd">        1D arrays of the binedges in r, theta.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    dA : array</span>
+<span class="sd">        2D array of dA values over r, theta.  dA[i,j] corresponds to r[i]</span>
+<span class="sd">        theta[j]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">dr</span> <span class="o">=</span> <span class="n">redges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">redges</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">dtheta</span> <span class="o">=</span> <span class="n">thetaedges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">thetaedges</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">redges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">redges</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mf">2.</span>
+    <span class="n">rdr</span> <span class="o">=</span> <span class="n">r</span> <span class="o">*</span> <span class="n">dr</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rdr</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">dtheta</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:])</span></div>
+    
+<div class="viewcode-block" id="setupbins"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.setupbins">[docs]</a><span class="k">def</span> <span class="nf">setupbins</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">spacing</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sets up bins for data x (similar to numpy.histogram).  If bins is an </span>
+<span class="sd">    integer, the min/max are set to include all data and bins are spaced </span>
+<span class="sd">    according to spacing (&#39;linear&#39; or &#39;log&#39;)</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    x : arraylike</span>
+<span class="sd">        Data to be binned or [xmin, xmax] if x has two elements</span>
+<span class="sd">    bins : int or array-like</span>
+<span class="sd">        Number of bins or binedges to use</span>
+<span class="sd">    spacing : str</span>
+<span class="sd">        &#39;linear&#39; or &#39;log&#39;.  The spacing to use</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    binedges : array</span>
+<span class="sd">        Bin edges</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># If bins is not iterable, it is the number of bins</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">bins</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">):</span>
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="c1"># x is [xmin, xmax]</span>
+            <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># x is the data to be binned</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                
+                <span class="n">xmin</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="mf">0.5</span>
+                <span class="n">xmax</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mf">0.5</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                
+                <span class="n">eps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span>
+                <span class="n">xmin</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="mi">2</span><span class="o">*</span><span class="n">eps</span><span class="p">)</span>
+                <span class="n">xmax</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">eps</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="n">spacing</span> <span class="ow">is</span> <span class="s1">&#39;linear&#39;</span><span class="p">:</span>
+            
+            <span class="n">binedges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            
+        <span class="k">elif</span> <span class="n">spacing</span> <span class="ow">is</span> <span class="s1">&#39;log&#39;</span><span class="p">:</span>
+            
+            <span class="n">binedges</span> <span class="o">=</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">xmin</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">xmax</span><span class="p">),</span> <span class="n">bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s2">&quot;Unrecognized spacing </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">spacing</span><span class="p">)</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Bins is already binedges.  do nothing</span>
+        <span class="n">binedges</span> <span class="o">=</span> <span class="n">bins</span>
+    
+    <span class="c1"># Set-up units</span>
+    <span class="k">if</span> <span class="n">pb</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        
+        <span class="n">binedges</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">binedges</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">binedges</span></div>
+    
+<div class="viewcode-block" id="cdf"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.cdf">[docs]</a><span class="k">def</span> <span class="nf">cdf</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">pdf</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimates the cumalitive distribution fuction from the pdf.  The pdf does</span>
+<span class="sd">    not need to be normalized.  Sections where the pdf=0 are dropped so that</span>
+<span class="sd">    the cdf is monotonically increasing.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : 1D array-like</span>
+<span class="sd">        positions the pdf is evaluated at</span>
+<span class="sd">    pdf : 1D array</span>
+<span class="sd">        Probability distribution function.  Does not need to be normalized</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    x : array-like</span>
+<span class="sd">        Positions, potentially shorter than input x or pdf</span>
+<span class="sd">    cdf : array-like</span>
+<span class="sd">        Cumulative distribution function.  Same shape as output x</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+     <span class="c1"># Calculate the CDF from prob</span>
+    <span class="n">nx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">CDF</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nx</span><span class="p">)</span>
+    <span class="n">CDF</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">cumtrapz</span><span class="p">(</span><span class="n">pdf</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">CDF</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s2">&quot;PDF maximum is &lt;= 0.  Cannot normalize&quot;</span>
+    <span class="n">CDF</span> <span class="o">/=</span> <span class="n">CDF</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="c1"># Calculate the inverse CDF.</span>
+    <span class="c1"># Assume CDF is approximately monotonic and sort to force it to be</span>
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">CDF</span><span class="o">.</span><span class="n">argsort</span><span class="p">()</span>
+    <span class="n">CDF</span> <span class="o">=</span> <span class="n">CDF</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+    <span class="c1"># Drop values where CDF is constant (ie, prob = 0)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;bool&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nx</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">CDF</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">==</span> <span class="n">CDF</span><span class="p">[</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">mask</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            
+    <span class="n">nVals</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">CDF</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nVals</span><span class="p">]</span> <span class="o">=</span> <span class="n">CDF</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nVals</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">nVals</span> <span class="o">&lt;</span> <span class="n">nx</span><span class="p">:</span>
+        <span class="c1"># Pad the remainder of values</span>
+        <span class="n">x</span><span class="p">[</span><span class="n">nVals</span><span class="p">:]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">CDF</span><span class="p">[</span><span class="n">nVals</span><span class="p">:]</span> <span class="o">=</span> <span class="mf">2.</span>
+    
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">CDF</span></div>
+
+<div class="viewcode-block" id="resolvedbins"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.resolvedbins">[docs]</a><span class="k">def</span> <span class="nf">resolvedbins</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">minbins</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">ftol</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a sub-view of x that allows y to be resolved up to ftol.  Since</span>
+<span class="sd">    f will only be sampled at x, x should be very (overly) high resolution.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    x : array or SimArray</span>
+<span class="sd">        initial bin positions to try.  should be many more than required</span>
+<span class="sd">    y : array or SimArray</span>
+<span class="sd">        y(x), same shape as x.  the function values to resolve</span>
+<span class="sd">    minbins : int</span>
+<span class="sd">        Minimum number of bins to return.  IF the ftol is met but there are </span>
+<span class="sd">        not enough bins, ftol is decreased</span>
+<span class="sd">    ftol : SimArray, float</span>
+<span class="sd">        Function tolerance.  Maximum difference between the interpolated, </span>
+<span class="sd">        subsampled y(x) and the full-ly resolved version</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    x2 : array or SimArray</span>
+<span class="sd">        A subview of x that provides the required resolution</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># Initialize</span>
+    <span class="k">if</span> <span class="n">ftol</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ftol</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">*</span> <span class="mf">1e-5</span>
+    <span class="n">nx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="c1"># Begin with bin edges at both ends</span>
+    <span class="n">binind</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">nx</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="n">maxiter</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mf">1e5</span><span class="p">)</span>
+    
+    <span class="c1"># Main loop</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">maxiter</span><span class="p">):</span>
+        
+        <span class="c1"># Linear spline interpolation</span>
+        <span class="n">yspl</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">binind</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">binind</span><span class="p">],</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">)</span>
+        <span class="c1"># Difference between interpolated and actual values (on the grid)</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">yspl</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        
+        <span class="c1"># Find if any new bins need to be made</span>
+        <span class="n">nbins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">binind</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>    
+        <span class="n">newbins</span> <span class="o">=</span> <span class="p">[]</span>            
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins</span><span class="p">):</span>
+            
+            <span class="c1"># Get the indices of the current bin&#39;s edges</span>
+            <span class="n">iLo</span> <span class="o">=</span> <span class="n">binind</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">iHi</span> <span class="o">=</span> <span class="n">binind</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+            
+            <span class="c1"># If they are separated by more than one, we may need another bin</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">iHi</span><span class="o">-</span><span class="n">iLo</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                
+                <span class="c1"># Find maximum error in the bin</span>
+                <span class="n">err</span> <span class="o">=</span> <span class="n">diff</span><span class="p">[</span><span class="n">iLo</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="n">iHi</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                
+                <span class="c1"># If the error  exceeds the tolerance, add a new bin</span>
+                <span class="k">if</span> <span class="n">err</span> <span class="o">&gt;</span> <span class="n">ftol</span><span class="p">:</span>
+                    
+                    <span class="n">newbin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">iLo</span> <span class="o">+</span> <span class="n">iHi</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+                    <span class="n">newbins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">newbin</span><span class="p">)</span>
+        
+        <span class="c1"># Check if there are new bins</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">newbins</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            
+            <span class="c1"># No new bins - check if we have enough</span>
+            <span class="k">if</span> <span class="n">nbins</span> <span class="o">&lt;</span> <span class="n">minbins</span><span class="p">:</span>
+                
+                <span class="c1"># Decrease ftol if we don&#39;t have enough bins</span>
+                <span class="n">ftol</span> <span class="o">/=</span> <span class="mf">1.5</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                
+                <span class="c1"># we have enough bins, break</span>
+                <span class="k">break</span>
+        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># There are new bins, keep going</span>
+            <span class="n">binind</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">newbins</span><span class="p">)</span>
+            <span class="n">binind</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    
+    <span class="n">binind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">binind</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="n">binind</span><span class="p">]</span></div>
+    
+<div class="viewcode-block" id="bin2dsum"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.bin2dsum">[docs]</a><span class="k">def</span> <span class="nf">bin2dsum</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">xbins</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">ybins</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Bins x,y using bin2d and sums z in those bins</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    x, y, z: array-like</span>
+<span class="sd">        x, y, and z values.  Bins are in x-y, z values are summed</span>
+<span class="sd">    xbins, ybins: int or array-like</span>
+<span class="sd">        (see bin2d) Number of bins or bin edges</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    zbinned : array-like</span>
+<span class="sd">        2D array of z-values, summed in the bins.  zbinned[i,j] gives the value</span>
+<span class="sd">        of z summed in xbin[i], ybin[j]</span>
+<span class="sd">    xedges, yedges : array</span>
+<span class="sd">        1D arrays of binedges in x,y</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">ind</span><span class="p">,</span> <span class="n">xedges</span><span class="p">,</span> <span class="n">yedges</span> <span class="o">=</span> <span class="n">bin2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">xbins</span><span class="p">,</span> <span class="n">ybins</span><span class="p">)</span>
+    
+    <span class="c1"># If all the z values are the same (ie, all particles have same mass),</span>
+    <span class="c1"># the summing is much faster if we don&#39;t do the for loops below.</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">z</span> <span class="o">==</span> <span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        
+        <span class="c1"># Sum is equivalent to number in each bin times z</span>
+        <span class="n">N</span><span class="p">,</span> <span class="n">dummy1</span><span class="p">,</span> <span class="n">dummy2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="n">xedges</span><span class="p">,</span> <span class="n">yedges</span><span class="p">])</span>
+        <span class="n">zbinned</span> <span class="o">=</span> <span class="n">z</span><span class="p">[[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">*</span> <span class="n">N</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="c1"># Perform sum</span>
+        <span class="n">xind</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">yind</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">nx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">xedges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">ny</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">yedges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        
+        <span class="n">zbinned</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">])</span>
+        
+        <span class="k">if</span> <span class="n">pb</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+            
+            <span class="n">zbinned</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">zbinned</span><span class="p">,</span> <span class="n">z</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nx</span><span class="p">):</span>
+            
+            <span class="n">xmask</span> <span class="o">=</span> <span class="p">(</span><span class="n">xind</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span><span class="p">):</span>
+                
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">xmask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">yind</span> <span class="o">==</span> <span class="n">j</span><span class="p">)</span>
+                <span class="n">zbinned</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">z</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            
+    <span class="k">return</span> <span class="n">zbinned</span><span class="p">,</span> <span class="n">xedges</span><span class="p">,</span> <span class="n">yedges</span></div>
+            
+
+<div class="viewcode-block" id="bin2d"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.bin2d">[docs]</a><span class="k">def</span> <span class="nf">bin2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">xbins</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">ybins</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    2-dimensional binning of x, y</span>
+<span class="sd">    Works as a 2-D extension of numpy.digitize but also automatically sets-up</span>
+<span class="sd">    binedges</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    x, y : array-like</span>
+<span class="sd">        x, y values to bin according to</span>
+<span class="sd">    xbins, ybins : int OR list/array like</span>
+<span class="sd">        Either the number of bins or the binedges to use</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    ind : list of arrays</span>
+<span class="sd">        The x,y bin indices each entry belongs to.  ind[0][i] gives the x-bin</span>
+<span class="sd">        of the ith entry.  ind[1][i] gives the y-bin of the ith entry</span>
+<span class="sd">    xedges, yedges: arrays</span>
+<span class="sd">        Bin edges used</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">xedges</span> <span class="o">=</span> <span class="n">setupbins</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">xbins</span><span class="p">)</span>
+    <span class="n">yedges</span> <span class="o">=</span> <span class="n">setupbins</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">ybins</span><span class="p">)</span>
+    
+    <span class="n">xind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">xedges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">yind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">yedges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">ind</span> <span class="o">=</span><span class="p">[</span><span class="n">xind</span><span class="p">,</span> <span class="n">yind</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">ind</span><span class="p">,</span> <span class="n">xedges</span><span class="p">,</span> <span class="n">yedges</span></div>
+
+<div class="viewcode-block" id="extrap1d"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.extrap1d">[docs]</a><span class="k">def</span> <span class="nf">extrap1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates a linear interpolation of x and y and does a linear</span>
+<span class="sd">    extrapolation for points outside of x and y.</span>
+<span class="sd">    Uses scipy.interpolate.interp1d</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Ignore nans</span>
+    <span class="n">ind</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+    <span class="c1"># calculate interpolation</span>
+    <span class="n">yspline</span> <span class="o">=</span> <span class="n">interp</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">fcn</span><span class="p">(</span><span class="n">x0</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span><span class="s1">&#39;__iter__&#39;</span><span class="p">):</span>
+
+            <span class="n">mask1</span> <span class="o">=</span> <span class="n">x0</span> <span class="o">&lt;</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="n">mask2</span> <span class="o">=</span> <span class="n">x0</span> <span class="o">&gt;</span> <span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x0</span><span class="p">))</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">mask1</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span>  <span class="p">(</span><span class="n">x0</span><span class="p">[</span><span class="n">mask1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">mask2</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">x0</span><span class="p">[</span><span class="n">mask2</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">mask3</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">mask1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">mask2</span><span class="p">)</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">mask3</span><span class="p">]</span> <span class="o">=</span> <span class="n">yspline</span><span class="p">(</span><span class="n">x0</span><span class="p">[</span><span class="n">mask3</span><span class="p">])</span>
+
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">x0</span> <span class="o">&lt;</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">():</span>
+
+                <span class="n">out</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span>  <span class="p">(</span><span class="n">x0</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+            <span class="k">elif</span> <span class="n">x0</span> <span class="o">&gt;</span> <span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">():</span>
+
+                <span class="n">out</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">x0</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+
+            <span class="k">else</span><span class="p">:</span>
+
+                <span class="n">out</span> <span class="o">=</span> <span class="n">yspline</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
+
+            <span class="c1"># Don&#39;t return an array with one element</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="k">return</span> <span class="n">fcn</span></div>
+    
+<div class="viewcode-block" id="meshinterp"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.meshinterp">[docs]</a><span class="k">def</span> <span class="nf">meshinterp</span><span class="p">(</span><span class="n">xedges</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+               <span class="n">assume_sorted</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a 2D interpolating function for z defined on a non-uniform mesh</span>
+<span class="sd">    Handles units</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    xedges : array</span>
+<span class="sd">        1D array defining the x bin edges, monotonically increasing</span>
+<span class="sd">    y : array</span>
+<span class="sd">        2D array defining y values.  shape (nx, ny), where nx is the number</span>
+<span class="sd">        of xedges and ny is the number of y-points at each x-bin</span>
+<span class="sd">        So, y[i, :] are the monotonically increasing y values at xedges[i]</span>
+<span class="sd">    z : array</span>
+<span class="sd">        2D array of z(x,y).  shape (nx, ny) = y.shape</span>
+<span class="sd">    kind : str</span>
+<span class="sd">        (optional) Sets the kind of interpolation to perform</span>
+<span class="sd">        [see scipy.interpolate.interp1d]</span>
+<span class="sd">    bounds_error : bool</span>
+<span class="sd">        (optional) Flag to raise error if values outside of y are called</span>
+<span class="sd">        [see scipy.interpolate.interp1d]</span>
+<span class="sd">    fill_value : float</span>
+<span class="sd">        (optional) Sets the value to fill with if bounds_error = True</span>
+<span class="sd">        [see scipy.interpolate.interp1d]</span>
+<span class="sd">    assume_sorted : bool</span>
+<span class="sd">        [see scipy.interpolate.interp1d]</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    </span>
+<span class="sd">    meshspline(x, y): callable interpolation function</span>
+<span class="sd">        Function which can be called on x, y pairs to give the interpolated</span>
+<span class="sd">        value of z.  Values outside of the range of y are set to fill_value.</span>
+<span class="sd">        x values outside the range of xedges are set to the boundary of xedges</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check shapes</span>
+    
+    <span class="k">if</span> <span class="n">z</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s1">&#39;y and z must have same shape&#39;</span>
+        
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">xedges</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+        
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s1">&#39;x and y must have same len&#39;</span>
+        
+    <span class="c1"># Handle units</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="p">[</span><span class="n">xedges</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">]</span>
+    <span class="n">units</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">pos</span><span class="p">:</span>
+        
+        <span class="k">if</span> <span class="n">pb</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+            
+            <span class="n">units</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="n">units</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+    
+    <span class="n">xedges</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span>
+    <span class="c1"># Setup bin information</span>
+    <span class="n">binsize</span> <span class="o">=</span> <span class="n">xedges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">xedges</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">xmin</span> <span class="o">=</span> <span class="n">xedges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">xmax</span> <span class="o">=</span> <span class="n">xedges</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">nbins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">xedges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    
+    <span class="c1"># set up spliness</span>
+    <span class="n">splines</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        
+        <span class="c1"># perform interpolation to make spline</span>
+        <span class="n">splines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">interp1d</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">kind</span><span class="o">=</span><span class="n">kind</span><span class="p">,</span> \
+        <span class="n">bounds_error</span><span class="o">=</span><span class="n">bounds_error</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">fill_value</span><span class="p">))</span>
+        
+        <span class="c1"># Assume_sorted doesn&#39;t work in older scipy versions</span>
+<span class="c1">#        # perform interpolation to make spline</span>
+<span class="c1">#        splines.append(interp1d(y[i], z[i], kind=kind, \</span>
+<span class="c1">#        bounds_error=bounds_error, fill_value=fill_value, \</span>
+<span class="c1">#        assume_sorted=assume_sorted))</span>
+        
+    <span class="c1"># Define the callable interplation function to return</span>
+    <span class="k">def</span> <span class="nf">meshspline</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Callable interpolation function, interoplates the value of z at</span>
+<span class="sd">        points (x1, y1)</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        </span>
+<span class="sd">        x1, y1 : array</span>
+<span class="sd">            x and y points to evaluate z at.  Must be the same shape.  ie,</span>
+<span class="sd">            x1[i], y1[i] define a point (x, y).</span>
+<span class="sd">            If @x1 or @y1 have no units, they are assumed to have the units of</span>
+<span class="sd">            the nodes used to make the interpolator.  Otherwise they are</span>
+<span class="sd">            converted to the proper units</span>
+<span class="sd">            </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        </span>
+<span class="sd">        z(x1, y1) : array</span>
+<span class="sd">            z evaluated at @x1, @y1</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Handle units</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">match_units</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">units</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">match_units</span><span class="p">(</span><span class="n">y1</span><span class="p">,</span> <span class="n">units</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
+        
+        <span class="c1"># Setup x and y points to estimate z at</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y1</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x1</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            
+            <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+            
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">y1</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            
+            <span class="n">y1</span> <span class="o">=</span> <span class="n">y1</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+            
+        <span class="c1"># Flatten arrays</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">x1</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">nElements</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="p">[</span><span class="n">nElements</span><span class="p">])</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y1</span><span class="p">,</span> <span class="p">[</span><span class="n">nElements</span><span class="p">])</span>
+            
+        <span class="c1"># Deal with xs outside of boundaries</span>
+        <span class="n">x1</span><span class="p">[</span><span class="n">x1</span> <span class="o">&lt;</span> <span class="n">xmin</span><span class="p">]</span> <span class="o">=</span> <span class="n">xmin</span>
+        <span class="n">x1</span><span class="p">[</span><span class="n">x1</span> <span class="o">&gt;</span> <span class="n">xmax</span><span class="p">]</span> <span class="o">=</span> <span class="n">xmax</span>
+        <span class="c1"># Find bin indices</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">xedges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">ind</span><span class="p">[</span><span class="n">ind</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">ind</span><span class="p">[</span><span class="n">ind</span> <span class="o">&gt;</span> <span class="n">nbins</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">nbins</span> <span class="o">-</span> <span class="mi">1</span>
+        
+        <span class="c1"># Get bin info for every point</span>
+        <span class="n">xlo</span> <span class="o">=</span> <span class="n">xedges</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+        <span class="n">xhi</span> <span class="o">=</span> <span class="n">xedges</span><span class="p">[</span><span class="n">ind</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="n">binsize</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+        
+        <span class="c1"># Get weights for bins (distance from bin edges)</span>
+        <span class="n">wlo</span> <span class="o">=</span> <span class="p">(</span><span class="n">xhi</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span><span class="o">/</span><span class="n">dx</span>
+        <span class="n">whi</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">xlo</span><span class="p">)</span><span class="o">/</span><span class="n">dx</span>
+        
+        <span class="c1"># Get function values at left and right xedges</span>
+        <span class="n">flo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x1</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">fhi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x1</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins</span><span class="p">):</span>
+            
+            <span class="c1"># Select everything in bin i</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">ind</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">mask</span><span class="p">):</span>
+                
+                <span class="c1"># Retrieve function values</span>
+                <span class="n">flo</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">splines</span><span class="p">[</span><span class="n">i</span><span class="p">](</span><span class="n">y1</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span>
+                <span class="n">fhi</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">splines</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">](</span><span class="n">y1</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span>
+        
+        <span class="c1"># Take a weighted average of the function values at left and right</span>
+        <span class="c1"># bin edges</span>
+        <span class="n">fout</span> <span class="o">=</span> <span class="n">wlo</span><span class="o">*</span><span class="n">flo</span> <span class="o">+</span> <span class="n">whi</span><span class="o">*</span><span class="n">fhi</span>
+        
+        <span class="c1"># Unflatten fout:</span>
+        <span class="n">fout</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">fout</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">fout</span><span class="p">,</span> <span class="n">units</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="n">meshspline</span></div>
+    
+<div class="viewcode-block" id="smoothstep"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.smoothstep">[docs]</a><span class="k">def</span> <span class="nf">smoothstep</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">degree</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">rescale</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates a smooth step function y(x) evaluated at the data points x.</span>
+<span class="sd">    x should be a numpy array or float.</span>
+
+<span class="sd">    y(x) is a polynomial of order &#39;degree&#39; (default is 5).  degree must be an</span>
+<span class="sd">    odd number between 3 and 25 (inclusive).  The higher the order, the</span>
+<span class="sd">    sharper the step is.</span>
+
+<span class="sd">    y(x) is defined by:</span>
+<span class="sd">        y(0) = 0</span>
+<span class="sd">        y(1) = 1</span>
+<span class="sd">        The first (degree - 1)/2 derivatives are 0 at y = 0,1</span>
+
+<span class="sd">    *** ARGUMENTS ***</span>
+
+<span class="sd">    * x * Points at which to evaluate the smoothstep</span>
+
+<span class="sd">    * degree * Degree of the smooth step.  Must be odd number between 3 and 25</span>
+<span class="sd">        default = 5</span>
+
+<span class="sd">    * rescale *  Rescale x to be between 0 and 1.  Default = False.  If True,</span>
+<span class="sd">        x MUST be an array (greater than length 1)</span>
+
+
+<span class="sd">    *** RETURNS ***</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">coeffs</span> <span class="o">=</span> <span class="n">hermite_coeffs</span><span class="p">[</span><span class="n">degree</span><span class="p">]</span>
+    <span class="c1"># -----------------------------------------------------------</span>
+    <span class="c1"># Calculate the smooth step function y(x)</span>
+    <span class="c1"># -----------------------------------------------------------</span>
+    <span class="n">n_coeffs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">coeffs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">rescale</span><span class="p">:</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">())</span><span class="o">/</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">,</span><span class="s1">&#39;Could not rescale x.  Make sure x is an array&#39;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">long</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">complex</span><span class="p">)):</span>
+
+        <span class="c1"># x is a number, handle accordingly</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">x</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="c1"># If 0&lt;x&lt;1, calculate the smooth step</span>
+            <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_coeffs</span><span class="p">):</span>
+
+                <span class="n">y</span> <span class="o">+=</span> <span class="n">coeffs</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="p">(</span><span class="n">degree</span> <span class="o">-</span> <span class="n">n</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="c1"># Assume x is a numpy array</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">x</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_coeffs</span><span class="p">):</span>
+
+            <span class="n">y</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span> <span class="o">+=</span> <span class="n">coeffs</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span><span class="o">**</span><span class="p">(</span><span class="n">degree</span><span class="o">-</span><span class="n">n</span><span class="p">)</span>
+
+        <span class="n">y</span><span class="p">[</span><span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">y</span></div>
+    
+<div class="viewcode-block" id="digitize_threshold"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.digitize_threshold">[docs]</a><span class="k">def</span> <span class="nf">digitize_threshold</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">min_per_bin</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Digitizes x according to bins, similar to numpy.digitize, but requires</span>
+<span class="sd">    that there are at least min_per_bin entries in each bin.  Bins that do not</span>
+<span class="sd">    have enough entries are combined with adjacent bins until they meet the</span>
+<span class="sd">    requirement.</span>
+
+<span class="sd">    **ARGUMENTS**</span>
+
+<span class="sd">    x : array_like</span>
+<span class="sd">        Input array to be binned.  Must be 1-dimensional</span>
+<span class="sd">    min_per_bin : int</span>
+<span class="sd">        Minimum number of entries per bin.  Default = 0</span>
+<span class="sd">    bins : int or sequence of scalars, optional</span>
+<span class="sd">        [same as for np.histogram]</span>
+<span class="sd">        If bins is an int, it defines the number of equal-width bins in the</span>
+<span class="sd">        given range (10, by default). If bins is a sequence, it defines the</span>
+<span class="sd">        bin edges, including the rightmost edge, allowing for non-uniform bin</span>
+<span class="sd">        widths.</span>
+
+<span class="sd">    **RETURNS**</span>
+
+<span class="sd">    A tuple containing:</span>
+<span class="sd">    ind : array_like</span>
+<span class="sd">        Indices of the bin each element of x falls into, such that:</span>
+<span class="sd">        bin_edges[i] &lt;= x[i] &lt; bin_edges[i+1]</span>
+<span class="sd">        (See np.digitize, this uses the same convention)</span>
+<span class="sd">    bin_edges: array_like</span>
+<span class="sd">        The edges of the bins</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Find number in each bin</span>
+    <span class="n">N</span><span class="p">,</span> <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">bins</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">N</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">min_per_bin</span><span class="p">:</span>
+
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">,</span><span class="s1">&#39;Not enough particles within the bin range&#39;</span>
+
+    <span class="n">n_bins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bin_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="c1"># Find out which binedges to delete</span>
+    <span class="n">edge_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bin_edges</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;bool&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="c1"># Work forwards</span>
+
+        <span class="k">if</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">min_per_bin</span><span class="p">:</span>
+
+            <span class="c1"># Set mask to not use the right bin edge</span>
+            <span class="n">edge_mask</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="c1"># Combine the particles in current and next bin</span>
+            <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="n">bin_mask</span> <span class="o">=</span> <span class="n">edge_mask</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">]</span>
+    <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">bin_edges</span><span class="p">[</span><span class="n">edge_mask</span><span class="p">]</span>
+    <span class="n">edge_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bin_edges</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;bool&#39;</span><span class="p">)</span>
+    <span class="n">n_bins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bin_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="c1"># Work backwards</span>
+
+        <span class="k">if</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">min_per_bin</span><span class="p">:</span>
+
+            <span class="c1"># Set mask to not use the left bin edge</span>
+            <span class="n">edge_mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="c1"># Combine the particles in current and next bin</span>
+            <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">bin_edges</span><span class="p">[</span><span class="n">edge_mask</span><span class="p">]</span>
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ind</span><span class="p">,</span> <span class="n">bin_edges</span></div>
+    
+<div class="viewcode-block" id="binned_mean"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.binned_mean">[docs]</a><span class="k">def</span> <span class="nf">binned_mean</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">binedges</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>\
+<span class="n">weighted_bins</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ret_bin_edges</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Bins y according to x and takes the average for each bin.</span>
+
+<span class="sd">    bins can either be an integer (the number of bins to use) or an array of</span>
+<span class="sd">    binedges.  bins will be overridden by nbins or binedges</span>
+
+<span class="sd">    Optionally (for compatibility reasons) if binedges is specified, the</span>
+<span class="sd">    x-bins are defined by binedges.  Otherwise the x-bins are determined by</span>
+<span class="sd">    nbins</span>
+
+<span class="sd">    If weights = None, equal weights are assumed for the average, otherwise</span>
+<span class="sd">    weights for each data point should be specified</span>
+
+<span class="sd">    y_err (error in y) is calculated as the standard deviation in y for each</span>
+<span class="sd">    bin, divided by sqrt(N), where N is the number of counts in each bin</span>
+
+<span class="sd">    IF weighted_bins is True, the bin centers are calculated as a center of</span>
+<span class="sd">    mass</span>
+
+<span class="sd">    NaNs are ignored for the input.  Empty bins are returned with nans</span>
+
+<span class="sd">    RETURNS a tuple of (bin_centers, y_mean, y_err) if ret_bin_edges=False</span>
+<span class="sd">    else, Returns (bin_edges, y_mean, y_err)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">bins</span><span class="p">,</span> <span class="nb">int</span><span class="p">))</span> <span class="ow">and</span> <span class="p">(</span><span class="n">nbins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+
+        <span class="n">nbins</span> <span class="o">=</span> <span class="n">bins</span>
+
+    <span class="k">elif</span> <span class="p">(</span><span class="nb">hasattr</span><span class="p">(</span><span class="n">bins</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">))</span> <span class="ow">and</span> <span class="p">(</span><span class="n">binedges</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+
+        <span class="n">binedges</span> <span class="o">=</span> <span class="n">bins</span>
+
+    <span class="k">if</span> <span class="n">binedges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="n">nbins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">binedges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="n">binedges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">spacing</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">*</span><span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">nbins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+
+    <span class="c1"># Pre-factor for weighted STD:</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">weights</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+
+
+    <span class="c1"># Initialize</span>
+    <span class="n">y_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbins</span><span class="p">)</span>
+    <span class="n">y_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbins</span><span class="p">)</span>
+    <span class="c1"># Find the index bins for each data point</span>
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">binedges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="c1"># Ignore nans</span>
+    <span class="n">nan_ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">binedges</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Initialize bin_centers (try to retain units)</span>
+    <span class="n">bin_centers</span> <span class="o">=</span> <span class="mf">0.0</span><span class="o">*</span><span class="n">binedges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins</span><span class="p">):</span>
+
+        <span class="c1">#Indices to use</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">ind</span><span class="o">==</span><span class="n">i</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">nan_ind</span><span class="p">)</span>
+        <span class="c1"># Set up the weighting</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">weights</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">w</span> <span class="o">/=</span> <span class="n">w</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="c1">#y_mean[i] = np.nanmean(y[mask])</span>
+        <span class="n">y_mean</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">y</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">var</span> <span class="o">=</span> <span class="n">A</span><span class="o">*</span><span class="p">(</span><span class="n">w</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">-</span> <span class="n">y_mean</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">y_std</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+        <span class="c1">#y_std[i] = np.std(y[use_ind])</span>
+
+        <span class="k">if</span> <span class="n">weighted_bins</span><span class="p">:</span>
+            <span class="c1"># Center of mass of x positions</span>
+            <span class="n">bin_centers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">w</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+    <span class="n">y_mean</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">y_mean</span><span class="p">,</span> <span class="n">y</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">y_err</span> <span class="o">=</span> <span class="n">y_std</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+    <span class="n">y_err</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">y_err</span><span class="p">,</span> <span class="n">y</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">y_mean</span><span class="p">[</span><span class="n">N</span><span class="o">==</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">y_err</span><span class="p">[</span><span class="n">N</span><span class="o">==</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">weighted_bins</span><span class="p">:</span>
+
+        <span class="n">bin_centers</span> <span class="o">=</span> <span class="p">(</span><span class="n">binedges</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">binedges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span><span class="o">/</span><span class="mf">2.0</span>
+        <span class="n">binedges</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">binedges</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">bin_centers</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">bin_centers</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="n">bin_centers</span><span class="p">[</span><span class="n">N</span><span class="o">==</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="k">if</span> <span class="n">ret_bin_edges</span><span class="p">:</span>
+
+        <span class="k">return</span> <span class="n">binedges</span><span class="p">,</span> <span class="n">y_mean</span><span class="p">,</span> <span class="n">y_err</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="k">return</span> <span class="n">bin_centers</span><span class="p">,</span> <span class="n">y_mean</span><span class="p">,</span> <span class="n">y_err</span></div>
+        
+<div class="viewcode-block" id="kepler_pos"><a class="viewcode-back" href="../../../diskpy.pdmath.html#diskpy.pdmath.kepler_pos">[docs]</a><span class="k">def</span> <span class="nf">kepler_pos</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">vel</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">Mstar</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimate position at future time t assuming an elliptical keplerian orbit</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;G&#39;</span><span class="p">)</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">G</span><span class="o">*</span><span class="n">Mstar</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">pos</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">vel</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="c1"># Calculate semi-major axis</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">mu</span><span class="o">*</span><span class="n">r</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">mu</span> <span class="o">-</span> <span class="n">v</span><span class="o">*</span><span class="n">v</span><span class="o">*</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+    <span class="c1"># Calculate eccentricity vector</span>
+    <span class="n">ecc</span> <span class="o">=</span> <span class="p">(</span><span class="n">v</span><span class="o">*</span><span class="n">v</span><span class="p">)</span><span class="o">*</span><span class="n">pos</span><span class="o">/</span><span class="n">mu</span> <span class="o">-</span> <span class="p">((</span><span class="n">pos</span><span class="o">*</span><span class="n">vel</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="o">*</span><span class="n">vel</span><span class="o">/</span><span class="n">mu</span> <span class="o">-</span> <span class="n">pos</span><span class="o">/</span><span class="n">r</span>
+    <span class="n">ecc</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    <span class="c1"># Calculate eccentricity</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">ecc</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()))</span>
+
+    <span class="c1"># Calculate initial eccentric anomaly</span>
+    <span class="c1"># x1 = a*e^2 + r.e</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">a</span><span class="o">*</span><span class="n">e</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">pos</span><span class="o">*</span><span class="n">ecc</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="c1"># y1 = |r x e| * sign(r.v)</span>
+    <span class="n">y1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">ecc</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">y1</span> <span class="o">*=</span> <span class="p">(</span><span class="n">pos</span><span class="o">*</span><span class="n">vel</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="nb">abs</span><span class="p">((</span><span class="n">pos</span><span class="o">*</span><span class="n">vel</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">E0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">y1</span><span class="p">,</span><span class="n">x1</span><span class="p">)</span>
+
+    <span class="c1"># Calculate mean anomaly</span>
+    <span class="n">M0</span> <span class="o">=</span> <span class="n">E0</span> <span class="o">-</span> <span class="n">e</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">E0</span><span class="p">)</span>
+    <span class="n">a3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mu</span><span class="o">/</span><span class="n">a3</span><span class="p">)</span><span class="o">*</span><span class="n">t</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">M0</span>
+
+    <span class="c1"># Calculate eccentric anomaly</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="n">E0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">order</span><span class="p">):</span>
+
+        <span class="n">E</span> <span class="o">=</span> <span class="n">M</span> <span class="o">+</span> <span class="n">e</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+
+    <span class="c1"># Calculate (x1, y1) (relative to center of ellipse, not focus)</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">a</span> <span class="o">-</span> <span class="n">r</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+    <span class="n">y1</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">a</span> <span class="o">-</span> <span class="n">r</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+
+    <span class="c1"># Transform to original coordinates</span>
+
+    <span class="n">x1hat</span> <span class="o">=</span> <span class="n">ecc</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">ecc</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">y1hat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">vel</span><span class="p">),</span> <span class="n">ecc</span><span class="p">)</span>
+    <span class="n">y1hat</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">y1hat</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+
+    <span class="n">pos_f</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">a</span><span class="o">*</span><span class="n">e</span><span class="p">)</span><span class="o">*</span><span class="n">x1hat</span> <span class="o">+</span> <span class="n">y1</span><span class="o">*</span><span class="n">y1hat</span>
+    <span class="k">return</span> <span class="n">pos_f</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

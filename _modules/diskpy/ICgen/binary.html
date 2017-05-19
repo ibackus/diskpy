@@ -1,0 +1,307 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.binary &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.binary</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">author: @dflemin3 July 2015</span>
+<span class="sd">Module for Binary star class.  Holds the Cartesian position/velocity coordinates and Kepler orbital elements for the binary in the</span>
+<span class="sd">reduced mass frame.  Can be initialized with orbital elements (preferred) or Cartesian position/velocity or a tipsy format snapshot</span>
+<span class="sd">that was read in using pynbody.load(&quot;snapshot.name&quot;).  Just need to pass a string to let it know which input type it&#39;s getting.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="c1"># Import my binary star module that continue relevant routines</span>
+<span class="kn">import</span> <span class="nn">AddBinary</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+
+<div class="viewcode-block" id="Binary"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binary.Binary">[docs]</a><span class="k">class</span> <span class="nc">Binary</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines the binary star class Binary.</span>
+<span class="sd">    Binary star class used for storing positions/velocities and Keplerian Orbital elements for the system.</span>
+
+<span class="sd">    Input Units: Lengths = AU, Velocities = km/s (*29.8 == VEL_UNIT), angles in degrees</span>
+<span class="sd">    Output Units: Same as input</span>
+
+<span class="sd">    Initializing:</span>
+
+<span class="sd">    With Cartesian:</span>
+<span class="sd">            Binary(X,m1,m2,&quot;Cartesian&quot;) where X is a list or numpy array of the form [x,y,z,vx,vy,vz] and m1, m2</span>
+<span class="sd">            are the masses of the primary and secondary (M_sol), respectively</span>
+<span class="sd">    With Kepler Orbital Elements:</span>
+<span class="sd">            Binary(X,m1,m2,&quot;Kepler&quot;) where X is e, a, i, Omega, w, nu which are the eccentricity, semimajor axis (AU),</span>
+<span class="sd">            inclination (degrees), Longitude of Ascending Node (degrees), argument of periapsis (degrees), and</span>
+<span class="sd">            the true anomaly (degrees).  Note the units!  m1, m2 are defined above.</span>
+<span class="sd">    With Snapshot:</span>
+<span class="sd">            X is a tipsy snapshot to be loaded.  Positions and orbital elements will be calculated from it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        For a user-specified data type, initialize Cartesian positions in the center of mass frame and the</span>
+<span class="sd">        associated Keplerian orbital elements for the binary system.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">state</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;cartesian&quot;</span><span class="p">:</span>
+            <span class="c1"># Ensure input is proper</span>
+            <span class="k">assert</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span>
+                <span class="n">X</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">),</span> <span class="s2">&quot;Improper input. len(Input Array) != 2. len = </span><span class="si">%d</span><span class="s2">.  State should be cartesian.&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">state</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">r</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reshapeData</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">computeOrbElems</span><span class="p">()</span>
+
+        <span class="k">elif</span> <span class="n">state</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;kepler&quot;</span><span class="p">:</span>
+            <span class="c1"># Ensure input is proper</span>
+            <span class="k">assert</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span>
+                <span class="n">X</span><span class="p">)</span> <span class="o">==</span> <span class="mi">6</span><span class="p">),</span> <span class="s2">&quot;Improper input. len(Input Array) != 6. len = </span><span class="si">%d</span><span class="s2">.  State should be kepler&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">state</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assignOrbElems</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">computeCartesian</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reshapeData</span><span class="p">()</span>
+
+        <span class="k">elif</span> <span class="n">state</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;snapshot&quot;</span><span class="p">:</span>
+            <span class="c1"># Ensure input is indeed a tipsy snapshot of a binary system</span>
+            <span class="k">assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span>
+                <span class="n">X</span><span class="o">.</span><span class="n">stars</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">),</span> <span class="s2">&quot;Improper input.  Is this a tipsy snapshot of a circumbinary system?&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">state</span>
+
+            <span class="c1"># Extract data from snapshot</span>
+            <span class="n">x1</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+            <span class="n">x2</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+            <span class="n">v1</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+            <span class="n">v2</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m1</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m2</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">stars</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+
+            <span class="c1"># Compute position, velocity in center of mass frame then orbital</span>
+            <span class="c1"># elements</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">r</span> <span class="o">=</span> <span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">v1</span> <span class="o">-</span> <span class="n">v2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reshapeData</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">computeOrbElems</span><span class="p">()</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="s2">&quot;Default Binary init&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">r</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span><span class="s1">&#39;km s**-1&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m1</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="s1">&#39;Msol&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m2</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="s1">&#39;Msol&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">e</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="s1">&#39;au&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">i</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Omega</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nu</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s1">&#39;Default&#39;</span>
+
+    <span class="c1"># end function</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the orbital elements and the masses of the primary and secondary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;(</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">), mass: (</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">e</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">a</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">i</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">Omega</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">nu</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">)</span>
+
+    <span class="c1"># end function</span>
+
+    <span class="c1"># Member Functions</span>
+
+<div class="viewcode-block" id="Binary.assignOrbElems"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binary.Binary.assignOrbElems">[docs]</a>    <span class="k">def</span> <span class="nf">assignOrbElems</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given array of orbital elements, set them as class parameters.  Intended as a shorthand function.</span>
+
+<span class="sd">        Input:</span>
+<span class="sd">        X is e, a, i, Omega, w, nu which are the eccentricity, semimajor axis (AU),</span>
+<span class="sd">        inclination (degrees), Longitude of Ascending Node (degrees), argument of periapsis (degrees), and</span>
+<span class="sd">        the true anomaly (degrees).  Convert all values to float for consistency and as a sanity check</span>
+<span class="sd">        except for semimajor axis since that gets units we&#39;re interested in, au.</span>
+
+<span class="sd">        Output:</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">e</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">!=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="s1">&#39;au&#39;</span><span class="p">)</span> <span class="c1">#Assumes it&#39;s in au</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">i</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Omega</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nu</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span></div>
+
+    <span class="c1"># end function</span>
+
+<div class="viewcode-block" id="Binary.reshapeData"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binary.Binary.reshapeData">[docs]</a>    <span class="k">def</span> <span class="nf">reshapeData</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ensure data, specifically r and v arrays, are of the proper shape for further manipulation.  </span>
+<span class="sd">        Also ensure data has proper units</span>
+<span class="sd">        This is useful because sometimes they come in as a list, a (1,3) numpy array or a (3,) numpy array.</span>
+<span class="sd">        Much easier to clean up upon initialization then have many checks in later functions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        
+        <span class="c1">#If masses aren&#39;t SimArrays in units M_sol, make that so</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">)</span> <span class="o">!=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m1</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span><span class="s1">&#39;Msol&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">)</span> <span class="o">!=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m2</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">,</span><span class="s1">&#39;Msol&#39;</span><span class="p">)</span></div>
+
+    <span class="c1"># end function</span>
+
+<div class="viewcode-block" id="Binary.computeOrbElems"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binary.Binary.computeOrbElems">[docs]</a>    <span class="k">def</span> <span class="nf">computeOrbElems</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the Kepler orbital elements.</span>
+
+<span class="sd">        Input: Self (must have r, v set and in proper units)</span>
+
+<span class="sd">        Output: sets and returns e,a,i,...</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Compute orbital elements from binary center of mass frame Cartesian</span>
+        <span class="c1"># coordinates</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">!=</span> <span class="s1">&#39;Kepler&#39;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">!=</span> <span class="s1">&#39;kepler&#39;</span><span class="p">),</span> <span class="s2">&quot;Already have orbital elements.&quot;</span>        
+        
+        <span class="n">zeroR</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+        <span class="n">zeroV</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span><span class="s1">&#39;cm s**-1&#39;</span><span class="p">)</span>
+        <span class="n">oe</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">calcOrbitalElements</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="p">,</span>
+            <span class="n">zeroR</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">,</span>
+            <span class="n">zeroV</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">)</span>
+
+        <span class="c1"># Set orbital elements, return them as well</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assignOrbElems</span><span class="p">(</span><span class="n">oe</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">oe</span></div>
+
+    <span class="c1"># end function</span>
+
+<div class="viewcode-block" id="Binary.computeCartesian"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binary.Binary.computeCartesian">[docs]</a>    <span class="k">def</span> <span class="nf">computeCartesian</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the Cartesian position and velocity in the reduced mass frame.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="s2">&quot;Kepler&quot;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span>
+                <span class="s2">&quot;kepler&quot;</span><span class="p">),</span> <span class="s2">&quot;Already have cartesian coordinates.&quot;</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">trueToMean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">e</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">keplerToCartesian</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">e</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Omega</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">)</span></div>
+
+    <span class="c1"># end function</span>
+
+<div class="viewcode-block" id="Binary.generateICs"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.binary.Binary.generateICs">[docs]</a>    <span class="k">def</span> <span class="nf">generateICs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        From Kepler orbital elements, compute the position, velocities for two stars in ChaNGa-friendly units.</span>
+<span class="sd">        Called &quot;generateICs&quot; since I&#39;ll use this mainly to...generate initial conditions</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="o">=</span> <span class="n">AddBinary</span><span class="o">.</span><span class="n">reduceToPhysical</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">)</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">v1</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span></div></div>
+
+    <span class="c1"># end function</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

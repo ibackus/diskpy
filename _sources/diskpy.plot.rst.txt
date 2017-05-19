@@ -1,0 +1,10 @@
+diskpy\.plot package
+====================
+
+Module contents
+---------------
+
+.. automodule:: diskpy.plot
+    :members:
+    :undoc-members:
+    :show-inheritance:

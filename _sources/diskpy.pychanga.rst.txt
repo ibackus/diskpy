@@ -1,0 +1,18 @@
+diskpy\.pychanga package
+========================
+
+Subpackages
+-----------
+
+.. toctree::
+
+    diskpy.pychanga.hyak
+    diskpy.pychanga.mox
+
+Module contents
+---------------
+
+.. automodule:: diskpy.pychanga
+    :members:
+    :undoc-members:
+    :show-inheritance:

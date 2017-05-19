@@ -1,0 +1,10 @@
+diskpy\.pychanga\.mox package
+=============================
+
+Module contents
+---------------
+
+.. automodule:: diskpy.pychanga.mox
+    :members:
+    :undoc-members:
+    :show-inheritance:

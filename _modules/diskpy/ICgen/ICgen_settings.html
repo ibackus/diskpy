@@ -1,0 +1,721 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.ICgen_settings &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.ICgen_settings</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Defines the settings class for ICgen</span>
+
+<span class="sd">USAGE:</span>
+
+<span class="sd">Load settings from file:</span>
+<span class="sd">    </span>
+<span class="sd">    import ICgen_settings</span>
+<span class="sd">    settings = ICgen_settings.settings(&#39;filename&#39;)</span>
+<span class="sd">    </span>
+<span class="sd">Load settings from defaults (Defined in ICgen_settings.py):</span>
+
+<span class="sd">    import ICgen_settings</span>
+<span class="sd">    settings = ICgen_settings.settings()</span>
+
+<span class="sd">AFTER LOADING:    </span>
+<span class="sd">Access settings:</span>
+
+<span class="sd">    # Return number of particles:</span>
+<span class="sd">    settings.pos_gen.nParticles</span>
+<span class="sd">    </span>
+<span class="sd">    # Etc...</span>
+<span class="sd">    </span>
+<span class="sd">Echo settings:</span>
+
+<span class="sd">    # Echo ALL settings</span>
+<span class="sd">    settings()</span>
+<span class="sd">    </span>
+<span class="sd">    # Echo filenames</span>
+<span class="sd">    settings.filenames()</span>
+<span class="sd">    </span>
+<span class="sd">    # Etc...</span>
+<span class="sd">    </span>
+<span class="sd">Echo setting defaults (with descriptions)</span>
+<span class="sd">    settings.print_defaults()</span>
+<span class="sd">    settings.sigma.print_defaults()</span>
+<span class="sd">    </span>
+<span class="sd">READ/WRITE</span>
+
+<span class="sd">Write (save) settings to disk:</span>
+
+<span class="sd">    settings.write(&#39;filename&#39;)</span>
+<span class="sd">    </span>
+<span class="sd">Load (read) settings from disk:</span>
+
+<span class="sd">    settings.load(&#39;filename&#39;)</span>
+<span class="sd">    </span>
+<span class="sd">    </span>
+<span class="sd">------------------</span>
+
+<span class="sd">A note on implementation.  There are 2 base settings classes: settingsBase and</span>
+<span class="sd">kindSettingsBase.  The first is just for generic settings, the second is</span>
+<span class="sd">to allow users to have multiple layouts (see class sigma)</span>
+
+<span class="sd">See the base classes for more info</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;$Revision: 7 $&quot;</span>
+<span class="c1"># $Source$</span>
+<span class="n">__iversion__</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="nb">str</span><span class="o">.</span><span class="n">isdigit</span><span class="p">,</span><span class="n">__version__</span><span class="p">))</span>
+
+<span class="kn">from</span> <span class="nn">ICgen_utils</span> <span class="k">import</span> <span class="n">pickle_import</span>
+
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">import</span> <span class="nn">cPickle</span> <span class="k">as</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="n">_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+
+<div class="viewcode-block" id="default_settings"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.default_settings">[docs]</a><span class="k">def</span> <span class="nf">default_settings</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Echos the current default settings with descriptions for ICgen settings</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">settings</span><span class="p">()</span>
+    <span class="n">x</span><span class="o">.</span><span class="n">print_defaults</span><span class="p">()</span></div>
+    
+
+<div class="viewcode-block" id="settingsBase"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.settingsBase">[docs]</a><span class="k">class</span> <span class="nc">settingsBase</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_description</span> <span class="o">=</span> <span class="n">descr</span>
+    
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="n">print_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="k">return</span> <span class="n">repr_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_set_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">defaults</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets defaults from a defaults list.  Defaults lists are a list of </span>
+<span class="sd">        length 3 tuples:</span>
+<span class="sd">        [ (&#39;variable_name&#39;, default_val, &#39;Doc string for variable&#39;),</span>
+<span class="sd">          (&#39;variable_name2&#39;, default_val2, &#39;Other doc string&#39;) ]</span>
+<span class="sd">        </span>
+<span class="sd">        kwargs can change available variables but not create new ones</span>
+<span class="sd">        </span>
+<span class="sd">        if defaults is None, defaults are taken from self._defaults</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">defaults</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_defaults&#39;</span><span class="p">):</span>
+                <span class="n">defaults</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaults</span>
+        <span class="k">if</span> <span class="n">defaults</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># No defaults found</span>
+            <span class="k">return</span>
+            
+        <span class="c1"># Extract defaults</span>
+        <span class="n">default_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">default</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">default</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">default</span> <span class="ow">in</span> <span class="n">defaults</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">default_dict</span><span class="p">)</span>
+        <span class="c1"># Now read in kwargs</span>
+        <span class="n">goodkeys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">goodkeys</span><span class="p">:</span>
+                
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s1">&#39;Unrecognized option </span><span class="si">{}</span><span class="s1">. Allowed options:</span><span class="si">{}</span><span class="s1">&#39;</span>\
+                    <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">goodkeys</span><span class="p">)</span>
+                
+            <span class="c1"># Ignore Nones</span>
+            <span class="k">if</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                
+                <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        
+<div class="viewcode-block" id="settingsBase.print_defaults"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.settingsBase.print_defaults">[docs]</a>    <span class="k">def</span> <span class="nf">print_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prints defaults defined in self._defaults.   Defaults lists are a list of </span>
+<span class="sd">        length 3 tuples:</span>
+<span class="sd">        [ (&#39;variable_name&#39;, default_val, &#39;Doc string for variable&#39;),</span>
+<span class="sd">          (&#39;variable_name2&#39;, default_val2, &#39;Other doc string&#39;) ]</span>
+<span class="sd">        </span>
+<span class="sd">        Also prints childrens defaults if they are settingsBase instances</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Print your own defaults</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_defaults&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaults</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            
+            <span class="n">string</span> <span class="o">=</span> <span class="n">repr_defaults</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_defaults</span><span class="p">)</span>
+            <span class="nb">print</span> <span class="n">string</span>
+            
+        <span class="c1"># if you contain other settings objects, print their defaults</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">settingsBase</span><span class="p">):</span>
+                
+                <span class="nb">print</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">----------------------------&#39;</span>
+                <span class="nb">print</span> <span class="n">k</span>
+                <span class="nb">print</span> <span class="s1">&#39;&#39;</span>
+                <span class="n">v</span><span class="o">.</span><span class="n">print_defaults</span><span class="p">()</span></div></div>
+        
+<div class="viewcode-block" id="kindSettingsBase"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.kindSettingsBase">[docs]</a><span class="k">class</span> <span class="nc">kindSettingsBase</span><span class="p">(</span><span class="n">settingsBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_defaults</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">_globaldefaults</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">_defaultlayouts</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descr</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">settingsBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_header</span> <span class="o">=</span> <span class="n">descr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_description</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="se">\n</span><span class="s1">Available kinds:</span><span class="se">\n</span><span class="si">{1}</span><span class="s1">&#39;</span>\
+            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_header</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaultlayouts</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        
+    <span class="k">def</span> <span class="nf">_set_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Deletes all public attributes (except kind) and updates self.__dict__</span>
+<span class="sd">        with self._defaults[kind]</span>
+<span class="sd">        &quot;&quot;&quot;</span>        
+        <span class="n">kind</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span>
+        
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            
+            <span class="k">if</span> <span class="p">(</span><span class="n">key</span> <span class="o">!=</span> <span class="s1">&#39;kind&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;_&#39;</span><span class="p">)</span> <span class="p">:</span>
+                
+                <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                
+        <span class="bp">self</span><span class="o">.</span><span class="n">_defaults</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaultlayouts</span><span class="p">[</span><span class="n">kind</span><span class="p">]</span>
+        <span class="n">settingsBase</span><span class="o">.</span><span class="n">_set_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        
+    <span class="k">def</span> <span class="nf">_set_globaldefaults</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="n">settingsBase</span><span class="o">.</span><span class="n">_set_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_globaldefaults</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Override the default __setattr__ so that changing self.kind causes</span>
+<span class="sd">        the defaults to be set for that kind</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        
+        <span class="k">if</span> <span class="n">attr</span> <span class="o">==</span> <span class="s1">&#39;kind&#39;</span><span class="p">:</span>
+            
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaultlayouts</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s1">&#39;Unrecognized kind </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_defaults</span><span class="p">()</span>
+            
+        <span class="k">elif</span> <span class="n">attr</span> <span class="o">==</span> <span class="s1">&#39;_defaultlayouts&#39;</span><span class="p">:</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">_description</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="se">\n</span><span class="s1">Available kinds:</span><span class="se">\n</span><span class="si">{1}</span><span class="s1">&#39;</span>\
+                <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_header</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaultlayouts</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                
+<div class="viewcode-block" id="kindSettingsBase.print_defaults"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.kindSettingsBase.print_defaults">[docs]</a>    <span class="k">def</span> <span class="nf">print_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="k">for</span> <span class="n">layout</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaultlayouts</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            
+            <span class="n">line</span> <span class="o">=</span> <span class="s1">&#39;kind: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">layout</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">layout</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span><span class="p">:</span>
+                <span class="n">line</span> <span class="o">+=</span> <span class="s1">&#39;   (CURRENT KIND)&#39;</span>
+            <span class="nb">print</span> <span class="n">line</span>
+            <span class="nb">print</span> <span class="n">repr_defaults</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_defaultlayouts</span><span class="p">[</span><span class="n">layout</span><span class="p">],</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;Settings for all kinds:&#39;</span>
+        <span class="nb">print</span> <span class="n">repr_defaults</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_globaldefaults</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></div></div>
+    
+<div class="viewcode-block" id="filenames"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.filenames">[docs]</a><span class="k">class</span> <span class="nc">filenames</span><span class="p">(</span><span class="n">settingsBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Filenames</span>
+<span class="sd">    </span>
+<span class="sd">    To echo settings:</span>
+<span class="sd">        filenames()</span>
+<span class="sd">    To access settings:</span>
+<span class="sd">        filenames.settingname</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_defaults</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;IC_file_name&#39;</span><span class="p">,</span> <span class="s1">&#39;IC.p&#39;</span><span class="p">,</span> <span class="s1">&#39;Initial conditions filename&#39;</span><span class="p">),</span> 
+    <span class="p">(</span><span class="s1">&#39;snapshotName&#39;</span><span class="p">,</span> <span class="s1">&#39;snapshot.std&#39;</span><span class="p">,</span> <span class="s1">&#39;Filename to save tipsy snapshot to&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;paramName&#39;</span><span class="p">,</span> <span class="s1">&#39;snapshot.param&#39;</span><span class="p">,</span> <span class="s1">&#39;Filename to save ChaNGa .param file to.&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;directorName&#39;</span><span class="p">,</span> <span class="s1">&#39;snapshot.director&#39;</span><span class="p">,</span> <span class="s1">&#39;Default .director filename&#39;</span><span class="p">),</span> 
+    <span class="p">(</span><span class="s1">&#39;settings_filename&#39;</span><span class="p">,</span> <span class="s1">&#39;IC_settings.p&#39;</span><span class="p">,</span> <span class="s1">&#39;settings file name&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="n">settingsBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descr</span><span class="o">=</span><span class="s1">&#39;Filenames&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_defaults</span><span class="p">()</span></div>
+        
+        
+<div class="viewcode-block" id="physical"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.physical">[docs]</a><span class="k">class</span> <span class="nc">physical</span><span class="p">(</span><span class="n">settingsBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines default physical parameters</span>
+<span class="sd">    </span>
+<span class="sd">    To echo settings:</span>
+<span class="sd">        physical()</span>
+<span class="sd">    To access settings:</span>
+<span class="sd">        physical.settingname</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_defaults</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;m&#39;</span><span class="p">,</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">2.00132</span><span class="p">,</span><span class="s1">&#39;m_p&#39;</span><span class="p">),</span> <span class="s1">&#39;Molecular mass of the gas&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">0.33</span> <span class="p">,</span> <span class="s1">&#39;Msol&#39;</span><span class="p">),</span> <span class="s1">&#39;Mass of the star (or total mass of &#39;</span>\
+         <span class="s1">&#39;binary system).&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;T0&#39;</span><span class="p">,</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">332.406</span><span class="p">,</span><span class="s1">&#39;K&#39;</span><span class="p">),</span> <span class="s1">&#39;Temp at R0 for powerlaw profile: T(r) = &#39;</span>\
+         <span class="s1">&#39;T0(r/r0)^Tpower&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;r0&#39;</span><span class="p">,</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="s1">&#39;au&#39;</span><span class="p">),</span> <span class="s1">&#39;R0 for temp powerlaw: T(r) = T0(r/r0)^Tpower&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;Tpower&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.59</span><span class="p">,</span> <span class="s1">&#39;Powerlaw for temperature profile&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;Tmin&#39;</span><span class="p">,</span>  <span class="n">SimArray</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;K&#39;</span><span class="p">),</span> <span class="s1">&#39;Minimum temperature&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;Tmax&#39;</span><span class="p">,</span>  <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="s1">&#39;K&#39;</span><span class="p">),</span> <span class="s1">&#39;Maximum temperature&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;kind&#39;</span><span class="p">,</span> <span class="s1">&#39;powerlaw&#39;</span><span class="p">,</span> <span class="s1">&#39;Temp profile kind.  See calc_temp.py&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;eos&#39;</span><span class="p">,</span>  <span class="s1">&#39;isothermal&#39;</span><span class="p">,</span> <span class="s1">&#39;Equation of state (isothermal or adiabatic)&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;gamma&#39;</span><span class="p">,</span>  <span class="mf">1.4</span><span class="p">,</span> <span class="s1">&#39;Adiabatic index&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;starMode&#39;</span><span class="p">,</span>  <span class="s1">&#39;single&#39;</span><span class="p">,</span> <span class="s1">&#39;Star system type: single or binary&#39;</span> <span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;binsys&#39;</span><span class="p">,</span>  <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;Binary orbital parameters: to be set at runtime, see &#39;</span>\
+         <span class="s1">&#39;binary.py&#39;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        
+        <span class="n">settingsBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descr</span><span class="o">=</span><span class="s1">&#39;General physical parameters:&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_defaults</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+        
+        
+<div class="viewcode-block" id="sigma"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.sigma">[docs]</a><span class="k">class</span> <span class="nc">sigma</span><span class="p">(</span><span class="n">kindSettingsBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Settings for generating a surface density profile</span>
+<span class="sd">    </span>
+<span class="sd">    To echo:</span>
+<span class="sd">        sigma()</span>
+<span class="sd">    To access settings:</span>
+<span class="sd">        sigma.settingname</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_defaultlayouts</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">_defaultlayouts</span><span class="p">[</span><span class="s1">&#39;powerlaw&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;Rd&#39;</span><span class="p">,</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="s1">&#39;au&#39;</span><span class="p">),</span> <span class="s1">&#39;Disk radius - where exponential cutoff is &#39;</span>\
+         <span class="s1">&#39;applied&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;rin&#39;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;Fraction of disk radius where interior cutoff ends.  The &#39;</span>\
+         <span class="s1">&#39;interior profile goes to 0 significantly inside of this&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;rmax&#39;</span><span class="p">,</span> <span class="mf">2.3</span><span class="p">,</span> <span class="s1">&#39;Maximum multiple of Rd to calculate surface density for&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;cutlength&#39;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s1">&#39;Steepness of the exterior cutoff&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;Qmin&#39;</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s1">&#39;Approximate minimum Toomre Q: defines disk mass.  The real &#39;</span>\
+         <span class="s1">&#39;value will differ&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;n_points&#39;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="s1">&#39;Number of radial points to calculate surface density at&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;power&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="s1">&#39;Powerlaw for Sigma = Sigma_0 (R/R0)^power&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">_defaultlayouts</span><span class="p">[</span><span class="s1">&#39;mqws&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;rin&#39;</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="s1">&#39;Dimensionless interior cutoff radius&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;rout&#39;</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="s1">&#39;Dimensionless exterior cutoff radius&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;rmax&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;Maximum radius&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;power&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;Powerlaw.  Note this multiplies a profile&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;m_disk&#39;</span><span class="p">,</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;Msol&#39;</span><span class="p">),</span> <span class="s1">&#39;Disk mass&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;n_points&#39;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="s1">&#39;Number of radial points to calculate surface density at&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;Qmin&#39;</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s1">&#39;Approximate minimum Toomre Q.&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">_defaultlayouts</span><span class="p">[</span><span class="s1">&#39;viscous&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;Rd&#39;</span><span class="p">,</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;au&#39;</span><span class="p">),</span> <span class="s1">&#39;Disk Radius&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;rin&#39;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;Dimensionless interior cutoff.  Note the surface density &#39;</span>\
+         <span class="s1">&#39;goes to zero significantly interior to this&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;rmax&#39;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s1">&#39;Maximum multiple of Rd before cutoff&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;power&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;Powerlaw (note this also multiplies an exponential)&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;m_disk&#39;</span><span class="p">,</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;Msol&#39;</span><span class="p">),</span> <span class="s1">&#39;Disk mass&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;n_points&#39;</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="s1">&#39;Number of radial points to calculate surface density at&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;gamma&#39;</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="s1">&#39;Power to set&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">_defaultlayouts</span><span class="p">[</span><span class="s1">&#39;none&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">_globaldefaults</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;innercut&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;For a HARD (step function) interior cutoff applied&#39;</span>\
+     <span class="s1">&#39;at this radius (dimensionless, multiple of Rd)&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;outercut&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;For a HARD (step function) exterior cutoff applied&#39;</span>\
+     <span class="s1">&#39;at this radius (dimensionless, multiple of Rd)&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;powerlaw&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">kind</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            
+            <span class="n">kind</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
+            
+        <span class="n">kindSettingsBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;Sigma profile parameters&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="n">kind</span></div>
+
+<div class="viewcode-block" id="rho_calc"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.rho_calc">[docs]</a><span class="k">class</span> <span class="nc">rho_calc</span><span class="p">(</span><span class="n">settingsBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Settings for calculating rho(z,r)</span>
+<span class="sd">    </span>
+<span class="sd">    To echo settings:</span>
+<span class="sd">        rho_calc()</span>
+<span class="sd">    To access settings:</span>
+<span class="sd">        rho_calc.settingname</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_defaults</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;nr&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;The number of radial data for rho calc.  If None, &#39;</span>\
+         <span class="s1">&#39;automatically determined&#39;</span><span class="p">),</span> 
+    <span class="p">(</span><span class="s1">&#39;nz&#39;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="s1">&#39;The number of vertical points to calculate rho(z,r) at&#39;</span><span class="p">),</span> 
+    <span class="c1"># The maximum z (assumed to be au) to calculate rho(z,r) at.</span>
+    <span class="c1"># If None (default, safe) zmax is automatically estimated at each rbin</span>
+    <span class="p">(</span><span class="s1">&#39;zmax&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;The maximum z to calculate rho.  If not, automatically&#39;</span>\
+         <span class="s1">&#39;determined&#39;</span><span class="p">),</span>
+    <span class="c1"># </span>
+    <span class="p">(</span><span class="s1">&#39;min_r_bins&#39;</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="s1">&#39;Minimum number of rbins to use.  More will be used &#39;</span>\
+         <span class="s1">&#39;if necessary&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;r_bin_tol&#39;</span><span class="p">,</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="s1">&#39;Accuracy requirement for r bins&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="n">settingsBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;Rho calculation settings&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_defaults</span><span class="p">()</span></div>
+        
+        
+<div class="viewcode-block" id="pos_gen"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.pos_gen">[docs]</a><span class="k">class</span> <span class="nc">pos_gen</span><span class="p">(</span><span class="n">settingsBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Settings for generating random positions [STEP 2]</span>
+<span class="sd">    </span>
+<span class="sd">    To echo settings:</span>
+<span class="sd">        pos_gen()</span>
+<span class="sd">    To access settings:</span>
+<span class="sd">        pos_gen.settingname</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_defaults</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;nParticles&#39;</span><span class="p">,</span> <span class="mi">40411</span><span class="p">,</span> <span class="s1">&#39;Number of particles&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;method&#39;</span><span class="p">,</span> <span class="s1">&#39;grid&#39;</span><span class="p">,</span> \
+     <span class="s1">&#39;Method for generating (r, theta).  Can be &quot;grid&quot; or &quot;random&quot;&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="n">settingsBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;Position generator settings:&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_defaults</span><span class="p">()</span></div>
+        
+<div class="viewcode-block" id="snapshot"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.snapshot">[docs]</a><span class="k">class</span> <span class="nc">snapshot</span><span class="p">(</span><span class="n">settingsBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Settings for generating tipsy files (includes particle mass, temp, and vel.)</span>
+<span class="sd">    [STEP 3]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_defaults</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;mScale&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;For growMass runs, factor (0 to 1) by which to scale &#39;</span>\
+         <span class="s1">&#39;particle masses for ICs&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;nSmooth&#39;</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="s1">&#39;number of neighbors used during ChaNGa calculations&#39;</span><span class="p">),</span> 
+    <span class="p">(</span><span class="s1">&#39;extraparams&#39;</span><span class="p">,</span> <span class="p">{},</span> <span class="s1">&#39;Extra runtime parameters for ChaNGa during vel calc&#39;</span><span class="p">),</span> 
+    <span class="p">(</span><span class="s1">&#39;metals&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;metals&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nParticles</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        
+        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Tipsy snapshot generator settings&#39;</span>
+        <span class="n">message</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1"> extraparams is a dict of extra parameters for ChaNGa&#39;</span>
+        <span class="n">message</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1"> e.g. extraparams = {&quot;bDoGas&quot;: 1}&#39;</span>
+        <span class="n">settingsBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span></div>
+                
+<div class="viewcode-block" id="changa_run"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.changa_run">[docs]</a><span class="k">class</span> <span class="nc">changa_run</span><span class="p">(</span><span class="n">settingsBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Settings for running ChaNGa (needed when calculating velocities, eps, so on)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_defaults</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;preset&#39;</span><span class="p">,</span> <span class="s1">&#39;local&#39;</span><span class="p">,</span> <span class="s1">&#39;Run configuration to use.  &#39;</span>\
+         <span class="s1">&#39;See ICgen_utils.changa_command for options&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;changa_args&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;Additional arguments for all ChaNGa calls&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;runner_args&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;Additional arguments for all runner &#39;</span>\
+         <span class="s1">&#39;(mpirun, charmrun, ...) calls&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;verbose&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;Display ChaNGa output&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;logfile_name&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;Save ChaNGa output to log file&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        
+        <span class="n">settingsBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;ChaNGa run options&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_defaults</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+        
+<div class="viewcode-block" id="settings"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.settings">[docs]</a><span class="k">class</span> <span class="nc">settings</span><span class="p">(</span><span class="n">settingsBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    settings for ICgen</span>
+<span class="sd">    </span>
+<span class="sd">    USAGE:</span>
+<span class="sd">    </span>
+<span class="sd">    Load settings from file:</span>
+<span class="sd">        </span>
+<span class="sd">        import ICgen_settings</span>
+<span class="sd">        settings = ICgen_settings.settings(&#39;filename&#39;)</span>
+<span class="sd">        </span>
+<span class="sd">    Load settings from defaults (Defined in ICgen_settings.py):</span>
+<span class="sd">    </span>
+<span class="sd">        import ICgen_settings</span>
+<span class="sd">        settings = ICgen_settings.settings()</span>
+<span class="sd">        </span>
+<span class="sd">    Load settings for a given surface density profile</span>
+<span class="sd">    </span>
+<span class="sd">        import ICgen_settings</span>
+<span class="sd">        settings = ICgen_settings.settings(&#39;powerlaw&#39;)</span>
+<span class="sd">        or try:</span>
+<span class="sd">        settings = ICgen_settings.settings(&#39;MQWS&#39;)</span>
+<span class="sd">    </span>
+<span class="sd">    AFTER LOADING:    </span>
+<span class="sd">    Access settings:</span>
+<span class="sd">    </span>
+<span class="sd">        # Return sigmaFileName:</span>
+<span class="sd">        settings.filenames.sigmaFileName</span>
+<span class="sd">        </span>
+<span class="sd">        # Return number of particles:</span>
+<span class="sd">        settings.pos_gen.nParticles</span>
+<span class="sd">        </span>
+<span class="sd">        # Etc...</span>
+<span class="sd">        </span>
+<span class="sd">    Echo settings:</span>
+<span class="sd">    </span>
+<span class="sd">        # Echo ALL settings</span>
+<span class="sd">        settings()</span>
+<span class="sd">        </span>
+<span class="sd">        # Echo filenames</span>
+<span class="sd">        settings.filenames()</span>
+<span class="sd">        </span>
+<span class="sd">        # Etc...</span>
+<span class="sd">        </span>
+<span class="sd">    READ/WRITE</span>
+<span class="sd">    </span>
+<span class="sd">    Write (save) settings to disk:</span>
+<span class="sd">    </span>
+<span class="sd">        settings.write(&#39;filename&#39;)</span>
+<span class="sd">        </span>
+<span class="sd">    Load (read) settings from disk:</span>
+<span class="sd">    </span>
+<span class="sd">        settings.load(&#39;filename&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">settings_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">__version__</span> <span class="o">=</span> <span class="n">__iversion__</span>
+        
+        <span class="n">settingsBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descr</span><span class="o">=</span><span class="s1">&#39;IC settings&#39;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">settings_filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Load the defaults</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filenames</span> <span class="o">=</span> <span class="n">filenames</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma</span><span class="p">(</span><span class="n">kind</span><span class="p">)</span>           
+            <span class="bp">self</span><span class="o">.</span><span class="n">rho_calc</span> <span class="o">=</span> <span class="n">rho_calc</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pos_gen</span> <span class="o">=</span> <span class="n">pos_gen</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span> <span class="o">=</span> <span class="n">snapshot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_gen</span><span class="o">.</span><span class="n">nParticles</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">physical</span> <span class="o">=</span> <span class="n">physical</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="n">kind</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">changa_run</span> <span class="o">=</span> <span class="n">changa_run</span><span class="p">()</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">settings_filename</span><span class="p">)</span>
+        
+<div class="viewcode-block" id="settings.save"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.settings.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">settings_filename</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save settings to settings_filename.  If settings_filename is None</span>
+<span class="sd">        (or is not set), settings_filename will be taken as the filename of</span>
+<span class="sd">        the most recent save/load</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">if</span> <span class="n">settings_filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Try filename stored in settings object (self)            </span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;filenames&#39;</span><span class="p">)</span> \
+                    <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filenames</span><span class="p">,</span><span class="s1">&#39;settings_filename&#39;</span><span class="p">)):</span>
+                
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">,</span><span class="s1">&#39;No settings_filename defined.  Cannot save&#39;</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                
+                <span class="n">settings_filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filenames</span><span class="o">.</span><span class="n">settings_filename</span>
+                
+        <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">settings_filename</span><span class="p">,</span><span class="s1">&#39;wb&#39;</span><span class="p">)</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span><span class="n">f</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="nb">print</span> <span class="s1">&#39;Settings saved to </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">settings_filename</span><span class="p">)</span>
+        <span class="c1"># Update the settings_filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_filename</span> <span class="o">=</span> <span class="n">settings_filename</span></div>
+        
+<div class="viewcode-block" id="settings.load"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.settings.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">settings_filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load settings from settings_filename.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">settings_filename</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="c1"># Load the settings</span>
+            <span class="n">tmp_dict</span> <span class="o">=</span> <span class="n">pickle_import</span><span class="p">(</span><span class="n">settings_filename</span><span class="p">,</span> <span class="n">_dir</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Assume the an already loaded settings dictionary is being passed</span>
+            <span class="n">tmp_dict</span> <span class="o">=</span> <span class="n">settings_filename</span>
+        
+        <span class="c1"># Sigma has to be handled specially because the settings are dynamic</span>
+        <span class="k">if</span> <span class="s1">&#39;sigma&#39;</span> <span class="ow">in</span> <span class="n">tmp_dict</span><span class="p">:</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="n">tmp_dict</span><span class="p">[</span><span class="s1">&#39;sigma&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">kind</span>
+        
+        <span class="c1"># Get the names of the settings objects</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            
+            <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;_&#39;</span><span class="p">:</span>
+                
+                <span class="n">keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                
+        <span class="c1"># Now update the dictionary with the settings object dictionaries</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">tmp_dict</span><span class="p">:</span>
+                
+                <span class="n">old</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+                <span class="n">new</span> <span class="o">=</span> <span class="n">tmp_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="c1"># Update the old (possibly default) settings</span>
+                <span class="n">old</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">old</span><span class="p">)</span></div></div>
+                
+                
+<div class="viewcode-block" id="repr_defaults"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.repr_defaults">[docs]</a><span class="k">def</span> <span class="nf">repr_defaults</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prints a defaults list.  Defaults lists are a list of length 3 tuples:</span>
+<span class="sd">        [ (&#39;variable_name&#39;, default_val, &#39;Doc string for variable&#39;),</span>
+<span class="sd">          (&#39;variable_name2&#39;, default_val2, &#39;Other doc string&#39;) ]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span>
+    <span class="n">strings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">x</span><span class="p">:</span>
+        
+        <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;_&#39;</span><span class="p">:</span>
+            
+            
+            <span class="k">if</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_unit</span><span class="p">(</span><span class="n">default</span><span class="p">):</span>
+                
+                <span class="n">default_str</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1"> </span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">default</span><span class="p">,</span><span class="n">default</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                
+                <span class="n">default_str</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
+                
+            <span class="n">line</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="n">default_str</span><span class="p">,</span> <span class="n">doc</span><span class="p">]</span>
+            <span class="n">strings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+    
+    <span class="c1"># Now make them column formatted</span>
+    <span class="n">colwidth0</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">strings</span><span class="p">)</span>
+    <span class="n">colwidth1</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">strings</span><span class="p">)</span>
+    <span class="n">string</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">strings</span><span class="p">:</span>
+        <span class="n">string</span> <span class="o">+=</span> <span class="n">indent</span><span class="o">*</span><span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">rjust</span><span class="p">(</span><span class="n">colwidth0</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;: &#39;</span> \
+            <span class="o">+</span> <span class="n">line</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="n">colwidth1</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; - &#39;</span> <span class="o">+</span> <span class="n">line</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="k">return</span> <span class="n">string</span></div>
+        
+
+<div class="viewcode-block" id="repr_settings"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.repr_settings">[docs]</a><span class="k">def</span> <span class="nf">repr_settings</span><span class="p">(</span><span class="n">setting</span><span class="p">):</span>
+    
+    <span class="n">header</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">setting</span><span class="p">,</span> <span class="s1">&#39;_description&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">string</span> <span class="o">=</span> <span class="s1">&#39;------------------------</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="n">string</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="se">\n\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">val</span> <span class="ow">in</span> <span class="n">setting</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            
+            <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;_&#39;</span><span class="p">:</span>
+                
+                <span class="k">pass</span>
+            
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">settingsBase</span><span class="p">):</span>
+                
+                <span class="n">string</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                
+            <span class="k">elif</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+                
+                <span class="n">string</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1"> : </span><span class="si">{1}</span><span class="s1"> </span><span class="si">{2}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="n">val</span><span class="p">,</span><span class="n">val</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                
+                <span class="n">string</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1"> : </span><span class="si">{1}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="n">val</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">string</span></div>
+
+    
+<div class="viewcode-block" id="print_settings"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen_settings.print_settings">[docs]</a><span class="k">def</span> <span class="nf">print_settings</span><span class="p">(</span><span class="n">setting</span><span class="p">):</span>
+    
+    <span class="nb">print</span> <span class="n">repr_settings</span><span class="p">(</span><span class="n">setting</span><span class="p">)</span></div>
+
+<span class="k">def</span> <span class="nf">_colprint</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">col_width</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word</span><span class="p">)</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">data</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span>  <span class="c1"># padding</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">word</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="n">col_width</span><span class="p">)</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

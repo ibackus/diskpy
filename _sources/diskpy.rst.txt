@@ -1,0 +1,43 @@
+diskpy package
+==============
+
+Subpackages
+-----------
+
+.. toctree::
+
+    diskpy.ICgen
+    diskpy.clumps
+    diskpy.disk
+    diskpy.pdmath
+    diskpy.plot
+    diskpy.pychanga
+    diskpy.utils
+
+Submodules
+----------
+
+diskpy\.docconf module
+----------------------
+
+.. automodule:: diskpy.docconf
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+diskpy\.global\_settings module
+-------------------------------
+
+.. automodule:: diskpy.global_settings
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: diskpy
+    :members:
+    :undoc-members:
+    :show-inheritance:

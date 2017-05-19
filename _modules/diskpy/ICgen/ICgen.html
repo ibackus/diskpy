@@ -1,0 +1,672 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.ICgen &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.ICgen</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Wed Mar 12 12:48:33 2014</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;$Revision: 4 $&quot;</span>
+<span class="c1"># $Source$</span>
+
+<span class="n">__iversion__</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="nb">str</span><span class="o">.</span><span class="n">isdigit</span><span class="p">,</span><span class="n">__version__</span><span class="p">))</span>
+
+<span class="c1"># External modules</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">cPickle</span> <span class="k">as</span> <span class="nn">pickle</span>
+<span class="kn">from</span> <span class="nn">warnings</span> <span class="k">import</span> <span class="n">warn</span>
+
+<span class="c1"># ICgen modules</span>
+<span class="kn">import</span> <span class="nn">calc_temp</span>
+<span class="kn">import</span> <span class="nn">pos_class</span>
+<span class="kn">import</span> <span class="nn">make_snapshot</span>
+<span class="kn">import</span> <span class="nn">make_snapshotBinary</span>
+<span class="kn">import</span> <span class="nn">make_snapshotSType</span>
+<span class="kn">import</span> <span class="nn">make_snapshotSTypeSupplied</span>
+<span class="kn">import</span> <span class="nn">ICgen_settings</span>
+<span class="kn">import</span> <span class="nn">ICgen_utils</span>
+<span class="kn">import</span> <span class="nn">make_sigma</span>
+<span class="kn">import</span> <span class="nn">sigma_profile</span>
+
+<span class="kn">from</span> <span class="nn">rhosolver</span> <span class="k">import</span> <span class="n">rhosolver</span><span class="p">,</span> <span class="n">loadrho</span>
+
+<span class="c1"># diskpy modules</span>
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">match_units</span><span class="p">,</span> <span class="n">configsave</span>
+<span class="kn">from</span> <span class="nn">diskpy</span> <span class="k">import</span> <span class="n">global_settings</span>
+
+<span class="c1"># Initial stuff</span>
+<span class="n">ICgenDir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+
+<div class="viewcode-block" id="IC"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.IC">[docs]</a><span class="k">class</span> <span class="nc">IC</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines the IC class.</span>
+<span class="sd">    </span>
+<span class="sd">    INITIALIZING NEW INITIAL CONDITIONS</span>
+
+<span class="sd">    # Initialize a blank IC object (with no surface density profile yet made)</span>
+
+<span class="sd">    IC = ICgen.IC()</span>
+<span class="sd">    </span>
+<span class="sd">    # Initialize an IC object and surface density profile using default settings</span>
+<span class="sd">    </span>
+<span class="sd">    IC = ICgen.IC(profile_kind=&#39;powerlaw&#39;)</span>
+<span class="sd">    IC = ICgen.IC(profile_kind=&#39;MQWS&#39;)</span>
+<span class="sd">    </span>
+<span class="sd">    # Initialize IC object from 1-D SimArrays r, sigma (surface density)</span>
+<span class="sd">    </span>
+<span class="sd">    IC = ICgen.IC(r, sigma)</span>
+<span class="sd">    </span>
+<span class="sd">    Optionally, the CDF for the surface density profile can be supplied to</span>
+<span class="sd">    speed up generation of sigma.  To do that:</span>
+<span class="sd">    </span>
+<span class="sd">    IC = ICgen.IC(r, sigma, CDF)</span>
+<span class="sd">    </span>
+<span class="sd">    Or, the input can be a the filename of a pickled dictionary containing</span>
+<span class="sd">    &#39;r&#39;, &#39;sigma&#39;, and optionally &#39;CDF&#39;</span>
+<span class="sd">    </span>
+<span class="sd">    Settings can also be entered manually if needed</span>
+<span class="sd">    </span>
+<span class="sd">    settings = pickle.load(open(&#39;settings.p&#39;,&#39;r&#39;))</span>
+<span class="sd">    IC = ICgen.IC(settings = settings)</span>
+<span class="sd">    </span>
+<span class="sd">    GENERATING INITIAL CONDITIONS</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">CDF</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">profile_kind</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="nb">str</span><span class="p">):</span>
+            <span class="c1"># Load the pickled sigma dictionary</span>
+            <span class="n">sig_dict</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">))</span>
+            <span class="n">sigma</span> <span class="o">=</span> <span class="n">sig_dict</span><span class="p">[</span><span class="s1">&#39;sigma&#39;</span><span class="p">]</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">sig_dict</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span>
+            
+            <span class="k">if</span> <span class="s1">&#39;CDF&#39;</span> <span class="ow">in</span> <span class="n">sig_dict</span><span class="p">:</span>
+                
+                <span class="n">CDF</span> <span class="o">=</span> <span class="n">sig_dict</span><span class="p">[</span><span class="s1">&#39;CDF&#39;</span><span class="p">]</span>
+            
+            
+        <span class="c1"># Initialize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__version__</span> <span class="o">=</span> <span class="n">__iversion__</span>
+        
+        <span class="k">if</span> <span class="n">settings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Load up default settings</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">settings</span> <span class="o">=</span> <span class="n">ICgen_settings</span><span class="o">.</span><span class="n">settings</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="n">profile_kind</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">settings</span> <span class="o">=</span> <span class="n">settings</span>
+        
+        <span class="c1"># Try to update profile_kind (might be set in settings, or from defaults)</span>
+        <span class="k">try</span><span class="p">:</span>
+            
+            <span class="n">profile_kind</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">kind</span>
+            
+        <span class="k">except</span><span class="p">:</span>
+            
+            <span class="k">pass</span>
+        
+        <span class="c1"># Add modules/attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">calc_temp</span><span class="o">.</span><span class="n">T</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maker</span> <span class="o">=</span> <span class="n">maker</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        
+        <span class="c1"># Define a saving function        </span>
+        <span class="k">def</span> <span class="nf">saver</span><span class="p">(</span><span class="n">filename</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            A wrapper for ICgen.save</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+            
+        <span class="bp">self</span><span class="o">.</span><span class="n">save</span> <span class="o">=</span> <span class="n">saver</span>
+        
+<div class="viewcode-block" id="IC.Qest"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.IC.Qest">[docs]</a>    <span class="k">def</span> <span class="nf">Qest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimate Toomre Q at r (optional) for ICs, assuming omega=epicyclic</span>
+<span class="sd">        frequency.  Ignores disk self-gravity</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Qest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span></div>
+        
+<div class="viewcode-block" id="IC.generate"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.IC.generate">[docs]</a>    <span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restart</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Runs through all the steps to generate a set of initial conditions</span>
+<span class="sd">        </span>
+<span class="sd">        IF restart=True, it picks up at the last completed step</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">restart</span><span class="p">:</span>
+            
+            <span class="c1"># Find the last completed step</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;pos&#39;</span><span class="p">):</span> <span class="n">initial_step</span> <span class="o">=</span> <span class="mi">3</span>
+            <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;rho&#39;</span><span class="p">):</span> <span class="n">initial_step</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;sigma&#39;</span><span class="p">):</span> <span class="n">initial_step</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span> <span class="n">initial_step</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="n">initial_step</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">initial_step</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            
+            <span class="c1"># Generate sigma</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">sigma_gen</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">initial_step</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            
+            <span class="c1"># Generate rho</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">rho_gen</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+            
+        <span class="k">if</span> <span class="n">initial_step</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
+            
+            <span class="c1"># Generate positions</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">pos_gen</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+            
+        <span class="k">if</span> <span class="n">initial_step</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">:</span>
+            
+            <span class="c1"># Generate snapshot</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">snapshot_gen</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save</span><span class="p">()</span></div></div>
+            
+<div class="viewcode-block" id="Qest"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.Qest">[docs]</a><span class="k">def</span> <span class="nf">Qest</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimate Toomre Q at r (optional) for ICs, assuming omega=epicyclic</span>
+<span class="sd">    frequency.  Ignores disk self-gravity</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;sigma&#39;</span><span class="p">):</span>
+        
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s1">&#39;Could not find surface density profile (sigma)&#39;</span>
+        
+    <span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;G&#39;</span><span class="p">)</span>
+    <span class="n">kB</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;k&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">r</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">r</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span><span class="o">.</span><span class="n">r_bins</span>
+        
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">T</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">M</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">m</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="s1">&#39;Msol&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">match_units</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="s1">&#39;m_p&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">M</span><span class="o">*</span><span class="n">kB</span><span class="o">*</span><span class="n">T</span><span class="o">/</span><span class="p">(</span><span class="n">G</span><span class="o">*</span><span class="n">m</span><span class="o">*</span><span class="n">r</span><span class="o">**</span><span class="mi">3</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">sigma</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">Q</span></div>
+        
+        
+<div class="viewcode-block" id="save"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.save">[docs]</a><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    
+    <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">filenames</span><span class="o">.</span><span class="n">IC_file_name</span>
+    
+    <span class="n">save_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;__version__&#39;</span><span class="p">):</span>
+        
+        <span class="n">save_dict</span><span class="p">[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">__version__</span>
+        
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="c1"># GET SETTINGS/save a copy</span>
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="n">settings_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_settings.p&#39;</span>
+    <span class="n">save_dict</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">settings_name</span>
+    <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">settings_name</span><span class="p">)</span>
+    
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="c1"># Prepare rho, if available</span>
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;rho&#39;</span><span class="p">):</span>
+        
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">rho</span>
+        <span class="c1"># Generate a dictionary containing rho_binned, z_bins, r_bins</span>
+        <span class="n">rho_dict</span> <span class="o">=</span> <span class="p">{</span>\
+        <span class="s1">&#39;rho&#39;</span><span class="p">:</span> <span class="n">rho</span><span class="o">.</span><span class="n">rho_binned</span><span class="p">,</span>\
+        <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="n">rho</span><span class="o">.</span><span class="n">z_bins</span><span class="p">,</span>\
+        <span class="s1">&#39;r&#39;</span><span class="p">:</span> <span class="n">rho</span><span class="o">.</span><span class="n">r_bins</span><span class="p">}</span>
+        <span class="c1"># Update save dictionary</span>
+        <span class="n">save_dict</span><span class="p">[</span><span class="s1">&#39;rho&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rho_dict</span>
+    
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="c1"># Prepare sigma, if available</span>
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;sigma&#39;</span><span class="p">):</span>
+        
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">sigma</span>
+        <span class="c1"># Update save dictionary</span>
+        <span class="n">save_dict</span><span class="p">[</span><span class="s1">&#39;sigma&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sigma</span><span class="o">.</span><span class="n">input_dict</span>
+        <span class="n">save_dict</span><span class="p">[</span><span class="s1">&#39;CDF&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sigma</span><span class="o">.</span><span class="n">_CDF</span>
+
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="c1"># Prepare pos if possible</span>
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;pos&#39;</span><span class="p">):</span>
+        
+        <span class="n">save_dict</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">pos</span>
+        
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="c1"># Prepare param/dict if possible</span>
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;snapshot_param&#39;</span><span class="p">):</span>
+        
+        <span class="n">save_dict</span><span class="p">[</span><span class="s1">&#39;snapshot_param&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">snapshot_param</span>
+        <span class="n">param_name</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">filenames</span><span class="o">.</span><span class="n">paramName</span>
+        <span class="n">configsave</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">snapshot_param</span><span class="p">,</span> <span class="n">param_name</span><span class="p">)</span>
+        <span class="nb">print</span> <span class="s1">&#39;param file saved to </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">param_name</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;snapshot_director&#39;</span><span class="p">):</span>
+        
+        <span class="n">save_dict</span><span class="p">[</span><span class="s1">&#39;snapshot_director&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">snapshot_director</span>
+        <span class="n">director_name</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">filenames</span><span class="o">.</span><span class="n">directorName</span>
+        <span class="n">configsave</span><span class="p">(</span><span class="n">ICobj</span><span class="o">.</span><span class="n">snapshot_director</span><span class="p">,</span> <span class="n">director_name</span><span class="p">)</span>
+        <span class="nb">print</span> <span class="s1">&#39;director file saved to </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">director_name</span><span class="p">)</span>
+        
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="c1"># SAVE</span>
+    <span class="c1"># --------------------------------------------------</span>
+    <span class="c1"># Save snapshot if possible</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ICobj</span><span class="p">,</span> <span class="s1">&#39;snapshot&#39;</span><span class="p">):</span>
+        
+        <span class="n">fmt</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">tipsy</span><span class="o">.</span><span class="n">TipsySnap</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">filenames</span><span class="o">.</span><span class="n">snapshotName</span>
+        <span class="n">save_dict</span><span class="p">[</span><span class="s1">&#39;snapshotName&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fname</span>
+        
+        <span class="c1"># Sometimes, saving the snapshot once raises an error.  Saving again</span>
+        <span class="c1"># can fix this for some reason</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            
+            <span class="n">ICobj</span><span class="o">.</span><span class="n">snapshot</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span> <span class="o">=</span> <span class="n">fmt</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">fname</span><span class="p">)</span>
+            
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            
+            <span class="n">ICobj</span><span class="o">.</span><span class="n">snapshot</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span> <span class="o">=</span> <span class="n">fmt</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">fname</span><span class="p">)</span>
+        
+    <span class="c1"># Save the save dictionary</span>
+    <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">save_dict</span><span class="p">,</span><span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="s1">&#39;wb&#39;</span><span class="p">),</span> <span class="n">protocol</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="nb">print</span> <span class="s1">&#39;Initial conditions saved to </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>        </div>
+    
+<div class="viewcode-block" id="load"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.load">[docs]</a><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+       
+    <span class="c1"># Load everything available from filename</span>
+    <span class="n">input_dict</span> <span class="o">=</span> <span class="n">ICgen_utils</span><span class="o">.</span><span class="n">pickle_import</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">ICgenDir</span><span class="p">)</span>
+    
+    <span class="c1"># Get version/update IC if necessary</span>
+    <span class="k">if</span> <span class="s1">&#39;version&#39;</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="p">:</span>
+        
+        <span class="n">version</span> <span class="o">=</span> <span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">version</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="n">_upgrade_version</span><span class="p">(</span><span class="n">input_dict</span><span class="p">,</span> <span class="n">version</span><span class="p">)</span>
+    
+    <span class="c1"># Parse the input dictionary</span>
+    
+    <span class="k">if</span> <span class="s1">&#39;sigma&#39;</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="p">:</span>
+        
+        <span class="c1"># Load sigma stuff</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;sigma&#39;</span><span class="p">][</span><span class="s1">&#39;sigma&#39;</span><span class="p">]</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;sigma&#39;</span><span class="p">][</span><span class="s1">&#39;r&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># Initialize ICobj</span>
+        <span class="k">if</span> <span class="s1">&#39;CDF&#39;</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="p">:</span>
+            
+            <span class="n">CDF</span> <span class="o">=</span> <span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;CDF&#39;</span><span class="p">]</span>
+            <span class="n">ICobj</span> <span class="o">=</span> <span class="n">IC</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">CDF</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+        
+            <span class="n">ICobj</span> <span class="o">=</span> <span class="n">IC</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
+            
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Initialize blank IC object, sigma has not been generated yet</span>
+        <span class="n">ICobj</span> <span class="o">=</span> <span class="n">IC</span><span class="p">()</span>
+        
+    <span class="k">if</span> <span class="s1">&#39;settings&#39;</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="p">:</span>
+        
+        <span class="c1"># &#39;settings&#39; is the settings filename.  load that up</span>
+        <span class="n">ICobj</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">])</span>
+        
+    <span class="k">if</span> <span class="s1">&#39;rho&#39;</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="p">:</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;loading rho&#39;</span>
+        <span class="n">ICobj</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">rho</span><span class="p">(</span><span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;rho&#39;</span><span class="p">])</span>
+        
+    <span class="k">if</span> <span class="s1">&#39;pos&#39;</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="p">:</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;loading pos&#39;</span>
+        <span class="n">ICobj</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+        <span class="n">ICobj</span><span class="o">.</span><span class="n">pos</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="n">ICobj</span>
+        
+    <span class="k">if</span> <span class="s1">&#39;snapshotName&#39;</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="p">:</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;loading snapshot&#39;</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;snapshotName&#39;</span><span class="p">]</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+        
+            <span class="n">ICobj</span><span class="o">.</span><span class="n">snapshot</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;snapshot_param&#39;</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="p">:</span>
+        
+                <span class="nb">print</span> <span class="s1">&#39;loading param&#39;</span>
+                <span class="n">ICobj</span><span class="o">.</span><span class="n">snapshot_param</span> <span class="o">=</span> <span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;snapshot_param&#39;</span><span class="p">]</span>
+                
+            <span class="k">if</span> <span class="s1">&#39;snapshot_director&#39;</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="p">:</span>
+                
+                <span class="nb">print</span> <span class="s1">&#39;loading director&#39;</span>
+                <span class="n">ICobj</span><span class="o">.</span><span class="n">snapshot_director</span> <span class="o">=</span> <span class="n">input_dict</span><span class="p">[</span><span class="s1">&#39;snapshot_director&#39;</span><span class="p">]</span>
+            
+        <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+            
+            <span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Could not find snapshot (</span><span class="si">{0}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fname</span><span class="p">))</span>
+            <span class="nb">print</span> <span class="s1">&#39;Could not find snapshot (</span><span class="si">{0}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+        
+    
+
+    <span class="k">return</span> <span class="n">ICobj</span></div>
+            
+            
+<span class="k">def</span> <span class="nf">_upgrade_version</span><span class="p">(</span><span class="n">IC_input</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Used for backwards compatibility.  If an initial conditions object was</span>
+<span class="sd">    generated using an outdated version of ICgen, hopefully when it&#39;s being</span>
+<span class="sd">    loaded it can be made up-to-date before initializing the ICobj</span>
+<span class="sd">    </span>
+<span class="sd">    version is the version of the IC_input</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">version</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        
+        <span class="c1"># Assume IC_input is a dictionary</span>
+        <span class="c1"># Needs the changa_run settings</span>
+            
+        <span class="c1"># Initialize empty, up-to-date settings</span>
+        <span class="n">new_settings</span> <span class="o">=</span> <span class="n">ICgen_settings</span><span class="o">.</span><span class="n">settings</span><span class="p">()</span>
+        <span class="n">old_settings</span> <span class="o">=</span> <span class="n">IC_input</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;settings&#39;</span> <span class="ow">in</span> <span class="n">IC_input</span><span class="p">:</span>
+            
+            <span class="c1"># Load old settings, ignoring the snapshot gen settings</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">old_settings</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                
+                <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="s1">&#39;snapshot&#39;</span><span class="p">:</span>
+                    
+                    <span class="n">new_settings</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">old_settings</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                    
+        <span class="c1"># update the input dictionary</span>
+        <span class="n">IC_input</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_settings</span>
+        
+    <span class="k">if</span> <span class="n">version</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        
+        <span class="c1"># Add a .director file name to settings.</span>
+        
+        <span class="n">warn</span><span class="p">(</span><span class="s1">&#39;These ICs seem out of date.  Attempting to upgrade to current version&#39;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">IC_input</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">filenames</span><span class="p">,</span> <span class="s1">&#39;directorName&#39;</span><span class="p">):</span>
+            
+            <span class="n">paramName</span> <span class="o">=</span> <span class="n">IC_input</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">filenames</span><span class="o">.</span><span class="n">paramName</span>
+            <span class="n">directorName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">paramName</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;.director&#39;</span>
+            <span class="n">IC_input</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">filenames</span><span class="o">.</span><span class="n">directorName</span> <span class="o">=</span> <span class="n">directorName</span>
+            
+    <span class="k">if</span> <span class="n">version</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+        
+        <span class="n">IC_input</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">IC_input</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">settings_filename</span>
+        
+        
+<div class="viewcode-block" id="add"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.add">[docs]</a><span class="k">class</span> <span class="nc">add</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Contains modules to load data/parameters</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ICobj</span><span class="p">):</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="n">ICobj</span>
+        
+<div class="viewcode-block" id="add.rho"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.add.rho">[docs]</a>    <span class="k">def</span> <span class="nf">rho</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">rho_dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates a rho object and stores it in ICobj.rho</span>
+<span class="sd">        </span>
+<span class="sd">        rho_dict should be a dictionary containing:</span>
+<span class="sd">            &#39;z&#39;:    1D array of z values</span>
+<span class="sd">            &#39;r&#39;:    1D array of r values</span>
+<span class="sd">            &#39;rho&#39;:  2D array of rho evaluated at z,r</span>
+<span class="sd">            </span>
+<span class="sd">        Exaple:</span>
+<span class="sd">        </span>
+<span class="sd">        rho_dict = pickle.load(open(&#39;rhofile.p&#39;, &#39;rb&#39;)) # Load up a rho dict</span>
+<span class="sd">        ICobj.add.rho(rho_dict)     # create ICobj.rho</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">loadrho</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">,</span> <span class="n">rho_dict</span><span class="p">)</span>
+                
+        <span class="nb">print</span> <span class="s1">&#39;rho stored in &lt;IC instance&gt;.rho&#39;</span></div></div>
+        
+
+<div class="viewcode-block" id="maker"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.maker">[docs]</a><span class="k">class</span> <span class="nc">maker</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A Wrapper containing various functions for generating initial conditions.</span>
+<span class="sd">    Outputs of the functions are saved to the IC object.  The IC object is </span>
+<span class="sd">    referenced as self._parent.  So to access temperature, simply call</span>
+<span class="sd">    self._parent.T(r)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ICobj</span><span class="p">):</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="n">ICobj</span>
+        
+<div class="viewcode-block" id="maker.sigma_gen"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.maker.sigma_gen">[docs]</a>    <span class="k">def</span> <span class="nf">sigma_gen</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">CDF</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A Wrapper for make_sigma.sigma_gen</span>
+<span class="sd">        See make_sigma.sigma_gen for documentation</span>
+<span class="sd">        </span>
+<span class="sd">        Upon executing, generates sigma, pdf, and cdf_inv and saves to ICobj</span>
+<span class="sd">        </span>
+<span class="sd">        USAGE:</span>
+<span class="sd">        </span>
+<span class="sd">        # Generate sigma object from r, sigma arrays</span>
+<span class="sd">        sigma = ICobj.maker.sigma_gen(r, sigma)</span>
+<span class="sd">        </span>
+<span class="sd">        # Use pre-calculated CDF array</span>
+<span class="sd">        sigma = ICobj.maker.sigma_gen(r, sigma, CDF)</span>
+<span class="sd">        </span>
+<span class="sd">        # Generate using a profile defined in sigma_profile.py</span>
+<span class="sd">        ICobj.settings.sigma.kind = &#39;powerlaw&#39;</span>
+<span class="sd">        sigma = ICobj.maker.sigma_gen()</span>
+<span class="sd">        </span>
+<span class="sd">        r and sigma should be 1-D SimArrays.  sigma is the surface density</span>
+<span class="sd">        evaluated at r</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Generate sigma</span>
+        <span class="k">if</span> <span class="n">r</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            
+            <span class="n">r</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma_profile</span><span class="o">.</span><span class="n">make_profile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">)</span>
+            
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">make_sigma</span><span class="o">.</span><span class="n">sigma_gen</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">CDF</span><span class="p">)</span>
+        <span class="c1"># Copy sigma to the parent (IC) object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma</span>
+        
+        
+        <span class="c1"># and now, set up the interior temperature profile</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">setup_interior</span><span class="p">()</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;Sigma stored in &lt;IC instance&gt;.sigma&#39;</span></div>
+        
+<div class="viewcode-block" id="maker.rho_gen"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.maker.rho_gen">[docs]</a>    <span class="k">def</span> <span class="nf">rho_gen</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A wrapper for calc_rho_zr.</span>
+<span class="sd">        </span>
+<span class="sd">        Upon executing, generates rho and rho cdf inverse</span>
+<span class="sd">        </span>
+<span class="sd">        Optional kwargs can be supplied and passed to the rootfinder used</span>
+<span class="sd">        (scipy.optimize.newton_krylov)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c1"># Check that sigma has been generated</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">,</span> <span class="s1">&#39;sigma&#39;</span><span class="p">):</span>
+            
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">,</span><span class="s1">&#39;Must load/generate sigma before calculating rho&#39;</span>
+            
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">rhosolver</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">)</span>
+        <span class="n">rho</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># Save to ICobj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">rho</span> <span class="o">=</span> <span class="n">rho</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;rho stored in &lt;IC instance&gt;.rho&#39;</span></div>
+        
+<div class="viewcode-block" id="maker.pos_gen"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.maker.pos_gen">[docs]</a>    <span class="k">def</span> <span class="nf">pos_gen</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A wrapper for generating positions according to rho and sigma</span>
+<span class="sd">        </span>
+<span class="sd">        Initializes a pos object (see pos_class.py) and saves it to ICobj.pos</span>
+<span class="sd">        </span>
+<span class="sd">        IF called with method not set, the method used is:</span>
+<span class="sd">            ICobj.settings.pos_gen.method</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Generate positions object</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">pos_class</span><span class="o">.</span><span class="n">pos</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span>
+        <span class="c1"># Save it to ICobj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">pos</span></div>
+        
+<div class="viewcode-block" id="maker.snapshot_gen"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.ICgen.maker.snapshot_gen">[docs]</a>    <span class="k">def</span> <span class="nf">snapshot_gen</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A wrapper for generating a tipsy snapshot from the initial conditions</span>
+<span class="sd">        </span>
+<span class="sd">        Uses make_snapshot.py</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c1"># Generate snapshot for either a single star or binary depending on </span>
+        <span class="c1"># IC.settings.physical.starMode</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">starMode</span> <span class="o">==</span> <span class="s2">&quot;single&quot;</span><span class="p">:</span>		
+            
+            <span class="n">snapshot</span><span class="p">,</span> <span class="n">snapshot_param</span><span class="p">,</span> <span class="n">snapshot_director</span> <span class="o">=</span> \
+            <span class="n">make_snapshot</span><span class="o">.</span><span class="n">snapshot_gen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">)</span>
+            
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">starMode</span> <span class="o">==</span> <span class="s2">&quot;binary&quot;</span><span class="p">:</span>
+            
+            <span class="n">snapshot</span><span class="p">,</span> <span class="n">snapshot_param</span><span class="p">,</span> <span class="n">snapshot_director</span> <span class="o">=</span> \
+            <span class="n">make_snapshot</span><span class="o">.</span><span class="n">snapshot_gen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">)</span>            
+<span class="c1">#            snapshot, snapshot_param, snapshot_director = \</span>
+<span class="c1">#            make_snapshotBinary.snapshot_gen(self._parent)</span>
+            
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">starMode</span> <span class="o">==</span> <span class="s2">&quot;stype&quot;</span><span class="p">:</span>
+            
+            <span class="n">snapshot</span><span class="p">,</span> <span class="n">snapshot_param</span><span class="p">,</span> <span class="n">snapshot_director</span> <span class="o">=</span> \
+            <span class="n">make_snapshot</span><span class="o">.</span><span class="n">snapshot_gen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">)</span>
+<span class="c1">#            snapshot, snapshot_param, snapshot_director = \</span>
+<span class="c1">#            make_snapshotSType.snapshot_gen(self._parent)</span>
+            
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">starMode</span> <span class="o">==</span> <span class="s2">&quot;stypeSupplied&quot;</span><span class="p">:</span>
+            
+            <span class="n">snapshot</span><span class="p">,</span> <span class="n">snapshot_param</span><span class="p">,</span> <span class="n">snapshot_director</span> <span class="o">=</span> \
+            <span class="n">make_snapshotSTypeSupplied</span><span class="o">.</span><span class="n">snapshot_gen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="nb">print</span> <span class="s2">&quot;Invalid starMode given in ICobj.  Assuming default single star.&quot;</span>
+            <span class="n">snapshot</span><span class="p">,</span> <span class="n">snapshot_param</span><span class="p">,</span> <span class="n">snapshot_director</span> <span class="o">=</span> \
+            <span class="n">make_snapshot</span><span class="o">.</span><span class="n">snapshot_gen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">)</span>
+            
+        <span class="c1"># Save to ICobj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">snapshot</span> <span class="o">=</span> <span class="n">snapshot</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">snapshot_param</span> <span class="o">=</span> <span class="n">snapshot_param</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">snapshot_director</span> <span class="o">=</span> <span class="n">snapshot_director</span></div></div>
+        
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

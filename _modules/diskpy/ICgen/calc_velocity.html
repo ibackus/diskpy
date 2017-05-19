@@ -1,0 +1,375 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.ICgen.calc_velocity &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.ICgen.calc_velocity</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Wed Apr  9 15:39:28 2014</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;$Revision: 2 $&quot;</span>
+<span class="c1"># $Source$</span>
+
+<span class="c1"># External packages</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">gc</span>
+
+<span class="c1"># diskpy packages</span>
+<span class="kn">import</span> <span class="nn">ICgen_utils</span>
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">configsave</span>
+<span class="kn">from</span> <span class="nn">diskpy.pdmath</span> <span class="k">import</span> <span class="n">extrap1d</span><span class="p">,</span> <span class="n">digitize_threshold</span><span class="p">,</span> <span class="n">binned_mean</span>
+<span class="kn">from</span> <span class="nn">diskpy.pychanga</span> <span class="k">import</span> <span class="n">load_acc</span>
+
+<div class="viewcode-block" id="v_xy"><a class="viewcode-back" href="../../../diskpy.ICgen.html#diskpy.ICgen.calc_velocity.v_xy">[docs]</a><span class="k">def</span> <span class="nf">v_xy</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">changbin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nr</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">min_per_bin</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">changa_preset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> \
+<span class="n">max_particles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">est_eps</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">changa_args</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Attempts to calculate the circular velocities for particles in a thin</span>
+<span class="sd">    (not flat) keplerian disk.  Also estimates gravitational softening (eps)</span>
+<span class="sd">    for the gas particles and a reasonable time step (dDelta)</span>
+<span class="sd">    </span>
+<span class="sd">    Requires ChaNGa</span>
+<span class="sd">    </span>
+<span class="sd">    Note that this will change the velocities IN f</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    f : tipsy snapshot</span>
+<span class="sd">        For a gaseous disk</span>
+<span class="sd">    param : dict</span>
+<span class="sd">        a dictionary containing params for changa. (see configparser)</span>
+<span class="sd">    changbin : str  (OPTIONAL)  </span>
+<span class="sd">        If set, should be the full path to the ChaNGa executable.  If None, </span>
+<span class="sd">        an attempt to find ChaNGa is made</span>
+<span class="sd">    nr : int (optional)</span>
+<span class="sd">        number of radial bins to use when averaging over accelerations</span>
+<span class="sd">    min_per_bin : int (optional)</span>
+<span class="sd">        The minimum number of particles to be in each bin.  If there are too</span>
+<span class="sd">        few particles in a bin, it is merged with an adjacent bin.  Thus,</span>
+<span class="sd">        actual number of radial bins may be less than nr.</span>
+<span class="sd">    changa_preset : str</span>
+<span class="sd">        Which ChaNGa execution preset to use (ie &#39;mpi&#39;, &#39;local&#39;, ...).  See</span>
+<span class="sd">        ICgen_utils.changa_command</span>
+<span class="sd">    max_particles : int or None</span>
+<span class="sd">        Specifies the maximum number of particles to use for calculating</span>
+<span class="sd">        accelerations and velocities.  Setting a smaller number can speed up</span>
+<span class="sd">        computation and save on memory but can yield noisier results.</span>
+<span class="sd">        If None, max is unlimited.</span>
+<span class="sd">    est_eps : bool</span>
+<span class="sd">        Estimate eps (gravitational softening length).  Default is True.</span>
+<span class="sd">        If False, it is assumed eps has already been estimated</span>
+<span class="sd">    changa_args : str</span>
+<span class="sd">        Additional command line arguments to pass to changa</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dDelta : float</span>
+<span class="sd">        A reasonable time step for the simulation (in code units).  Velocties</span>
+<span class="sd">        and eps are updated in the snapshot.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># If the snapshot has too many particles, randomly select gas particles</span>
+    <span class="c1"># To use for calculating velocity and make a view of the snapshot</span>
+    <span class="n">n_gas</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">subview</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_gas</span> <span class="o">&gt;</span> <span class="n">max_particles</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">max_particles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">subview</span><span class="p">:</span>
+        
+        <span class="n">max_particles</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_particles</span><span class="p">)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_gas</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">mask</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span> <span class="c1"># Use the star particle always</span>
+        <span class="c1"># randomly select particles to use</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">n_gas</span><span class="p">)</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">argsort</span><span class="p">()[</span><span class="mi">0</span><span class="p">:</span><span class="n">max_particles</span><span class="p">]</span>
+        <span class="n">mask</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="c1"># Make a subview and create a reference to the complete snapshot</span>
+        <span class="n">complete_snapshot</span> <span class="o">=</span> <span class="n">f</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">complete_snapshot</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+        <span class="c1"># Scale gas mass</span>
+        <span class="n">m_scale</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">n_gas</span><span class="p">)</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="n">max_particles</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">*=</span> <span class="n">m_scale</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">est_eps</span><span class="p">:</span>
+            
+            <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span> <span class="o">*=</span> <span class="n">m_scale</span><span class="o">**</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="mi">3</span><span class="p">)</span>
+        
+    <span class="c1"># Load stuff from the snapshot</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        
+    <span class="n">cosine</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">sine</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span>
+    <span class="n">vel</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># arbitrary initialization</span>
+    
+    <span class="c1"># Temporary filenames for running ChaNGa</span>
+    <span class="n">f_prefix</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">**</span><span class="mi">32</span><span class="p">))</span>
+    <span class="n">f_name</span> <span class="o">=</span> <span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;.std&#39;</span>
+    <span class="n">p_name</span> <span class="o">=</span> <span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;.param&#39;</span>
+    
+    <span class="c1"># Update parameters</span>
+    <span class="n">p_temp</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">p_temp</span><span class="p">[</span><span class="s1">&#39;achInFile&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f_name</span>
+    <span class="n">p_temp</span><span class="p">[</span><span class="s1">&#39;achOutName&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f_prefix</span>
+    <span class="n">p_temp</span><span class="p">[</span><span class="s1">&#39;dDelta&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-10</span>
+    <span class="n">p_temp</span><span class="p">[</span><span class="s1">&#39;iBinaryOutput&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># Needed to output smoothlength array</span>
+    <span class="k">if</span> <span class="s1">&#39;dDumpFrameTime&#39;</span> <span class="ow">in</span> <span class="n">p_temp</span><span class="p">:</span> <span class="n">p_temp</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;dDumpFrameTime&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;dDumpFrameStep&#39;</span> <span class="ow">in</span> <span class="n">p_temp</span><span class="p">:</span> <span class="n">p_temp</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;dDumpFrameStep&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># --------------------------------------------</span>
+    <span class="c1"># Estimate velocity from gravity only</span>
+    <span class="c1"># --------------------------------------------</span>
+    <span class="k">for</span> <span class="n">iGrav</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+        <span class="c1"># Save files</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">f_name</span><span class="p">,</span> <span class="n">fmt</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">tipsy</span><span class="o">.</span><span class="n">TipsySnap</span><span class="p">)</span>
+        <span class="n">configsave</span><span class="p">(</span><span class="n">p_temp</span><span class="p">,</span> <span class="n">p_name</span><span class="p">,</span> <span class="n">ftype</span><span class="o">=</span><span class="s1">&#39;param&#39;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">iGrav</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Run ChaNGa calculating all forces (for initial run)</span>
+            <span class="n">command</span> <span class="o">=</span> <span class="n">ICgen_utils</span><span class="o">.</span><span class="n">changa_command</span><span class="p">(</span><span class="n">p_name</span><span class="p">,</span> <span class="n">changa_preset</span><span class="p">,</span> \
+            <span class="n">changbin</span><span class="p">,</span> <span class="s1">&#39;+gas +n 0 &#39;</span> <span class="o">+</span> <span class="n">changa_args</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Run ChaNGa, only calculating gravity (on second run)</span>
+            <span class="n">command</span> <span class="o">=</span> <span class="n">ICgen_utils</span><span class="o">.</span><span class="n">changa_command</span><span class="p">(</span><span class="n">p_name</span><span class="p">,</span> <span class="n">changa_preset</span><span class="p">,</span> \
+            <span class="n">changbin</span><span class="p">,</span> <span class="s1">&#39;-gas +n 0 &#39;</span> <span class="o">+</span> <span class="n">changa_args</span><span class="p">)</span>
+            
+        <span class="nb">print</span> <span class="n">command</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">ICgen_utils</span><span class="o">.</span><span class="n">changa_run</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">iGrav</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="n">est_eps</span><span class="p">:</span>
+            <span class="c1"># Estimate the gravitational softening length on the first iteration</span>
+            <span class="n">smoothlength_file</span> <span class="o">=</span> <span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;.000000.smoothlength&#39;</span>
+            <span class="n">eps</span> <span class="o">=</span> <span class="n">ICgen_utils</span><span class="o">.</span><span class="n">est_eps</span><span class="p">(</span><span class="n">smoothlength_file</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">eps</span>
+    
+        <span class="c1"># Load accelerations</span>
+        <span class="n">acc_name</span> <span class="o">=</span> <span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;.000000.acc2&#39;</span>
+        <span class="k">del</span> <span class="n">a</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">load_acc</span><span class="p">(</span><span class="n">acc_name</span><span class="p">,</span> <span class="n">low_mem</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+        
+        <span class="c1"># Clean-up</span>
+        <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;*&#39;</span><span class="p">):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+        
+        <span class="c1"># Calculate cos(theta) where theta is angle above x-y plane</span>
+        <span class="n">cos</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">r</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">z</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="c1"># Calculate radial acceleration times r^2</span>
+        <span class="n">ar2</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">cosine</span> <span class="o">+</span> <span class="n">a</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">sine</span><span class="p">)</span><span class="o">*</span><span class="n">r</span><span class="o">**</span><span class="mi">2</span>
+        
+        <span class="c1"># Bin the data</span>
+        <span class="n">r_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">spacing</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">*</span><span class="n">r</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">nr</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">ind</span><span class="p">,</span> <span class="n">r_edges</span> <span class="o">=</span> <span class="n">digitize_threshold</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">min_per_bin</span><span class="p">,</span> <span class="n">r_edges</span><span class="p">)</span>
+        <span class="n">ind</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="n">nr</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">r_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        
+        <span class="n">r_bins</span><span class="p">,</span> <span class="n">ar2_mean</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="n">binned_mean</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">ar2</span><span class="p">,</span> <span class="n">binedges</span><span class="o">=</span><span class="n">r_edges</span><span class="p">,</span> \
+        <span class="n">weighted_bins</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+        
+        <span class="c1"># Fit lines to ar2 vs cos for each radial bin</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nr</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nr</span><span class="p">)</span>    
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nr</span><span class="p">):</span>
+            
+            <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">ind</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">cos</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">ar2</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">m</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            
+        <span class="c1"># Interpolate the line fits</span>
+        <span class="n">m_spline</span> <span class="o">=</span> <span class="n">extrap1d</span><span class="p">(</span><span class="n">r_bins</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+        <span class="n">b_spline</span> <span class="o">=</span> <span class="n">extrap1d</span><span class="p">(</span><span class="n">r_bins</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+        
+        <span class="c1"># Calculate circular velocity</span>
+        <span class="n">ar2</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">m_spline</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="o">*</span><span class="n">cos</span> <span class="o">+</span> <span class="n">b_spline</span><span class="p">(</span><span class="n">r</span><span class="p">),</span> <span class="n">ar2</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+        <span class="n">v_calc</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">ar2</span><span class="p">)</span><span class="o">/</span><span class="n">r</span><span class="p">))</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="n">vel</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+        <span class="n">vel</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">v_calc</span><span class="o">*</span><span class="n">sine</span>
+        <span class="n">vel</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">v_calc</span><span class="o">*</span><span class="n">cosine</span>
+        <span class="k">del</span> <span class="n">v_calc</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+        
+    <span class="c1"># --------------------------------------------</span>
+    <span class="c1"># Estimate pressure/gas dynamics accelerations</span>
+    <span class="c1"># --------------------------------------------</span>
+    
+    <span class="c1"># Save files</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">f_name</span><span class="p">,</span> <span class="n">fmt</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">tipsy</span><span class="o">.</span><span class="n">TipsySnap</span><span class="p">)</span>
+    <span class="n">configsave</span><span class="p">(</span><span class="n">p_temp</span><span class="p">,</span> <span class="n">p_name</span><span class="p">,</span> <span class="n">ftype</span><span class="o">=</span><span class="s1">&#39;param&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Run ChaNGa, including SPH</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">ICgen_utils</span><span class="o">.</span><span class="n">changa_command</span><span class="p">(</span><span class="n">p_name</span><span class="p">,</span> <span class="n">changa_preset</span><span class="p">,</span> <span class="n">changbin</span><span class="p">,</span> \
+    <span class="s1">&#39;+gas -n 0 &#39;</span> <span class="o">+</span> <span class="n">changa_args</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">ICgen_utils</span><span class="o">.</span><span class="n">changa_run</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        
+    <span class="c1"># Load accelerations</span>
+    <span class="n">acc_name</span> <span class="o">=</span> <span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;.000000.acc2&#39;</span>
+    <span class="n">a_total</span> <span class="o">=</span> <span class="n">load_acc</span><span class="p">(</span><span class="n">acc_name</span><span class="p">,</span> <span class="n">low_mem</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+    
+    <span class="c1"># Estimate the accelerations due to pressure gradients/gas dynamics</span>
+    <span class="n">a_gas</span> <span class="o">=</span> <span class="n">a_total</span> <span class="o">-</span> <span class="n">a</span>
+    <span class="n">absa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">a_total</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="c1"># magnitude of the acceleration</span>
+    <span class="k">del</span> <span class="n">a_total</span><span class="p">,</span> <span class="n">a</span>
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+    <span class="n">ar2_gas</span> <span class="o">=</span> <span class="p">(</span><span class="n">a_gas</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">cosine</span> <span class="o">+</span> <span class="n">a_gas</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">sine</span><span class="p">)</span><span class="o">*</span><span class="n">r</span><span class="o">**</span><span class="mi">2</span>
+    <span class="k">del</span> <span class="n">a_gas</span>
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+    
+    <span class="n">logr_bins</span><span class="p">,</span> <span class="n">ratio</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="n">binned_mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">r</span><span class="p">),</span> <span class="n">ar2_gas</span><span class="o">/</span><span class="n">ar2</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="n">nr</span><span class="p">,</span>\
+    <span class="n">weighted_bins</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">r_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logr_bins</span><span class="p">)</span>
+    <span class="k">del</span> <span class="n">ar2_gas</span>
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+    <span class="n">ratio_spline</span> <span class="o">=</span> <span class="n">extrap1d</span><span class="p">(</span><span class="n">r_bins</span><span class="p">,</span> <span class="n">ratio</span><span class="p">)</span>
+    
+    <span class="c1"># Calculate time stepping parameters</span>
+    <span class="n">f0</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;.000000&#39;</span><span class="p">)</span>
+    <span class="n">etaGrav</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dEta&#39;</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span>
+    <span class="n">dtGrav</span> <span class="o">=</span> <span class="n">etaGrav</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">f0</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">absa</span><span class="p">)</span>
+    <span class="n">etaCourant</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dEtaCourant&#39;</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">)</span>
+    <span class="n">mumax</span> <span class="o">=</span> <span class="n">f0</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;mumax&#39;</span><span class="p">]</span>
+    <span class="n">mumax</span><span class="p">[</span><span class="n">mumax</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">f0</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;smoothlength&#39;</span><span class="p">]</span>
+    <span class="n">dtCourant</span> <span class="o">=</span> <span class="n">etaCourant</span> <span class="o">*</span> <span class="n">h</span><span class="o">/</span><span class="p">(</span><span class="mf">1.6</span><span class="o">*</span><span class="n">f0</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;c&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1.2</span><span class="o">*</span><span class="n">mumax</span><span class="p">)</span>
+    
+    
+    <span class="c1"># If not all the particles were used for calculating velocity,</span>
+    <span class="c1"># Make sure to use them now</span>
+    <span class="k">if</span> <span class="n">subview</span><span class="p">:</span>
+        
+        <span class="c1"># Re-scale mass back to normal</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">/=</span> <span class="n">m_scale</span>
+        <span class="c1"># Scale eps appropriately</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span> <span class="o">/=</span> <span class="n">m_scale</span><span class="o">**</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">complete_snapshot</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">][[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="c1"># Re-scale time steps</span>
+        <span class="n">dtGrav</span> <span class="o">/=</span> <span class="n">m_scale</span><span class="o">**</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="mi">6</span><span class="p">)</span>
+        <span class="n">dtCourant</span> <span class="o">/=</span> <span class="n">m_scale</span><span class="o">**</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="mi">3</span><span class="p">)</span>
+        
+        <span class="c1"># Rename complete snapshot</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">complete_snapshot</span>
+        <span class="c1"># Calculate stuff for all particles</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span>
+        <span class="n">cos</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">r</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">z</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">ar2</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">m_spline</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="o">*</span><span class="n">cos</span> <span class="o">+</span> <span class="n">b_spline</span><span class="p">(</span><span class="n">r</span><span class="p">),</span> <span class="n">ar2</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+        <span class="n">cosine</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">sine</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">vel</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+    
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">dtGrav</span><span class="p">,</span> <span class="n">dtCourant</span><span class="p">])</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">dDelta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>    
+    
+    <span class="n">ar2_calc</span> <span class="o">=</span> <span class="n">ar2</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">ratio_spline</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+    <span class="k">del</span> <span class="n">ar2</span>
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+    
+    <span class="c1"># Calculate velocity</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">ar2_calc</span><span class="p">)</span><span class="o">/</span><span class="n">r</span><span class="p">))</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+    <span class="k">del</span> <span class="n">ar2_calc</span>
+    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+    
+    <span class="n">vel</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">v</span><span class="o">*</span><span class="n">sine</span>
+    <span class="n">vel</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="o">*</span><span class="n">cosine</span>
+    
+    <span class="c1"># Clean-up</span>
+    <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;*&#39;</span><span class="p">):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">dDelta</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

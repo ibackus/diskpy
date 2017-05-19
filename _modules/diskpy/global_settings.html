@@ -1,0 +1,308 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.global_settings &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.global_settings</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This is the global settings module for diskpy.  To access the global settings,</span>
+<span class="sd">simply import them:</span>
+
+<span class="sd">    from diskpy import global_settings</span>
+
+<span class="sd">Changing/accessing settings is the same as for a dict, ie:</span>
+<span class="sd">    global_settings[key] = val</span>
+<span class="sd">    </span>
+<span class="sd">Settings can be saved via global_settings.save()</span>
+
+<span class="sd">Defaults can be restored by global_settings.restore_defaults()</span>
+
+
+<span class="sd">Created on Mon Aug 11 14:38:17 2014</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">cPickle</span> <span class="k">as</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">from</span> <span class="nn">textwrap</span> <span class="k">import</span> <span class="n">TextWrapper</span>
+
+<span class="n">_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+<span class="n">_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_dir</span><span class="p">,</span> <span class="s1">&#39;global_settings.p&#39;</span><span class="p">)</span>
+
+<span class="c1"># --------------------------------------------------------------</span>
+<span class="c1"># DEFAULT SETTINGS</span>
+<span class="c1"># --------------------------------------------------------------</span>
+<span class="n">defaults</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c1"># ***** Misc *****</span>
+<span class="n">misc</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="c1"># Maximum number of particles used in calculating velocities</span>
+<span class="n">misc</span><span class="p">[</span><span class="s1">&#39;max_particles&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mf">1e7</span><span class="p">)</span>
+<span class="n">defaults</span><span class="p">[</span><span class="s1">&#39;misc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">misc</span>
+
+<span class="c1"># ***** Cluster presets *****</span>
+<span class="n">node_info</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">node_info</span><span class="p">[</span><span class="s1">&#39;scheduler&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;PBS&#39;</span>
+<span class="n">defaults</span><span class="p">[</span><span class="s1">&#39;node_info&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">node_info</span>
+
+<span class="c1"># ***** ChaNGa presets *****</span>
+
+<span class="c1"># Format : [runner, runner args, ChaNGa, ChaNGa args]</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">changa_presets = {}</span>
+<span class="sd">changa_presets[&#39;local&#39;] = [&#39;charmrun_sinks&#39;, &#39;++local&#39;, &#39;ChaNGa_sinks&#39;, &#39;-D 3 +consph&#39;]</span>
+<span class="sd">changa_presets[&#39;mpi&#39;] = [&#39;mpirun&#39;, &#39;--mca mtl mx --mca pml cm&#39;, &#39;ChaNGa_uw_mpi&#39;, &#39;-D 3 +consph&#39;]</span>
+<span class="sd">changa_presets[&#39;default&#39;] = &#39;local&#39;</span>
+<span class="sd">defaults[&#39;changa_presets&#39;] = changa_presets</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1">#dflemin3 edited 06/10/2015 to run on my computer</span>
+<span class="c1">#dflemin3 removed _sinks, added +p4 to changa_presets</span>
+<span class="n">changa_presets</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">changa_presets</span><span class="p">[</span><span class="s1">&#39;local&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;charmrun&#39;</span><span class="p">,</span> <span class="s1">&#39;+p4 ++local&#39;</span><span class="p">,</span> <span class="s1">&#39;ChaNGa&#39;</span><span class="p">,</span> <span class="s1">&#39;-D 3 +consph&#39;</span><span class="p">]</span>
+<span class="n">changa_presets</span><span class="p">[</span><span class="s1">&#39;mpi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mpirun&#39;</span><span class="p">,</span> <span class="s1">&#39;--mca mtl mx --mca pml cm&#39;</span><span class="p">,</span> <span class="s1">&#39;ChaNGa_uw_mpi&#39;</span><span class="p">,</span> <span class="s1">&#39;-D 3 +consph&#39;</span><span class="p">]</span>
+<span class="n">changa_presets</span><span class="p">[</span><span class="s1">&#39;default&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;local&#39;</span>
+<span class="n">defaults</span><span class="p">[</span><span class="s1">&#39;changa_presets&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">changa_presets</span>
+
+<span class="c1"># --------------------------------------------------------------</span>
+<span class="c1"># Settings class</span>
+<span class="c1"># --------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="settings"><a class="viewcode-back" href="../../diskpy.html#diskpy.global_settings.settings">[docs]</a><span class="k">class</span> <span class="nc">settings</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Global settings object.  Call without arguments to echo settings.</span>
+<span class="sd">    </span>
+<span class="sd">    Changing/accessing settings is the same as for a dict, ie:</span>
+<span class="sd">        global_settings[key] = val</span>
+<span class="sd">        </span>
+<span class="sd">    Settings can be saved via global_settings.save()</span>
+<span class="sd">    </span>
+<span class="sd">    Defaults can be restored by global_settings.restore_defaults()</span>
+<span class="sd">    </span>
+<span class="sd">    Dynamically generated settings (such as node information) can be</span>
+<span class="sd">    re-generated by global_settings.dynamic_settings().</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="settings.loader"><a class="viewcode-back" href="../../diskpy.html#diskpy.global_settings.settings.loader">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">loader</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        
+        <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">))</span></div>
+        
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="nb">dict</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">_filename</span>
+        
+        <span class="c1"># Load settings and compare to defaults. If the settings don&#39;t contain</span>
+        <span class="c1"># an entry in defaults, add it to the settings</span>
+        
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">):</span>
+            
+            <span class="c1"># Load up previous settings</span>
+            <span class="n">current_settings</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">loader</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span>
+            
+            <span class="c1"># Compare to defaults</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">defaults</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">current_settings</span><span class="p">:</span>
+                    
+                    <span class="n">current_settings</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                    
+        <span class="k">else</span><span class="p">:</span>
+            
+            <span class="n">current_settings</span> <span class="o">=</span> <span class="n">defaults</span>
+            
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">current_settings</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            
+            <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+            
+        <span class="bp">self</span><span class="o">.</span><span class="n">dynamic_settings</span><span class="p">()</span>
+        
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="k">def</span> <span class="nf">print_dict</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">n_tabs</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+            
+            <span class="n">tab</span> <span class="o">=</span> <span class="n">n_tabs</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="s1">&#39; &#39;</span>
+            
+            <span class="n">wrapper</span> <span class="o">=</span> <span class="n">TextWrapper</span><span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="n">tab</span><span class="p">,</span> <span class="n">tab</span><span class="p">)</span>
+            
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">a</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    
+                    <span class="nb">print</span> <span class="s1">&#39;&#39;</span>
+                    <span class="nb">print</span> <span class="n">wrapper</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+                    <span class="c1">#print n_tabs*&#39;  &#39;, key, &#39;:&#39;</span>
+                    <span class="n">print_dict</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">n_tabs</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="nb">print</span> <span class="s1">&#39;&#39;</span>
+                    
+                <span class="k">else</span><span class="p">:</span>
+                    
+                    <span class="c1">#print n_tabs*&#39;  &#39;,key,val</span>
+                    <span class="nb">print</span> <span class="n">wrapper</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1"> : </span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="n">val</span><span class="p">))</span>
+                    
+        <span class="nb">print</span> <span class="s1">&#39;**** GLOBAL SETTINGS ****&#39;</span>
+        <span class="n">print_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            
+<div class="viewcode-block" id="settings.restore_defaults"><a class="viewcode-back" href="../../diskpy.html#diskpy.global_settings.settings.restore_defaults">[docs]</a>    <span class="k">def</span> <span class="nf">restore_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Restore to default settings</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">defaults</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            
+            <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+            
+        <span class="bp">self</span><span class="o">.</span><span class="n">dynamic_settings</span><span class="p">()</span></div>
+            
+<div class="viewcode-block" id="settings.dynamic_settings"><a class="viewcode-back" href="../../diskpy.html#diskpy.global_settings.settings.dynamic_settings">[docs]</a>    <span class="k">def</span> <span class="nf">dynamic_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates the dynamically created settings</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># --------------------------------------------------------</span>
+        <span class="c1"># Generate node information</span>
+        <span class="c1"># --------------------------------------------------------</span>
+        <span class="n">node_info</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;node_info&#39;</span><span class="p">]</span>
+        <span class="n">node_info</span><span class="p">[</span><span class="s1">&#39;hostname&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">()</span>
+        <span class="n">scheduler</span> <span class="o">=</span> <span class="n">node_info</span><span class="p">[</span><span class="s1">&#39;scheduler&#39;</span><span class="p">]</span>
+            
+        <span class="k">if</span> <span class="n">scheduler</span> <span class="o">==</span> <span class="s1">&#39;PBS&#39;</span><span class="p">:</span>
+            
+            <span class="k">if</span> <span class="s1">&#39;PBS_NODEFILE&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+                
+                <span class="n">nodelist</span> <span class="o">=</span> <span class="p">[</span><span class="n">node_info</span><span class="p">[</span><span class="s1">&#39;hostname&#39;</span><span class="p">]]</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+                
+                <span class="n">nodefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;PBS_NODEFILE&#39;</span><span class="p">]</span>
+                <span class="n">nodelist</span> <span class="o">=</span> <span class="p">[]</span>
+                
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">open</span><span class="p">(</span><span class="n">nodefile</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">):</span>
+                    
+                    <span class="n">nodelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    
+                <span class="n">nodelist</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">nodelist</span><span class="p">))</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Assume there&#39;s no scheduler</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">node_info</span><span class="p">[</span><span class="s1">&#39;hostname&#39;</span><span class="p">]]</span>
+        
+        <span class="n">node_info</span><span class="p">[</span><span class="s1">&#39;nodelist&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nodelist</span>
+        <span class="n">secondary_nodes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">node_info</span><span class="p">[</span><span class="s1">&#39;nodelist&#39;</span><span class="p">])</span>
+        <span class="n">secondary_nodes</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">node_info</span><span class="p">[</span><span class="s1">&#39;hostname&#39;</span><span class="p">])</span>
+        <span class="n">node_info</span><span class="p">[</span><span class="s1">&#39;secondary_nodes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">secondary_nodes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;node_info&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">node_info</span>
+        
+        <span class="c1"># Dynamically generated changa presets</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;mpi&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;changa_presets&#39;</span><span class="p">]:</span>
+            
+            <span class="n">mpi_largefiles</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s1">&#39;changa_presets&#39;</span><span class="p">][</span><span class="s1">&#39;mpi&#39;</span><span class="p">])</span>
+            <span class="n">hosts</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">node_info</span><span class="p">[</span><span class="s1">&#39;secondary_nodes&#39;</span><span class="p">])</span>
+            <span class="n">host_flag</span> <span class="o">=</span> <span class="s1">&#39; --host &#39;</span> <span class="o">+</span> <span class="n">hosts</span>
+            <span class="n">mpi_largefiles</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">host_flag</span>
+            <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;changa_presets&#39;</span><span class="p">][</span><span class="s1">&#39;mpi_largefiles&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mpi_largefiles</span></div>
+        
+<div class="viewcode-block" id="settings.save"><a class="viewcode-back" href="../../diskpy.html#diskpy.global_settings.settings.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save settings</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span></div></div>
+        
+<span class="c1"># --------------------------------------------------------------</span>
+<span class="c1"># Create settings</span>
+<span class="c1"># --------------------------------------------------------------</span>
+
+<span class="n">global_settings</span> <span class="o">=</span> <span class="n">settings</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

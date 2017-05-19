@@ -1,0 +1,437 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.pychanga._param &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.pychanga._param</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Wed Jul 15 23:25:44 2015</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">configparser</span><span class="p">,</span> <span class="n">strip_units</span><span class="p">,</span> <span class="n">get_units</span>
+
+<span class="c1"># Constants</span>
+<span class="n">G</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="s1">&#39;G&#39;</span><span class="p">)</span>
+
+<span class="c1"># Set up default filenames</span>
+<span class="n">_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+<span class="n">_paramdefault</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_dir</span><span class="p">,</span> <span class="s1">&#39;default.param&#39;</span><span class="p">)</span>
+<span class="n">_directordefault</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_dir</span><span class="p">,</span> <span class="s1">&#39;default.director&#39;</span><span class="p">)</span>
+<span class="n">_changadefault</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_dir</span><span class="p">,</span> <span class="s1">&#39;changadefaults.param&#39;</span><span class="p">)</span>
+
+<span class="c1"># Load the default parameters</span>
+<span class="n">_paramdefault</span> <span class="o">=</span> <span class="n">configparser</span><span class="p">(</span><span class="n">_paramdefault</span><span class="p">,</span> <span class="s1">&#39;param&#39;</span><span class="p">)</span>
+<span class="n">_directordefault</span> <span class="o">=</span> <span class="n">configparser</span><span class="p">(</span><span class="n">_directordefault</span><span class="p">,</span> <span class="s1">&#39;director&#39;</span><span class="p">)</span>
+<span class="n">_changadefault</span> <span class="o">=</span> <span class="n">configparser</span><span class="p">(</span><span class="n">_changadefault</span><span class="p">,</span> <span class="s1">&#39;param&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="getpar"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.getpar">[docs]</a><span class="k">def</span> <span class="nf">getpar</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">param</span><span class="o">=</span><span class="p">{}):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Attempts to retrieve the key from param or from the ChaNGa default param </span>
+<span class="sd">    options.  Raises ValueError if key not found in either.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    key : object</span>
+<span class="sd">    param : str or dict</span>
+<span class="sd">        Paramname or param dict (see diskpy.utils.configparser).  If not </span>
+<span class="sd">        supplied, only the ChaNGa defaults are searched</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    value </span>
+<span class="sd">        The value, taken from param if present, otherwise taken from the ChaNGa</span>
+<span class="sd">        default params</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        
+        <span class="n">param</span> <span class="o">=</span> <span class="n">configparser</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="s1">&#39;param&#39;</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">param</span><span class="p">:</span>
+        
+        <span class="n">value</span> <span class="o">=</span> <span class="n">param</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        
+    <span class="k">elif</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">_changadefault</span><span class="p">:</span>
+        
+        <span class="n">value</span> <span class="o">=</span> <span class="n">_changadefault</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s2">&quot;Could not find </span><span class="si">{0}</span><span class="s2"> in param or defaults&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">value</span></div>
+    
+<div class="viewcode-block" id="make_director"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.make_director">[docs]</a><span class="k">def</span> <span class="nf">make_director</span><span class="p">(</span><span class="n">sigma_min</span><span class="p">,</span> <span class="n">sigma_max</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">1200</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;snapshot&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Makes a director dictionary for ChaNGa runs based on the min/max surface</span>
+<span class="sd">    density, maximum image radius, and image resolution for a gaseous</span>
+<span class="sd">    protoplanetary disk.  The created dictionary can be saved with</span>
+<span class="sd">    diskpy.utils.configsave</span>
+
+<span class="sd">    The method is to use an example director file (saved as default.director)</span>
+<span class="sd">    which works for one simulation and scale the various parameters accordingly.</span>
+<span class="sd">    default.director should have a commented line in it which reads:</span>
+<span class="sd">        #sigma_max float</span>
+<span class="sd">    where float is the maximum surface density of the simulation in simulation</span>
+<span class="sd">    units.</span>
+
+<span class="sd">    **ARGUMENTS**</span>
+
+<span class="sd">    sigma_min : float</span>
+<span class="sd">        The surface density that corresponds to 0 density on the image (ie the</span>
+<span class="sd">        minimum threshold).  Required for setting the dynamic range</span>
+<span class="sd">    sigma_max : float</span>
+<span class="sd">        Maximum surface density in the simulation</span>
+<span class="sd">    r : float</span>
+<span class="sd">        Maximum radius to plot out to</span>
+<span class="sd">    resolution : int or float</span>
+<span class="sd">        Number of pixels in image.  The image is shape (resolution, resolution)</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        prefix to use for saving the images.  Example: if filename=&#39;snapshot&#39;,</span>
+<span class="sd">        then the outputs will be of form &#39;snapshot.000000000.ppm&#39;</span>
+
+<span class="sd">    **RETURNS**</span>
+
+<span class="sd">    director : dict</span>
+<span class="sd">        A .director dictionary.  Can be saved with diskpy.utils.configsave</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># -----------------------------------------------------------</span>
+    <span class="c1"># Parse defaults to get scale factor for c</span>
+    <span class="c1"># -----------------------------------------------------------</span>
+    <span class="n">sigma_min</span><span class="p">,</span> <span class="n">sigma_max</span><span class="p">,</span> <span class="n">r</span> <span class="o">=</span> <span class="n">strip_units</span><span class="p">([</span><span class="n">sigma_min</span><span class="p">,</span> <span class="n">sigma_max</span><span class="p">,</span> <span class="n">r</span><span class="p">])</span>
+    <span class="n">defaults</span> <span class="o">=</span> <span class="n">_directordefault</span>
+    <span class="k">if</span> <span class="s1">&#39;#sigma_max&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">defaults</span><span class="p">:</span>
+
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">,</span><span class="s1">&#39;Default .director file should have a line e.g. &lt;&lt; #sigma_max 0.01 &gt;&gt;&#39;</span>
+
+    <span class="n">sigma_max0</span> <span class="o">=</span> <span class="n">defaults</span><span class="p">[</span><span class="s1">&#39;#sigma_max&#39;</span><span class="p">]</span>
+    <span class="n">c0</span> <span class="o">=</span> <span class="n">defaults</span><span class="p">[</span><span class="s1">&#39;colgas&#39;</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">n0</span> <span class="o">=</span> <span class="n">defaults</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">r0</span> <span class="o">=</span> <span class="n">defaults</span><span class="p">[</span><span class="s1">&#39;eye&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="p">(</span><span class="n">c0</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">n0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">sigma_max0</span> <span class="o">*</span> <span class="n">r0</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># -----------------------------------------------------------</span>
+    <span class="c1"># Create new director dictionary</span>
+    <span class="c1"># -----------------------------------------------------------</span>
+    <span class="n">director</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">defaults</span><span class="p">)</span>
+    <span class="n">director</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;#sigma_max&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="n">logscale_min</span> <span class="o">=</span> <span class="n">sigma_min</span><span class="o">/</span><span class="n">sigma_max</span>
+
+    <span class="k">if</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">logscale_min</span><span class="p">):</span>
+
+        <span class="n">logscale_min</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">logscale_min</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">))</span>
+
+    <span class="n">c</span> <span class="o">=</span> <span class="n">A</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma_max</span> <span class="o">*</span> <span class="n">r</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="n">resolution</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">director</span><span class="p">[</span><span class="s1">&#39;colgas&#39;</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+    <span class="n">director</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">resolution</span><span class="p">,</span> <span class="n">resolution</span><span class="p">]</span>
+    <span class="n">director</span><span class="p">[</span><span class="s1">&#39;eye&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
+    <span class="n">director</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filename</span>
+
+    <span class="k">return</span> <span class="n">director</span></div>
+
+<div class="viewcode-block" id="make_param"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.make_param">[docs]</a><span class="k">def</span> <span class="nf">make_param</span><span class="p">(</span><span class="n">snapshot</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a default param dictionary.  Can be saved using </span>
+<span class="sd">    diskpy.utils.configsave</span>
+
+<span class="sd">    EXAMPLE</span>
+
+<span class="sd">    snapshot = pynbody.load(&#39;snapshot.std&#39;)  # Load snapshot</span>
+<span class="sd">    param_dict = make_param(snapshot)  # Make default param dict</span>
+<span class="sd">    diskpy.utils.configsave(param_dict, &#39;snapshot.param&#39;, ftype=&#39;param&#39;) # Save</span>
+
+<span class="sd">    Optionally, the user can set the snapshot filename manually</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">param</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">_paramdefault</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="n">param</span><span class="p">[</span><span class="s1">&#39;achInFile&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="n">param</span><span class="p">[</span><span class="s1">&#39;achOutName&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">elif</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">filename</span> <span class="o">!=</span> <span class="s1">&#39;&lt;created&gt;&#39;</span><span class="p">:</span>
+
+        <span class="n">param</span><span class="p">[</span><span class="s1">&#39;achInFile&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">param</span><span class="p">[</span><span class="s1">&#39;achOutName&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">snapshot</span><span class="o">.</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Set up the length units</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dKpcUnit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">ratio</span><span class="p">(</span><span class="s1">&#39;kpc&#39;</span><span class="p">)</span>
+    <span class="c1"># Set up the mass units</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dMsolUnit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">ratio</span><span class="p">(</span><span class="s1">&#39;Msol&#39;</span><span class="p">)</span>
+    <span class="c1"># Set the mean molecular mass</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dMeanMolWeight&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">gas</span><span class="p">[</span><span class="s1">&#39;mu&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">param</span></div>
+    
+<div class="viewcode-block" id="units_from_param"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.units_from_param">[docs]</a><span class="k">def</span> <span class="nf">units_from_param</span><span class="p">(</span><span class="n">param</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Figures out the simulation units from a .param file</span>
+
+<span class="sd">    **ARGUMENTS**</span>
+
+<span class="sd">    param : str or param dict (see configparser)</span>
+<span class="sd">        Simulation .param file or param dict loaded by configparser</span>
+<span class="sd">        Can also be a list or numpy array of these in which case a list</span>
+<span class="sd">        of units dicts is returned</span>
+
+<span class="sd">    **RETURNS**</span>
+
+<span class="sd">    units : dict</span>
+<span class="sd">        A dictionary of the units used in the simulation, returned as</span>
+<span class="sd">        pynbody units</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Iterate over param if necessary</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
+
+        <span class="n">outlist</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">par</span> <span class="ow">in</span> <span class="n">param</span><span class="p">:</span>
+
+            <span class="n">outlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">units_from_param</span><span class="p">(</span><span class="n">par</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">outlist</span>
+    
+    <span class="c1"># Load param if necessary</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+
+        <span class="n">param</span> <span class="o">=</span> <span class="n">configparser</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="s1">&#39;param&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Universal G</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">G</span>
+
+    <span class="c1"># Load units</span>
+    <span class="n">dKpcUnit</span> <span class="o">=</span> <span class="n">getpar</span><span class="p">(</span><span class="s1">&#39;dKpcUnit&#39;</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span>
+    <span class="n">dMsolUnit</span> <span class="o">=</span> <span class="n">getpar</span><span class="p">(</span><span class="s1">&#39;dMsolUnit&#39;</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span>
+
+    <span class="c1"># Set up pynbody units</span>
+    <span class="n">m_unit</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1"> Msol&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dMsolUnit</span><span class="p">))</span>
+    <span class="n">l_unit</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1"> kpc&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dKpcUnit</span><span class="p">))</span>
+    <span class="n">t_unit</span> <span class="o">=</span> <span class="p">(</span><span class="n">l_unit</span><span class="o">**</span><span class="mi">3</span><span class="o">/</span><span class="p">(</span><span class="n">G</span><span class="o">*</span><span class="n">m_unit</span><span class="p">))</span><span class="o">**</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Convert the time unit to something sensible</span>
+    <span class="n">years</span> <span class="o">=</span> <span class="n">t_unit</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="s1">&#39;yr&#39;</span><span class="p">)</span>
+    <span class="n">t_unit</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1"> yr&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">years</span><span class="p">))</span>
+    
+    <span class="c1"># Calculate a couple derived units as well</span>
+    <span class="n">v_unit</span> <span class="o">=</span> <span class="n">l_unit</span><span class="o">/</span><span class="n">t_unit</span>
+    <span class="n">rho_unit</span> <span class="o">=</span> <span class="n">m_unit</span><span class="o">/</span><span class="n">l_unit</span><span class="o">**</span><span class="mi">3</span>
+    <span class="n">acc_unit</span> <span class="o">=</span> <span class="n">l_unit</span><span class="o">/</span><span class="n">t_unit</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">pres_unit</span> <span class="o">=</span> <span class="n">rho_unit</span> <span class="o">*</span> <span class="n">v_unit</span><span class="o">**</span><span class="mi">2</span>
+    
+    <span class="c1"># Return</span>
+    <span class="n">outdict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;l_unit&#39;</span><span class="p">:</span><span class="n">l_unit</span><span class="p">,</span> <span class="s1">&#39;m_unit&#39;</span><span class="p">:</span><span class="n">m_unit</span><span class="p">,</span> <span class="s1">&#39;t_unit&#39;</span><span class="p">:</span><span class="n">t_unit</span><span class="p">,</span> 
+               <span class="s1">&#39;v_unit&#39;</span><span class="p">:</span> <span class="n">v_unit</span><span class="p">,</span> <span class="s1">&#39;rho_unit&#39;</span><span class="p">:</span> <span class="n">rho_unit</span><span class="p">,</span> <span class="s1">&#39;acc_unit&#39;</span><span class="p">:</span> <span class="n">acc_unit</span><span class="p">,</span> 
+               <span class="s1">&#39;pres_unit&#39;</span><span class="p">:</span> <span class="n">pres_unit</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">outdict</span></div>
+        
+<div class="viewcode-block" id="setup_units"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.setup_units">[docs]</a><span class="k">def</span> <span class="nf">setup_units</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sets up units for a ChaNGa simulation, defined by position and mass units.</span>
+<span class="sd">     * time unit = :math:`\\sqrt{L_{unit}^3/G M_{unit}}`</span>
+<span class="sd">     * velocity unit = :math:`L_{unit}/T_{unit}`</span>
+<span class="sd">     * temperature units = Kelvin</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    m, x : Unit, string, or SimArray</span>
+<span class="sd">        Define the mass and position units</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    units : dict</span>
+<span class="sd">        A dictionary containing the units</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">m_unit</span> <span class="o">=</span> <span class="n">get_units</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+    <span class="n">pos_unit</span> <span class="o">=</span> <span class="n">get_units</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        
+    <span class="c1"># time units are sqrt(L^3/GM)</span>
+    <span class="n">t_unit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">pos_unit</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">((</span><span class="n">G</span><span class="o">*</span><span class="n">m_unit</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">units</span>
+    <span class="c1"># velocity units are L/t</span>
+    <span class="n">v_unit</span> <span class="o">=</span> <span class="p">(</span><span class="n">pos_unit</span><span class="o">/</span><span class="n">t_unit</span><span class="p">)</span><span class="o">.</span><span class="n">ratio</span><span class="p">(</span><span class="s1">&#39;km s**-1&#39;</span><span class="p">)</span>
+    <span class="c1"># Make it a unit</span>
+    <span class="n">v_unit</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1"> km s**-1&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v_unit</span><span class="p">))</span>
+    <span class="c1"># Temperature (just a hard-coded default)</span>
+    <span class="n">temp_unit</span> <span class="o">=</span> <span class="n">get_units</span><span class="p">(</span><span class="s1">&#39;K&#39;</span><span class="p">)</span>
+    <span class="n">units</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;m&#39;</span><span class="p">:</span> <span class="n">m_unit</span><span class="p">,</span> <span class="s1">&#39;t&#39;</span><span class="p">:</span> <span class="n">t_unit</span><span class="p">,</span> <span class="s1">&#39;v&#39;</span><span class="p">:</span> <span class="n">v_unit</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="n">pos_unit</span><span class="p">,</span> 
+    <span class="s1">&#39;temp&#39;</span><span class="p">:</span> <span class="n">temp_unit</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">units</span></div>
+        
+<div class="viewcode-block" id="setup_param"><a class="viewcode-back" href="../../../diskpy.pychanga.html#diskpy.pychanga.setup_param">[docs]</a><span class="k">def</span> <span class="nf">setup_param</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">snapshot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">r_orb</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">n_orb</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">n_image</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n_snap</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> \
+<span class="n">n_check</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sets up the following for a .param file:</span>
+
+<span class="sd">        nSteps</span>
+<span class="sd">        dDumpFrameStep</span>
+<span class="sd">        iOutInterval</span>
+<span class="sd">        iCheckInterval</span>
+
+<span class="sd">    **ARGUMENTS**</span>
+
+<span class="sd">    param : str or param_dict (see diskpy.utils.configparser, configsave)</span>
+<span class="sd">        parameter file for the simulation, must already have dDelta and units</span>
+<span class="sd">        set properly</span>
+<span class="sd">        IF a str, assumed to be a filename</span>
+<span class="sd">    snapshot : str or TipsySnap(see pynbody) or None</span>
+<span class="sd">        Snapshot for the simulation.  Needed to estimate the outer orbital</span>
+<span class="sd">        period.</span>
+<span class="sd">        IF a str, assumed to be a filename</span>
+<span class="sd">        IF None, the file pointed to by param is used</span>
+<span class="sd">    r_orb : float</span>
+<span class="sd">        radius to calculate the outer orbital period at as a fraction of the</span>
+<span class="sd">        radius of the farthest out particle.  Must be between 0 and 1</span>
+<span class="sd">    n_orb : float</span>
+<span class="sd">        number of outer orbital periods to run simulation for</span>
+<span class="sd">    n_image : int or None</span>
+<span class="sd">        Total number of frames to dump (ie, dDumpFrameStep)</span>
+<span class="sd">        If None, defaults to n_snap</span>
+<span class="sd">    n_snap : int</span>
+<span class="sd">        Total number of simulation outputs</span>
+<span class="sd">    n_check : int or None</span>
+<span class="sd">        Total number of simulation checkpoints.  If None, defaults to n_snap</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">r_orb</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">r_orb</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s1">&#39;r_orb must be between 0 and 1&#39;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">snapshot</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+
+        <span class="c1"># A filename has been passed, not a tipsy snapshot</span>
+        <span class="n">snapshot</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">snapshot</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+
+        <span class="c1"># A filename has been passed.  Load the dictionary</span>
+        <span class="n">param</span> <span class="o">=</span> <span class="n">configparser</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="s1">&#39;param&#39;</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="c1"># Copy so as to not overwrite the input dict</span>
+        <span class="n">param</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+
+    <span class="n">R_max</span> <span class="o">=</span> <span class="n">r_orb</span> <span class="o">*</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">M_star</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Read in .param stuff</span>
+    <span class="n">l_unit</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> kpc&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">param</span><span class="p">[</span><span class="s1">&#39;dKpcUnit&#39;</span><span class="p">])</span>
+    <span class="n">m_unit</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> Msol&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">SimArray</span><span class="p">(</span><span class="n">param</span><span class="p">[</span><span class="s1">&#39;dMsolUnit&#39;</span><span class="p">],</span> <span class="s1">&#39;Msol&#39;</span><span class="p">))</span>
+
+    <span class="c1"># Outer radius and star mass in simulation units</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">R_max</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="n">l_unit</span><span class="p">))</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">M_star</span><span class="o">.</span><span class="n">in_units</span><span class="p">(</span><span class="n">m_unit</span><span class="p">))</span>
+
+    <span class="c1"># Calculate the number of time steps to use</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dDelta&#39;</span><span class="p">]</span>
+    <span class="n">period</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">r</span><span class="o">**</span><span class="mi">3</span><span class="o">/</span><span class="n">M</span><span class="p">)</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">n_orb</span> <span class="o">*</span> <span class="n">period</span><span class="o">/</span><span class="n">dt</span><span class="p">))</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;nSteps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span>
+
+    <span class="c1"># Calculate how often to output snapshots, frames, checkpoints</span>
+    <span class="k">if</span> <span class="n">n_check</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="n">n_check</span> <span class="o">=</span> <span class="n">n_snap</span>
+
+    <span class="k">if</span> <span class="n">n_image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="n">n_image</span> <span class="o">=</span> <span class="n">n_snap</span>
+
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dDumpFrameStep&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">N</span><span class="o">/</span><span class="n">n_image</span><span class="p">)</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;iOutInterval&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">N</span><span class="o">/</span><span class="n">n_snap</span><span class="p">)</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;iCheckInterval&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">N</span><span class="o">/</span><span class="n">n_check</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">param</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

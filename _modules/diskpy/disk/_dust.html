@@ -1,0 +1,180 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.disk._dust &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.disk._dust</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python2</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Mon Apr 24 12:18:34 2017</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">diskpy.pychanga</span> <span class="k">import</span> <span class="n">units_from_param</span>
+<span class="kn">from</span> <span class="nn">diskpy.utils</span> <span class="k">import</span> <span class="n">as_simarray</span>
+
+<div class="viewcode-block" id="setDustfrac"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.setDustfrac">[docs]</a><span class="k">def</span> <span class="nf">setDustfrac</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">dustFrac</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">scale_mass</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set the dust fraction to a SimSnap or sub-snap, and optionally scale the</span>
+<span class="sd">    mass to keep the original mass (e.g. star mass or gas mass) constant.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    f : SimSnap</span>
+<span class="sd">        Snapshot or sub-snap</span>
+<span class="sd">    dustFrac : number or array-like</span>
+<span class="sd">        Dust fraction to apply</span>
+<span class="sd">    scale_mass : bool</span>
+<span class="sd">        If true, the mass will be scaled to keep the non-dust mass constant.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">((</span><span class="n">dustFrac</span> <span class="o">==</span> <span class="mf">1.0</span> <span class="p">))</span> <span class="ow">and</span> <span class="n">scale_mass</span><span class="p">:</span>
+        
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="s2">&quot;Cannot scale mass and set dust fraction to 1.0&quot;</span>\
+            <span class="s2">&quot; (divide by zero)&quot;</span>
+        
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">dustFrac</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">dustFrac0</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dustFrac&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="mf">0.0</span><span class="p">))</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">f</span><span class="p">[</span><span class="s1">&#39;dustFrac&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dustFrac</span>
+        
+        <span class="k">if</span> <span class="n">scale_mass</span><span class="p">:</span>
+            
+            <span class="n">mScale</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">dustFrac0</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">dustFrac</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">mScale</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">mScale</span> <span class="o">!=</span> <span class="n">mScale</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Scaling mass by non-uniform values&quot;</span><span class="p">)</span>
+                
+            <span class="n">f</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">*=</span> <span class="n">mScale</span>
+    
+    <span class="k">return</span></div>
+
+<div class="viewcode-block" id="add_dust_sim"><a class="viewcode-back" href="../../../diskpy.disk.html#diskpy.disk.add_dust_sim">[docs]</a><span class="k">def</span> <span class="nf">add_dust_sim</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">gasDustFrac</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">starDustFrac</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> 
+                 <span class="n">scaleGasMass</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">scaleStarMass</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">grainSize</span><span class="o">=</span><span class="s1">&#39;1 mm&#39;</span><span class="p">,</span>
+                 <span class="n">grainDensity</span><span class="o">=</span><span class="s1">&#39;3 g cm**-3&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add a single size of dust to a simulation.  Changes are applied in-place</span>
+<span class="sd">    to the snapshot and the param dict.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    f : SimSnap</span>
+<span class="sd">        Simulation snapshot</span>
+<span class="sd">    param : dict</span>
+<span class="sd">        Param dictionary (see diskpy.utils.configparser).</span>
+<span class="sd">    gasDustFrac, starDustFrac : number or array-like</span>
+<span class="sd">        Sets the gas fraction for the gas, star.  If None, no dust fraction</span>
+<span class="sd">        is set.</span>
+<span class="sd">    scaleGasMass, scaleStarMass : bool</span>
+<span class="sd">        Scale the gas, star mass to keep it constant after adding dust.</span>
+<span class="sd">        For example, this can be useful to keep the gas pressure constant.</span>
+<span class="sd">    grainSize : number, SimArray, str</span>
+<span class="sd">        The grain size (i.e. radius).  Assumed units (if none are supplied) are</span>
+<span class="sd">        &#39;mm&#39;</span>
+<span class="sd">    grainDensity : number, SimArray, str</span>
+<span class="sd">        Intrinsic grain density (e.g. for silica).  Assumed units if non are</span>
+<span class="sd">        supplied are g/cm^3</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">units</span> <span class="o">=</span> <span class="n">units_from_param</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+    <span class="n">grainSize</span> <span class="o">=</span> <span class="n">as_simarray</span><span class="p">(</span><span class="n">grainSize</span><span class="p">,</span> <span class="s1">&#39;mm&#39;</span><span class="p">)</span>
+    <span class="n">grainDensity</span> <span class="o">=</span> <span class="n">as_simarray</span><span class="p">(</span><span class="n">grainDensity</span><span class="p">,</span> <span class="s1">&#39;g cm**-3&#39;</span><span class="p">)</span>
+    <span class="n">grainSize</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="n">units</span><span class="p">[</span><span class="s1">&#39;l_unit&#39;</span><span class="p">])</span>
+    <span class="n">grainDensity</span><span class="o">.</span><span class="n">convert_units</span><span class="p">(</span><span class="n">units</span><span class="p">[</span><span class="s1">&#39;rho_unit&#39;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">setDustfrac</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">,</span> <span class="n">gasDustFrac</span><span class="p">,</span> <span class="n">scaleGasMass</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">s</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">setDustfrac</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="n">starDustFrac</span><span class="p">,</span> <span class="n">scaleStarMass</span><span class="p">)</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dDustSize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">grainSize</span><span class="p">)</span>
+    <span class="n">param</span><span class="p">[</span><span class="s1">&#39;dDustGrainDensity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">grainDensity</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>

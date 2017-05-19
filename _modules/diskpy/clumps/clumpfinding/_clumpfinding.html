@@ -1,0 +1,1012 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>diskpy.clumps.clumpfinding._clumpfinding &#8212; diskpy  documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for diskpy.clumps.clumpfinding._clumpfinding</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Tue Aug  5 12:10:08 2014</span>
+
+<span class="sd">@author: ibackus</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># Multiprocessing modules</span>
+<span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="k">import</span> <span class="n">Pool</span><span class="p">,</span> <span class="n">cpu_count</span>
+
+<span class="c1"># Generic pacakges</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pynbody</span>
+<span class="n">SimArray</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">SimArray</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="c1"># &#39;Internal&#39; packages</span>
+<span class="kn">from</span> <span class="nn">diskpy</span> <span class="k">import</span> <span class="n">utils</span>
+<span class="kn">from</span> <span class="nn">..</span> <span class="k">import</span> <span class="n">loadhalos</span>
+
+<span class="kn">from</span> <span class="nn">diskpy.pychanga</span> <span class="k">import</span> <span class="n">get_fnames</span>
+
+<div class="viewcode-block" id="clump_tracker"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.clump_tracker">[docs]</a><span class="k">def</span> <span class="nf">clump_tracker</span><span class="p">(</span><span class="n">fprefix</span><span class="p">,</span> <span class="n">param</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nsmooth</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Finds and tracks clumps over a simulation with multiple time steps and</span>
+<span class="sd">    calculates various physical properties of the clumps.</span>
+<span class="sd">    </span>
+<span class="sd">    Runs all the steps necessary to find/track clumps, these are:</span>
+<span class="sd">    </span>
+<span class="sd">    get_fnames</span>
+<span class="sd">    pFind_clumps</span>
+<span class="sd">    pClump_properties</span>
+<span class="sd">    pLink2</span>
+<span class="sd">    multilink</span>
+<span class="sd">    build_clumps</span>
+<span class="sd">    </span>
+<span class="sd">    If the iord property is not found, the linking will only work if the number</span>
+<span class="sd">    of particles remains constant through the simulation</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    fprefix : str</span>
+<span class="sd">        Prefix of the simulation outputs</span>
+<span class="sd">    param : str (recommended)</span>
+<span class="sd">        Filename of a .param file for the simulation</span>
+<span class="sd">    directory : str (optional)</span>
+<span class="sd">        Directory to search through.  Default is current working directory</span>
+<span class="sd">    nsmooth : int (optional)</span>
+<span class="sd">        Number of nearest neighbors used for particle smoothing in the</span>
+<span class="sd">        simulation.  This is used in the definition of a density threshold</span>
+<span class="sd">        for clump finding.</span>
+<span class="sd">    verbose : bool (optional)</span>
+<span class="sd">        Verbosity flag.  Default is True</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    clump_list : list</span>
+<span class="sd">        A list containing dictionaries for all clumps foujohn obryan fiddlend in the simulation</span>
+<span class="sd">        See clump_properties for a list of the properties calculated for clumps</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># Get a list of all snapshot files</span>
+    <span class="n">fnames</span> <span class="o">=</span> <span class="n">get_fnames</span><span class="p">(</span><span class="n">fprefix</span><span class="p">,</span> <span class="n">directory</span><span class="p">)</span>
+    <span class="n">nfiles</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fnames</span><span class="p">)</span>
+    
+    <span class="c1"># Run the clump (halo) finder</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Running clump finder on </span><span class="si">{}</span><span class="s2"> files</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nfiles</span><span class="p">)</span>
+    <span class="n">clumpnum_list</span> <span class="o">=</span> <span class="n">pFind_clumps</span><span class="p">(</span><span class="n">fnames</span><span class="p">,</span> <span class="n">nsmooth</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+    <span class="n">nclumps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nfiles</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">clumpnums</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">clumpnum_list</span><span class="p">):</span>
+        
+        <span class="n">nclumps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">clumpnums</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        
+    <span class="k">if</span> <span class="n">nclumps</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span> <span class="s1">&#39;No clumps found&#39;</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    
+    <span class="c1"># Calculate the physical properties of the clumps</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Calculating the physical of properties of clumps</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+    <span class="n">properties</span> <span class="o">=</span> <span class="n">pClump_properties</span><span class="p">(</span><span class="n">fnames</span><span class="p">,</span> <span class="n">clumpnum_list</span><span class="p">)</span>
+    
+    <span class="c1"># Link clumps on consecutive time-steps</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Linking Clumps</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+    <span class="n">link_list</span> <span class="o">=</span> <span class="n">pLink2</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
+    <span class="c1"># Link on multiple time-steps</span>
+    <span class="n">multilink_list</span> <span class="o">=</span> <span class="n">multilink</span><span class="p">(</span><span class="n">link_list</span><span class="p">)</span>
+    <span class="c1"># Build the clumps</span>
+    <span class="n">clump_list</span> <span class="o">=</span> <span class="n">build_clumps</span><span class="p">(</span><span class="n">multilink_list</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">fnames</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">clump_list</span></div>
+
+<div class="viewcode-block" id="blank_clump"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.blank_clump">[docs]</a><span class="k">def</span> <span class="nf">blank_clump</span><span class="p">(</span><span class="n">clump_pars</span><span class="p">,</span> <span class="n">nt</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a blank clump dictionary, using clump_pars</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">ignore_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;iord&#39;</span><span class="p">,</span> <span class="s1">&#39;ids&#39;</span><span class="p">]</span>
+    <span class="n">keys</span> <span class="o">=</span> <span class="n">clump_pars</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+    
+    <span class="c1"># Remove the ignored keys</span>
+    <span class="k">for</span> <span class="n">ignore_key</span> <span class="ow">in</span> <span class="n">ignore_keys</span><span class="p">:</span>
+        
+        <span class="k">if</span> <span class="n">ignore_key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            
+            <span class="n">keys</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">ignore_key</span><span class="p">)</span>
+            
+    <span class="n">clump</span> <span class="o">=</span> <span class="p">{}</span>
+    
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+        
+        <span class="c1"># Load the current value</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">clump_pars</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="c1"># All values should be nd arrays or nd simarrays</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">val</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">nt</span>
+        <span class="c1"># Initialize a blank array with the same dtype</span>
+        <span class="n">val_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="c1"># Check if there are units</span>
+        <span class="k">if</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">has_units</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+            
+            <span class="n">val_array</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">val_array</span><span class="p">,</span> <span class="n">val</span><span class="o">.</span><span class="n">units</span><span class="p">)</span>
+            
+        <span class="n">clump</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val_array</span>
+        
+    <span class="k">return</span> <span class="n">clump</span></div>
+        
+
+<div class="viewcode-block" id="build_clumps"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.build_clumps">[docs]</a><span class="k">def</span> <span class="nf">build_clumps</span><span class="p">(</span><span class="n">multilink_list</span><span class="p">,</span> <span class="n">clump_pars_list</span><span class="p">,</span> <span class="n">fnames</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">param</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builds a list of clump dictionaries.  The clump dictionaries contain various</span>
+<span class="sd">    properties as a function of time for the different clumps.</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    multilink_list : list</span>
+<span class="sd">        A list of clump-link arrays (output of multilink)</span>
+<span class="sd">    clump_pars_list : list</span>
+<span class="sd">        List of dictionaries containing clump properties for all clumps on a</span>
+<span class="sd">        given time step (see pClump_properties)</span>
+<span class="sd">    fnames : list (recommended)</span>
+<span class="sd">        A list of the simulation snapshot filenames.  If provided, the time</span>
+<span class="sd">        steps are included in the clumps</span>
+<span class="sd">    param : str (recommended)</span>
+<span class="sd">        Filename of a .param file for the simulation.  Only used if fnames is</span>
+<span class="sd">        provided</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    clump_list : list</span>
+<span class="sd">        A list of clump dictionaries.  Each clump dictionary gives various</span>
+<span class="sd">        physical properties for a clump as a function of time.  A value of NaN</span>
+<span class="sd">        means the clump was not present at that time step.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># Initialize list to contain all the clump objects (dictionaries)</span>
+    <span class="n">clump_list</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="n">nt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">clump_pars_list</span><span class="p">)</span> <span class="c1"># number of timesteps</span>
+    <span class="n">nclumps</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">multilink_list</span><span class="p">)</span> <span class="c1"># number of clumps</span>
+    
+    <span class="k">if</span> <span class="n">nclumps</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        
+        <span class="k">return</span> <span class="n">clump_list</span>
+    
+    <span class="c1"># Find the time step of each simulation</span>
+    <span class="k">if</span> <span class="n">fnames</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">t</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nt</span><span class="p">),</span> <span class="s1">&#39;yr&#39;</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">fname</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fnames</span><span class="p">):</span>
+            
+            <span class="n">f</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">paramname</span><span class="o">=</span><span class="n">param</span><span class="p">)</span>
+            <span class="n">t_unit</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">infer_original_units</span><span class="p">(</span><span class="s1">&#39;yr&#39;</span><span class="p">))</span>
+            <span class="c1"># Note, for ChaNGa outputs, t0 = t_unit (ie, 1 in simulation units)</span>
+            <span class="c1"># To correct for this, we subtract off one time unit from the </span>
+            <span class="c1"># snapshot&#39;s time</span>
+            <span class="n">t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">t_unit</span>
+            
+    
+    <span class="c1"># Start by finding the first non-zero clump_pars (ie, first timestep with</span>
+    <span class="c1"># clumps)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">clump_pars</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">clump_pars_list</span><span class="p">):</span>
+        
+        <span class="k">if</span> <span class="n">clump_pars</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            
+            <span class="n">iFirstClump</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="k">break</span>
+        
+    
+    <span class="c1"># Now fill in the clumps</span>
+    <span class="k">for</span> <span class="n">iClump</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nclumps</span><span class="p">):</span>
+        <span class="nb">print</span> <span class="n">iClump</span>
+        
+        <span class="c1"># Initialize a blank clump</span>
+        <span class="n">clump</span> <span class="o">=</span> <span class="n">blank_clump</span><span class="p">(</span><span class="n">clump_pars_list</span><span class="p">[</span><span class="n">iFirstClump</span><span class="p">],</span> <span class="n">nt</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">iord</span><span class="p">,</span> <span class="n">iStep</span> <span class="ow">in</span> <span class="n">multilink_list</span><span class="p">[</span><span class="n">iClump</span><span class="p">]:</span>
+            
+            <span class="n">clump_pars</span> <span class="o">=</span> <span class="n">clump_pars_list</span><span class="p">[</span><span class="n">iStep</span><span class="p">]</span>
+            
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">clump</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                
+                <span class="n">clump</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">iStep</span><span class="p">]</span> <span class="o">=</span> <span class="n">clump_pars</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">iord</span><span class="p">]</span>
+                
+        <span class="n">clump</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">clump_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">clump</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">clump_list</span></div>
+        
+
+<div class="viewcode-block" id="multilink"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.multilink">[docs]</a><span class="k">def</span> <span class="nf">multilink</span><span class="p">(</span><span class="n">link_list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Links clumps on multiple time steps.</span>
+<span class="sd">    </span>
+<span class="sd">    Given the output of link2 or pLink2 for multiple time-steps, this determines</span>
+<span class="sd">    every clump&#39;s ID as a function of time-step.</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    link_list : list</span>
+<span class="sd">        A list of link arrays.  link_list[i] contains the links between time</span>
+<span class="sd">        step i and i+1.</span>
+<span class="sd">        ie: link_list[i] = link2(clump_pars_list[i], clump_pars_list[i+1])</span>
+<span class="sd">        Same as the output from pLink2</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    clumpid_list : list</span>
+<span class="sd">        A list of 2D arrays.  Each array gives pairs of (clumpID, time-step)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">n_links</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">link_list</span><span class="p">)</span>
+    
+    <span class="n">clump_list</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="n">iStart</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="k">while</span> <span class="n">iStart</span> <span class="o">&lt;</span> <span class="n">n_links</span><span class="p">:</span>
+        
+        <span class="k">if</span> <span class="n">link_list</span><span class="p">[</span><span class="n">iStart</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+            <span class="n">pairs0</span> <span class="o">=</span> <span class="n">link_list</span><span class="p">[</span><span class="n">iStart</span><span class="p">]</span>
+            <span class="n">new_mask</span> <span class="o">=</span> <span class="n">pairs0</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="n">new_iord</span> <span class="o">=</span> <span class="n">pairs0</span><span class="p">[</span><span class="n">new_mask</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+        
+            <span class="k">for</span> <span class="n">iord0</span> <span class="ow">in</span> <span class="n">new_iord</span><span class="p">:</span>
+                
+                <span class="n">t</span> <span class="o">=</span> <span class="n">iStart</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="n">iPair</span> <span class="o">=</span> <span class="n">iStart</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="c1"># Initialize a new clump</span>
+                <span class="n">clump</span> <span class="o">=</span> <span class="p">[</span> <span class="p">[</span><span class="n">iord0</span><span class="p">,</span> <span class="n">t</span><span class="p">]</span> <span class="p">]</span>
+                
+                <span class="k">while</span> <span class="n">iPair</span> <span class="o">&lt;</span> <span class="n">n_links</span><span class="p">:</span>
+                    
+                    <span class="n">pairs1</span> <span class="o">=</span> <span class="n">link_list</span><span class="p">[</span><span class="n">iPair</span><span class="p">]</span>
+                    
+                    <span class="k">if</span> <span class="n">pairs1</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="c1"># There are no clumps at this time step</span>
+                        <span class="k">break</span>
+                    
+                    <span class="n">t</span> <span class="o">=</span> <span class="n">iPair</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="n">iord</span> <span class="o">=</span> <span class="n">clump</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                    
+                    <span class="n">new_ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">pairs1</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">iord</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_ind</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="c1"># The clump links to something in the next timestep</span>
+                        <span class="n">new_ind</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">new_ind</span><span class="p">)</span>
+                        <span class="c1"># Add the new index to the clump</span>
+                        <span class="c1">#clump.append([pairs1[new_ind, 1], t])</span>
+                        <span class="n">clump</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">new_ind</span><span class="p">,</span> <span class="n">t</span><span class="p">])</span>
+                        <span class="c1"># Increment the time step</span>
+                        <span class="n">iPair</span> <span class="o">+=</span> <span class="mi">1</span>
+                        
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># The clump links to nothing.  It has died</span>
+                        <span class="k">break</span>
+                    
+                <span class="n">clump_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">clump</span><span class="p">))</span>
+                
+        <span class="n">iStart</span> <span class="o">+=</span> <span class="mi">1</span>
+                
+    <span class="k">return</span> <span class="n">clump_list</span></div>
+    
+<span class="k">def</span> <span class="nf">_parallel_link2</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A parallel wrapper for link2</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">return</span> <span class="n">link2</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="pLink2"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.pLink2">[docs]</a><span class="k">def</span> <span class="nf">pLink2</span><span class="p">(</span><span class="n">clump_pars_list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A parallel (batch) implementation of links2 for linking clumps in</span>
+<span class="sd">    consecutive time-steps.  </span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    clump_pars_list : list</span>
+<span class="sd">        A list of dictionaries containing the properties of clumps.  Each</span>
+<span class="sd">        element of the list is a dictio:nary for a single time step.</span>
+<span class="sd">        (see pClump_properties)</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    link_list : list</span>
+<span class="sd">        A list of link arrays.  link_list[i] contains the links between time</span>
+<span class="sd">        step i and i+1.</span>
+<span class="sd">        ie: link_list[i] = link2(clump_pars_list[i], clump_pars_list[i+1])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">arg_list</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="n">clump_pars_list</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">clump_pars_list</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    <span class="n">nproc</span> <span class="o">=</span> <span class="n">cpu_count</span><span class="p">()</span>
+    
+    <span class="n">pool</span> <span class="o">=</span> <span class="n">Pool</span><span class="p">(</span><span class="n">nproc</span><span class="p">)</span>
+    <span class="n">link_list</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_parallel_link2</span><span class="p">,</span> <span class="n">arg_list</span><span class="p">)</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="n">link_list</span></div>
+
+<div class="viewcode-block" id="link2"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.link2">[docs]</a><span class="k">def</span> <span class="nf">link2</span><span class="p">(</span><span class="n">clump_pars1</span><span class="p">,</span> <span class="n">clump_pars2</span><span class="p">,</span> <span class="n">link_thresh</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &#39;Links&#39; the clumps in two consecutive timesteps.  i.e., a clump numbered</span>
+<span class="sd">    10 in one time step might be numbered 15 in the next.  Requires the particle</span>
+<span class="sd">    iord (ie, particle ID)</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    clump_pars1 : dict</span>
+<span class="sd">        Dict containing the properties of the clumps in time-step 1 </span>
+<span class="sd">        (see clump_properties)</span>
+<span class="sd">    clump_pars2 : dict</span>
+<span class="sd">        Dict containing the properties of the clumps in time-step 2 </span>
+<span class="sd">        (see clump_properties)</span>
+<span class="sd">    link_thresh : int (optional)</span>
+<span class="sd">        The minimum fraction of particles in clump i at time 1 which must end</span>
+<span class="sd">        up in clump j at time 2 to consider the clumps &#39;linked&#39;</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    clump_pairs : array</span>
+<span class="sd">        2D numpy array organized according to (parent index, clump number)</span>
+<span class="sd">        where clump number is the number of a clump in time 2 and parent index</span>
+<span class="sd">        is the number of it&#39;s &quot;parent&quot; in time-step 1 (ie, that same clump&#39;s</span>
+<span class="sd">        ID in time-step 1)</span>
+<span class="sd">        A parent index of -1 corresponds to no parent (a new clump)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">clump_pars2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># there are no clumps in the second time step.  Any clumps in the first</span>
+        <span class="c1"># time step must have died.  Return None</span>
+        <span class="k">return</span>
+    
+    <span class="k">if</span> <span class="n">clump_pars1</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Any clumps in the second time step are new.  This is handled by </span>
+        <span class="c1"># saying their parents are -1</span>
+        <span class="n">n2</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">clump_pars2</span><span class="p">[</span><span class="s1">&#39;iord&#39;</span><span class="p">])</span>
+        <span class="n">clump_pairs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">clump_pairs</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">clump_pairs</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n2</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">clump_pairs</span>
+    
+    <span class="c1"># number of clumps in each time step</span>
+    <span class="n">n1</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">clump_pars1</span><span class="p">[</span><span class="s1">&#39;iord&#39;</span><span class="p">])</span>
+    <span class="n">n2</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">clump_pars2</span><span class="p">[</span><span class="s1">&#39;iord&#39;</span><span class="p">])</span>
+    
+    <span class="n">iord_list1</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">clump_pars1</span><span class="p">[</span><span class="s1">&#39;iord&#39;</span><span class="p">])</span>
+    <span class="n">iord_list2</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">clump_pars2</span><span class="p">[</span><span class="s1">&#39;iord&#39;</span><span class="p">])</span>
+    
+    <span class="c1"># Used to store how many particles clumps have in common</span>
+    <span class="n">connections</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    
+    <span class="c1"># Calculate the number of connections common to the clumps in clump_pars1</span>
+    <span class="c1"># and the clumps in clump_pars2</span>
+    <span class="c1"># Loop over the first set of clumps</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">iord1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">iord_list1</span><span class="p">):</span>
+        <span class="c1"># Loop over the second set of clumps</span>
+        <span class="n">iord1</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="n">npart1</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">iord1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">iord2</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">iord_list2</span><span class="p">):</span>
+            
+            <span class="c1"># Find which particles are common to clump[i] in pars1 and clump[j]</span>
+            <span class="c1"># in pars2</span>
+            <span class="n">intersect</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">intersect1d</span><span class="p">(</span><span class="n">iord1</span><span class="p">,</span> <span class="n">iord2</span><span class="p">,</span> <span class="n">assume_unique</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="c1"># Save how many are shared in the 2 clumps</span>
+            <span class="n">connections</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">intersect</span><span class="p">)</span>
+            <span class="c1"># Now only retain particles that are not common to the clumps</span>
+            <span class="c1"># IE, we know where these particles end up, we can stop checking</span>
+            <span class="c1"># them</span>
+            <span class="n">iord1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">setdiff1d</span><span class="p">(</span><span class="n">iord1</span><span class="p">,</span> <span class="n">intersect</span><span class="p">,</span> <span class="n">assume_unique</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">iord2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">setdiff1d</span><span class="p">(</span><span class="n">iord2</span><span class="p">,</span> <span class="n">intersect</span><span class="p">,</span> <span class="n">assume_unique</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">iord_list2</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">iord2</span>
+            
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">iord1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># There are no more particles to look at in the original clump                </span>
+                <span class="k">break</span>
+            
+        <span class="c1"># Now ignore any connections where number of particles shared between</span>
+        <span class="c1"># clumps less than link_thresh * (num. part. in clump 1)</span>
+        <span class="n">thresh_mask</span> <span class="o">=</span> <span class="n">connections</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="o">&lt;</span> <span class="n">link_thresh</span> <span class="o">*</span> <span class="n">npart1</span>
+        <span class="n">connections</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">thresh_mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="c1"># Find the clump in clump_pars2 that shares the most number of members for</span>
+    <span class="c1"># a clump in clump_pars1.  This gives us the children of the clumps in</span>
+    <span class="c1"># clump_pars1</span>
+    <span class="n">col_ind</span> <span class="o">=</span> <span class="n">connections</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># Set all others to 0</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n1</span><span class="p">,</span><span class="n">n2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">row_ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n1</span><span class="p">)</span>
+    <span class="n">mask</span><span class="p">[</span><span class="n">row_ind</span><span class="p">,</span> <span class="n">col_ind</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">connections</span><span class="p">[</span><span class="o">~</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="c1"># The clumps in clump_pars2 may have multiple parents.  Select the parent</span>
+    <span class="c1"># which shares the most particles in common (note, if this isn&#39;t the</span>
+    <span class="c1"># child of any clump, parent_index will always be 0)</span>
+    <span class="n">parent_index</span> <span class="o">=</span> <span class="n">connections</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="c1"># and find the number of particles inherited from the parent</span>
+    <span class="n">n_inherit</span> <span class="o">=</span> <span class="n">connections</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="c1"># Demand to inherit at least 1 particle from the parent</span>
+    <span class="n">parent_index</span><span class="p">[</span><span class="n">n_inherit</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    
+    <span class="c1"># Now create the clump pairs</span>
+    <span class="n">clump_pairs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="p">[</span><span class="n">parent_index</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n2</span><span class="p">)]</span> <span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="k">return</span> <span class="n">clump_pairs</span></div>
+        
+
+<div class="viewcode-block" id="clump_im"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.clump_im">[docs]</a><span class="k">def</span> <span class="nf">clump_im</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">clump_array</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">qty</span><span class="o">=</span><span class="s1">&#39;rho&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">1200</span><span class="p">,</span> <span class="n">clim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">clump_min</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plots an sph image from f with particles not in clumps colored red and </span>
+<span class="sd">    particles in clumps colored green.  Uses pynbody for a backend.</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    f : TipsySnapshot (see pynbody) or str</span>
+<span class="sd">        The snapshot to plot OR the filename of a snapshot to plot</span>
+<span class="sd">    clump_array : numpy array</span>
+<span class="sd">        A array (same length as f) such that 0 entries correspond to particles</span>
+<span class="sd">        not in clumps and entries &gt; 0 correspond to particles in clumps</span>
+<span class="sd">    width : str, simarray</span>
+<span class="sd">        See pynbody.plot.sph.image.  Width of the plot, ie &#39;3 au&#39;</span>
+<span class="sd">    resolution : int</span>
+<span class="sd">        Resolution in pixels of the plot.  The plot will be res by res pixels</span>
+<span class="sd">    clim : tuple,list,array</span>
+<span class="sd">        Density limits arranged as [low, high].  Any pixels below low are mapped</span>
+<span class="sd">        to 0, any pixels above high are mapped to 1.</span>
+<span class="sd">    clump_min : float</span>
+<span class="sd">        Used to set a cutoff for masking the clumps.  Not needed</span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    image : numpy nd-array</span>
+<span class="sd">        Returns an NxNx3 numpy array of the color image plotted.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check if the input is a filename</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        
+        <span class="n">f</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    
+    <span class="c1"># Get the current state for matplotlib (this still needs work, since an</span>
+    <span class="c1"># extra window will in general be created)</span>
+    <span class="n">current_fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">()</span>
+    <span class="n">interactive_flag</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">isinteractive</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ioff</span><span class="p">()</span>
+    
+    <span class="c1"># Intermediate figure, required for rendering the plots</span>
+    <span class="n">fig1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    
+    <span class="c1"># Render a grayscale image of all the particles</span>
+    <span class="n">im_all</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">plot</span><span class="o">.</span><span class="n">sph</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span><span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">qty</span><span class="o">=</span><span class="n">qty</span><span class="p">)</span>
+    <span class="n">xlim</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">()</span>
+    <span class="n">ylim</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">()</span>
+    <span class="n">extent</span> <span class="o">=</span> <span class="p">[</span><span class="n">xlim</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xlim</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ylim</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ylim</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+    
+    <span class="n">fig1</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    
+    <span class="c1"># Initialize the color image</span>
+    <span class="n">im_color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">resolution</span><span class="p">,</span> <span class="n">resolution</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+    <span class="c1"># Set the red channel of the color image to be the plot of all particles</span>
+    <span class="n">im_color</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">im_all</span><span class="p">)</span>
+    
+    <span class="c1"># Check to see that there is at least one clump</span>
+    <span class="n">clump_flag</span> <span class="o">=</span> <span class="p">(</span><span class="n">clump_array</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">clump_flag</span><span class="p">:</span>
+        
+        <span class="c1"># Get a sub-snap of just particles in a clump</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">clump_array</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">f2</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+        <span class="c1"># Render an image of just particles in a clump</span>
+        <span class="n">im_clump</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">plot</span><span class="o">.</span><span class="n">sph</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">f2</span><span class="o">.</span><span class="n">g</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span><span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span><span class="n">qty</span><span class="o">=</span><span class="n">qty</span><span class="p">)</span>
+        <span class="c1"># Set the clump image as the green channel</span>
+        <span class="n">im_color</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">im_clump</span><span class="p">)</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+        
+        <span class="c1"># Most of the clump image should be blank space: igore everything</span>
+        <span class="c1"># below a threshold</span>
+        <span class="k">if</span> <span class="n">clump_min</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+            <span class="n">clump_min</span> <span class="o">=</span> <span class="n">im_clump</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        
+        <span class="n">mask2</span> <span class="o">=</span> <span class="n">im_clump</span> <span class="o">&gt;</span> <span class="n">clump_min</span>
+    
+    <span class="c1"># Set the color scaling</span>
+    <span class="k">if</span> <span class="n">clim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">clim</span> <span class="o">=</span> <span class="p">[</span><span class="n">im_all</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">im_all</span><span class="o">.</span><span class="n">max</span><span class="p">()]</span>
+        
+    <span class="n">log_clim</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">clim</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">clim</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+            
+    <span class="n">im_color</span> <span class="o">-=</span> <span class="n">log_clim</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">im_color</span> <span class="o">/=</span> <span class="p">(</span><span class="n">log_clim</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">log_clim</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">im_color</span><span class="p">[</span><span class="n">im_color</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">im_color</span><span class="p">[</span><span class="n">im_color</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    
+    <span class="k">if</span> <span class="n">clump_flag</span><span class="p">:</span>
+        
+        <span class="c1"># Set all pixels outside a clump (in the clump image) to 0</span>
+        <span class="n">im_color</span><span class="p">[</span><span class="o">~</span><span class="n">mask2</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Set all pixels inside a clump (in the overall image) to 0</span>
+        <span class="n">im_color</span><span class="p">[</span><span class="n">mask2</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="k">else</span><span class="p">:</span>
+            
+        <span class="n">im_color</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        
+    <span class="n">im_color</span><span class="p">[:,:,</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="c1"># Plot</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">current_fig</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">interactive_flag</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>
+    
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">im_color</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">extent</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Echo the color limits used</span>
+    <span class="nb">print</span> <span class="s1">&#39;clims used: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">clim</span><span class="p">)</span>
+    
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig1</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">im_color</span></div>
+    
+<span class="k">def</span> <span class="nf">_parallel_clump_pars</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A wrapper to parallelize clump_properties</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">return</span> <span class="n">clump_properties</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="pClump_properties"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.pClump_properties">[docs]</a><span class="k">def</span> <span class="nf">pClump_properties</span><span class="p">(</span><span class="n">flist</span><span class="p">,</span> <span class="n">clumpnum_list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A parallel (batch) implementation of clump_properties.  Calculates the </span>
+<span class="sd">    physical properties of clumps in a list of snapshots.</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    flist : list</span>
+<span class="sd">        A list of tipsy snapshots or filenames pointing to snapshots.</span>
+<span class="sd">    clumpnum_list : list</span>
+<span class="sd">        A list of arrays (one per snapshot) which define the clump number</span>
+<span class="sd">        each particle belongs to (see pFind_clumps)</span>
+<span class="sd">    </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    properties : list</span>
+<span class="sd">        A list of dictionaries which contain the clump properties for every</span>
+<span class="sd">        simulation (see clump_properties)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">nproc</span> <span class="o">=</span> <span class="n">cpu_count</span><span class="p">()</span>
+    
+    <span class="n">arg_list</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="n">flist</span><span class="p">,</span> <span class="n">clumpnum_list</span><span class="p">)</span>
+    
+    <span class="n">pool</span> <span class="o">=</span> <span class="n">Pool</span><span class="p">(</span><span class="n">nproc</span><span class="p">)</span>
+    
+    <span class="n">properties</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_parallel_clump_pars</span><span class="p">,</span> <span class="n">arg_list</span><span class="p">)</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="n">properties</span></div>
+
+<div class="viewcode-block" id="clump_properties"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.clump_properties">[docs]</a><span class="k">def</span> <span class="nf">clump_properties</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">clump_nums</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the physical properties of clumps in a snapshot.</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    f : str -OR- tipsy snapshot</span>
+<span class="sd">        Either a tipsy snapshot or a filename pointing to a snapshot</span>
+<span class="sd">    clump_nums : array like</span>
+<span class="sd">        Clump number that each particle belongs to (see clumps.find_clumps).</span>
+<span class="sd">        0 corresponds to not being in a clump.</span>
+<span class="sd">    </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    properties : dict</span>
+<span class="sd">        A dictionary containing the physical properties of the clumps.</span>
+<span class="sd">        Keys are:</span>
+<span class="sd">        </span>
+<span class="sd">        &#39;m&#39;         mass</span>
+<span class="sd">        &#39;N&#39;         Number of particles</span>
+<span class="sd">        &#39;pos&#39;       xyz position</span>
+<span class="sd">        &#39;r&#39;         cylindrical radial position</span>
+<span class="sd">        &#39;v&#39;         center of mass velocity</span>
+<span class="sd">        &#39;L&#39;         Angular momentum relative to clump center of mass</span>
+<span class="sd">        &#39;T&#39;         Average temperature</span>
+<span class="sd">        &#39;rho&#39;       Average density</span>
+<span class="sd">        &#39;r_clump&#39;   Clump radius.  Sqrt of mass averaged particle distance squared</span>
+<span class="sd">                    (from the center of mass).  IE: r = sqrt( sum(mr^2)/sum(m))</span>
+<span class="sd">        &#39;ids&#39;       particle IDs in the clump (first particle in simulation is</span>
+<span class="sd">                    0, second is 1, etc...)</span>
+<span class="sd">        &#39;iord&#39;      Particle iord (a particle&#39;s ID for the whole simulation)</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">clump_nums</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># Return none if there are no clumps</span>
+        <span class="k">return</span>
+    
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>        
+        <span class="n">f</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        
+    <span class="k">try</span><span class="p">:</span>
+        
+        <span class="n">iorder</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;iord&#39;</span><span class="p">]</span>
+        
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        
+        <span class="nb">print</span> <span class="s1">&#39;Warning.  iorder not found.  Assuming 0,1,2,3...&#39;</span>
+        <span class="n">iorder</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+        
+    <span class="n">particle_nums</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+        
+    <span class="c1"># Only include particles in a clump AND that are not star particles</span>
+    <span class="n">mask1</span> <span class="o">=</span> <span class="n">clump_nums</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="n">n_star</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">s</span><span class="p">)</span>
+    <span class="n">mask1</span><span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="n">n_star</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">clump_nums1</span> <span class="o">=</span> <span class="n">clump_nums</span><span class="p">[</span><span class="n">mask1</span><span class="p">]</span>
+    <span class="n">f1</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="n">mask1</span><span class="p">]</span>
+    <span class="n">iorder1</span> <span class="o">=</span> <span class="n">iorder</span><span class="p">[</span><span class="n">mask1</span><span class="p">]</span>
+    <span class="n">particle_nums1</span> <span class="o">=</span> <span class="n">particle_nums</span><span class="p">[</span><span class="n">mask1</span><span class="p">]</span>
+    
+    <span class="c1"># Get units set up</span>
+    <span class="n">m_unit</span> <span class="o">=</span> <span class="n">f1</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span>
+    <span class="n">l_unit</span> <span class="o">=</span> <span class="n">f1</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span>
+    <span class="n">v_unit</span> <span class="o">=</span> <span class="n">f1</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span>
+    <span class="n">rho_unit</span> <span class="o">=</span> <span class="n">f1</span><span class="p">[</span><span class="s1">&#39;rho&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">units</span>
+    
+    <span class="c1"># Get arrays of pointers to the required quantities</span>
+    <span class="n">f_mass</span> <span class="o">=</span> <span class="n">f1</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span>
+    <span class="n">f_pos</span> <span class="o">=</span> <span class="n">f1</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span>
+    <span class="n">f_v</span> <span class="o">=</span> <span class="n">f1</span><span class="p">[</span><span class="s1">&#39;vel&#39;</span><span class="p">]</span>
+    <span class="n">f_T</span> <span class="o">=</span> <span class="n">f1</span><span class="p">[</span><span class="s1">&#39;temp&#39;</span><span class="p">]</span>
+    <span class="n">f_rho</span> <span class="o">=</span> <span class="n">f1</span><span class="p">[</span><span class="s1">&#39;rho&#39;</span><span class="p">]</span>
+    
+    <span class="c1"># Initialize arrays</span>
+    <span class="n">n_clumps</span> <span class="o">=</span> <span class="n">clump_nums1</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    
+    <span class="n">m</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_clumps</span><span class="p">),</span> <span class="n">m_unit</span><span class="p">)</span> <span class="c1"># clump mass</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_clumps</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="c1"># Number of particles/clump</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_clumps</span><span class="p">,</span><span class="mi">3</span><span class="p">]),</span> <span class="n">l_unit</span><span class="p">)</span> <span class="c1"># center of mass</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_clumps</span><span class="p">),</span> <span class="n">l_unit</span><span class="p">)</span> <span class="c1"># center of mass radial position</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_clumps</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">v_unit</span><span class="p">)</span> <span class="c1"># center of mass velocity</span>
+    <span class="c1"># Angular momentum around the center of mass rest frame</span>
+    <span class="n">L</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_clumps</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">m_unit</span><span class="o">*</span><span class="n">l_unit</span><span class="o">*</span><span class="n">v_unit</span><span class="p">)</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_clumps</span><span class="p">),</span> <span class="s1">&#39;K&#39;</span><span class="p">)</span> <span class="c1"># mass averaged temperature</span>
+    <span class="n">rho</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_clumps</span><span class="p">),</span> <span class="n">rho_unit</span><span class="p">)</span> <span class="c1"># density</span>
+    <span class="n">r_clump</span> <span class="o">=</span> <span class="n">SimArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_clumps</span><span class="p">),</span> <span class="n">l_unit</span><span class="p">)</span> <span class="c1"># clump radius (size)</span>
+    
+    <span class="c1"># index of each particle (in this file)</span>
+    <span class="n">particle_ids</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># universal identity of each particle</span>
+    <span class="n">particle_iord</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="c1"># loop over the clumps</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_clumps</span><span class="p">):</span>
+        
+        <span class="n">mask2</span> <span class="o">=</span> <span class="p">(</span><span class="n">clump_nums1</span> <span class="o">==</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="c1"># Mask the input arrays to look at only the current clump</span>
+        <span class="n">p_mass</span> <span class="o">=</span> <span class="n">f_mass</span><span class="p">[</span><span class="n">mask2</span><span class="p">]</span>
+        <span class="n">p_pos</span> <span class="o">=</span> <span class="n">f_pos</span><span class="p">[</span><span class="n">mask2</span><span class="p">]</span>
+        <span class="n">p_v</span> <span class="o">=</span> <span class="n">f_v</span><span class="p">[</span><span class="n">mask2</span><span class="p">]</span>
+        <span class="n">p_T</span> <span class="o">=</span> <span class="n">f_T</span><span class="p">[</span><span class="n">mask2</span><span class="p">]</span>
+        <span class="n">p_rho</span> <span class="o">=</span> <span class="n">f_rho</span><span class="p">[</span><span class="n">mask2</span><span class="p">]</span>
+        
+        <span class="c1"># Calculate properties of the clump</span>
+        <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask2</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">m</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_mass</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">pos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">p_pos</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">p_mass</span><span class="p">[:,</span><span class="kc">None</span><span class="p">])</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="n">pos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">pos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">p_v</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">p_mass</span><span class="p">[:,</span><span class="kc">None</span><span class="p">])</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        
+        <span class="c1"># position of all particles relative to center of mass</span>
+        <span class="n">cm_pos</span> <span class="o">=</span> <span class="n">p_pos</span> <span class="o">-</span> <span class="n">pos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="c1"># velocity of all particles relative to center of mass</span>
+        <span class="n">cm_v</span> <span class="o">=</span> <span class="n">p_v</span> <span class="o">-</span> <span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="c1"># angular momentum of all particles relative to center of mass</span>
+        <span class="n">cm_momentum</span> <span class="o">=</span> <span class="p">(</span><span class="n">cm_v</span> <span class="o">*</span> <span class="n">p_mass</span><span class="p">[:,</span><span class="kc">None</span><span class="p">])</span>
+        <span class="n">p_L</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">cm_pos</span><span class="p">,</span> <span class="n">cm_momentum</span><span class="p">)</span>
+        <span class="c1"># Total angular momentum relative to center of mass</span>
+        <span class="n">L</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_L</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        
+        <span class="n">T</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_T</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">rho</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_rho</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        
+        <span class="c1"># Clump radius</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">r_clump</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p_mass</span><span class="o">*</span><span class="p">(</span> <span class="p">(</span><span class="n">cm_pos</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="n">m</span><span class="p">[[</span><span class="n">i</span><span class="p">]])</span>
+        <span class="k">except</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">UnitsException</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="s1">&#39;i is: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">p_mass</span><span class="p">,</span> <span class="n">cm_pos</span><span class="p">,</span> <span class="n">m</span>
+        
+        <span class="n">particle_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">particle_nums1</span><span class="p">[</span><span class="n">mask2</span><span class="p">])</span>
+        <span class="n">particle_iord</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">iorder1</span><span class="p">[</span><span class="n">mask2</span><span class="p">])</span>
+        
+    <span class="n">properties</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;m&#39;</span><span class="p">:</span><span class="n">m</span><span class="p">,</span> <span class="s1">&#39;N&#39;</span><span class="p">:</span><span class="n">N</span><span class="p">,</span> <span class="s1">&#39;pos&#39;</span><span class="p">:</span><span class="n">pos</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">:</span><span class="n">r</span><span class="p">,</span> <span class="s1">&#39;v&#39;</span><span class="p">:</span><span class="n">v</span><span class="p">,</span> <span class="s1">&#39;L&#39;</span><span class="p">:</span><span class="n">L</span><span class="p">,</span> <span class="s1">&#39;T&#39;</span><span class="p">:</span><span class="n">T</span><span class="p">,</span> <span class="s1">&#39;rho&#39;</span><span class="p">:</span><span class="n">rho</span><span class="p">,</span>\
+    <span class="s1">&#39;r_clump&#39;</span><span class="p">:</span> <span class="n">r_clump</span><span class="p">,</span> <span class="s1">&#39;ids&#39;</span><span class="p">:</span> <span class="n">particle_ids</span><span class="p">,</span> <span class="s1">&#39;iord&#39;</span><span class="p">:</span> <span class="n">particle_iord</span><span class="p">}</span>
+    
+    <span class="k">return</span> <span class="n">properties</span></div>
+
+<span class="k">def</span> <span class="nf">_parallel_find_clumps</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A wrapper to parallelize find_clumps()</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="k">return</span> <span class="n">find_clumps</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="pFind_clumps"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.pFind_clumps">[docs]</a><span class="k">def</span> <span class="nf">pFind_clumps</span><span class="p">(</span><span class="n">f_list</span><span class="p">,</span> <span class="n">n_smooth</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">param</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">arg_string</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A parallel implementation of find_clumps.  Since SKID is not parallelized</span>
+<span class="sd">    this can be used to run find_clumps on a set of snapshots from one</span>
+<span class="sd">    simulation.</span>
+<span class="sd">    </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    f_list : list</span>
+<span class="sd">        A list containing the filenames of snapshots OR the tipsy snapshots</span>
+<span class="sd">    n_smooth : int (optional)</span>
+<span class="sd">        Number of nearest neighbors used for particle smoothing in the</span>
+<span class="sd">        simulation.  This is used in the definition of a density threshold</span>
+<span class="sd">        for clump finding.</span>
+<span class="sd">    param : str (optional)</span>
+<span class="sd">        filename for a tipsy .param file</span>
+<span class="sd">    arg_string : str (optional)</span>
+<span class="sd">        Additional arguments to be passed to SKID.  Cannot use -tau, -d, -m, -s, -o</span>
+<span class="sd">    verbose : bool</span>
+<span class="sd">        Verbosity flag.  Default is True</span>
+<span class="sd">        </span>
+<span class="sd">        </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    clumpnum_list : list</span>
+<span class="sd">        A list containing the particle clump assignment for every snapshot in </span>
+<span class="sd">        f_list.  clumps[i][j] gives the clump number for particle j in</span>
+<span class="sd">        snapshot i.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Number of processes to create = number of cores</span>
+    <span class="n">n_proc</span> <span class="o">=</span> <span class="n">cpu_count</span><span class="p">()</span>
+    
+    <span class="c1"># Set up the arguments for calls to find_clumps</span>
+    <span class="n">arg_list</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">f_name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f_list</span><span class="p">):</span>
+        
+        <span class="n">arg_list</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">f_name</span><span class="p">,</span> <span class="n">n_smooth</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">arg_string</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">verbose</span><span class="p">])</span>
+        
+    <span class="nb">print</span> <span class="n">arg_list</span>
+    
+    <span class="c1"># Set up the pool</span>
+    <span class="n">pool</span> <span class="o">=</span> <span class="n">Pool</span><span class="p">(</span><span class="n">n_proc</span><span class="p">)</span>
+    
+    <span class="c1"># Run the job in parallel</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_parallel_find_clumps</span><span class="p">,</span> <span class="n">arg_list</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="n">results</span></div>
+
+<div class="viewcode-block" id="find_clumps"><a class="viewcode-back" href="../../../../diskpy.clumps.clumpfinding.html#diskpy.clumps.clumpfinding.find_clumps">[docs]</a><span class="k">def</span> <span class="nf">find_clumps</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">n_smooth</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">param</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">arg_string</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Uses skid (https://github.com/N-BodyShop/skid) to find clumps in a gaseous</span>
+<span class="sd">    protoplanetary disk.  </span>
+<span class="sd">    Also requires tipsy tools (https://github.com/N-BodyShop/tipsy_tools),</span>
+<span class="sd">    specifically totipnat</span>
+<span class="sd">    </span>
+<span class="sd">    The linking length used is equal to the gravitational softening length of</span>
+<span class="sd">    the gas particles.</span>
+<span class="sd">    </span>
+<span class="sd">    The density cut-off comes from the criterion that there are n_smooth particles</span>
+<span class="sd">    within the Hill sphere of a particle.  This is formulated mathematically as:</span>
+<span class="sd">    </span>
+<span class="sd">        rho_min = 3*n_smooth*Mstar/R^3</span>
+<span class="sd">        </span>
+<span class="sd">    where R is the distance from the star.  The trick used here is to multiply</span>
+<span class="sd">    all particle masses by R^3 before running skid so the density cut-off is:</span>
+<span class="sd">    </span>
+<span class="sd">        rho_min = 3*n_smooth*Mstar</span>
+<span class="sd">        </span>
+<span class="sd">    **ARGUMENTS**</span>
+<span class="sd">    </span>
+<span class="sd">    *f* : TipsySnap, or str</span>
+<span class="sd">        A tipsy snapshot loaded/created by pynbody -OR- a filename pointing to a</span>
+<span class="sd">        snapshot.</span>
+<span class="sd">    </span>
+<span class="sd">    *n_smooth* : int (optional)</span>
+<span class="sd">        Number of particles used in SPH calculations.  Should be the same as used</span>
+<span class="sd">        in the simulation.  Default = 32</span>
+<span class="sd">    </span>
+<span class="sd">    *param* : str (optional)</span>
+<span class="sd">        filename for a .param file for the simulation</span>
+<span class="sd">    </span>
+<span class="sd">    *arg_string* : str (optional)</span>
+<span class="sd">        Additional arguments to be passed to skid.  Cannot use -tau, -d, -m, -s, -o</span>
+<span class="sd">    </span>
+<span class="sd">    *seed* : int</span>
+<span class="sd">        An integer used to seed the random filename generation for temporary</span>
+<span class="sd">        files.  Necessary for multiprocessing and should be unique for each</span>
+<span class="sd">        thread.</span>
+<span class="sd">        </span>
+<span class="sd">    *verbose* : bool</span>
+<span class="sd">        Verbosity flag.  Default is True</span>
+<span class="sd">    </span>
+<span class="sd">    **RETURNS**</span>
+<span class="sd">    </span>
+<span class="sd">    *clumps* : array, int-like</span>
+<span class="sd">        Array containing the group number each particle belongs to, with star</span>
+<span class="sd">        particles coming after gas particles.  A zero means the particle belongs</span>
+<span class="sd">        to no groups</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check for skid and totipnat</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">skid_path</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">which</span><span class="p">(</span><span class="s1">&#39;skid&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">skid_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">err</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&lt;skid not found : https://github.com/N-BodyShop/skid&gt;&#39;</span><span class="p">)</span>
+        
+    <span class="n">totipnat_path</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">which</span><span class="p">(</span><span class="s1">&#39;totipnat&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">totipnat_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">err</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&lt;totipnat (part of tipsy tools) not found : &#39;</span>
+        <span class="s1">&#39;https://github.com/N-BodyShop/tipsy_tools&gt;&#39;</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">err</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        
+        <span class="n">err</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">,</span> <span class="n">err</span>
+        
+    <span class="c1"># Parse areguments</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        
+        <span class="n">f</span> <span class="o">=</span> <span class="n">pynbody</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">paramfile</span><span class="o">=</span><span class="n">param</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+        
+    <span class="c1"># Estimate the linking length as the gravitational softening length</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;eps&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="c1"># Calculate minimum density</span>
+    <span class="n">rho_min</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="n">n_smooth</span><span class="o">*</span><span class="n">f</span><span class="o">.</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="c1"># Center on star.  This is done because R used in hill-sphere calculations</span>
+    <span class="c1"># is relative to the star</span>
+    <span class="n">star_pos</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">f</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span> <span class="o">-=</span> <span class="n">star_pos</span>
+    
+    <span class="c1"># Scale mass by R^3</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">strip_units</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;rxy&#39;</span><span class="p">])</span>
+    <span class="n">m0</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">f</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">*=</span> <span class="p">(</span><span class="n">R</span><span class="o">+</span><span class="n">tau</span><span class="p">)</span><span class="o">**</span><span class="mi">3</span>
+    
+    <span class="c1"># Save temporary snapshot</span>
+    <span class="n">f_prefix</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">))</span>
+    <span class="n">f_name</span> <span class="o">=</span> <span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;.std&#39;</span>
+    
+    <span class="c1"># Save temporary .param file</span>
+    <span class="k">if</span> <span class="n">param</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        
+        <span class="n">param_name</span> <span class="o">=</span> <span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;.param&#39;</span>
+        <span class="n">param_dict</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">configparser</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="s1">&#39;param&#39;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">configsave</span><span class="p">(</span><span class="n">param_dict</span><span class="p">,</span> <span class="n">param_name</span><span class="p">)</span>
+        
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">f_name</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">pynbody</span><span class="o">.</span><span class="n">tipsy</span><span class="o">.</span><span class="n">TipsySnap</span><span class="p">)</span>
+        
+    <span class="n">f</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">star_pos</span>
+    <span class="n">f</span><span class="p">[</span><span class="s1">&#39;mass&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m0</span>
+    
+    <span class="n">command</span> <span class="o">=</span> <span class="s1">&#39;totipnat &lt; </span><span class="si">{}</span><span class="s1"> | skid -tau </span><span class="si">{:.2e}</span><span class="s1"> -d </span><span class="si">{:.2e}</span><span class="s1"> -m </span><span class="si">{:d}</span><span class="s1"> -s </span><span class="si">{:d}</span><span class="s1"> -o </span><span class="si">{}</span><span class="s1">&#39;</span>\
+    <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">f_name</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">rho_min</span><span class="p">,</span> <span class="n">n_smooth</span><span class="p">,</span> <span class="n">n_smooth</span><span class="p">,</span> <span class="n">f_prefix</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">iter</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readline</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">):</span>
+            <span class="nb">print</span> <span class="n">line</span><span class="p">,</span>
+            
+    <span class="n">p</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+    
+    <span class="c1"># Load clumps</span>
+    <span class="n">clumps</span> <span class="o">=</span> <span class="n">loadhalos</span><span class="p">(</span><span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;.grp&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Cleanup</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">f_prefix</span> <span class="o">+</span> <span class="s1">&#39;*&#39;</span><span class="p">):</span>
+        
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">clumps</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">diskpy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Isaac Backus.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.1.
+    </div>
+  </body>
+</html>
