@@ -23,6 +23,9 @@ if __name__ == "__main__":
     
     # Initialize a blank initial conditions (IC) object:
     IC = ICgen.IC()
+    # Just to see what's available, you can echo all the default settings
+    # with descriptions:
+    IC.settings.print_defaults()
     
     # Echo the default settings to get an idea of what parameters can be
     # changed

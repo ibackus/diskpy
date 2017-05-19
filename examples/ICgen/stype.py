@@ -17,6 +17,9 @@ if __name__ == "__main__":
     
     # Initialize a blank initial conditions (IC) object:
     IC = ICgen.IC()
+    # Just to see what's available, you can echo all the default settings
+    # with descriptions:
+    IC.settings.print_defaults()
     
     # Let's set the star mass and gas mass assuming H2 = 2 (m_h = 1) and some metals added
     IC.settings.physical.M = SimArray(1.0, 'Msol') #Total stellar mass in solar masses
