@@ -396,12 +396,13 @@ class snapshot(settingsBase):
     ('extraparams', {}, 'Extra runtime parameters for ChaNGa during vel calc'), 
     ('metals', 1.0, 'metals')
     ]
-    def __init__(self, nParticles=0):
+    def __init__(self):
         
         message = 'Tipsy snapshot generator settings'
         message += '\n extraparams is a dict of extra parameters for ChaNGa'
         message += '\n e.g. extraparams = {"bDoGas": 1}'
         settingsBase.__init__(self, message)
+        self._set_defaults()
                 
 class changa_run(settingsBase):
     """
@@ -487,7 +488,7 @@ class settings(settingsBase):
             self.sigma = sigma(kind)           
             self.rho_calc = rho_calc()
             self.pos_gen = pos_gen()
-            self.snapshot = snapshot(self.pos_gen.nParticles)
+            self.snapshot = snapshot()
             self.physical = physical(kind=kind)
             self.changa_run = changa_run()
             
