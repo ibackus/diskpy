@@ -31,3 +31,7 @@ dDumpFrameStep  = 10
 #dSinkBoundOrbitRadius    = 0.1
 #dSinkRadius              = 0.1
 #dSinkMassMin = 0.3
+
+iBinaryOutput = 2
+bDoIOrderOutput = 1
+
