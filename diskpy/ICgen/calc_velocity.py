@@ -147,6 +147,7 @@ max_particles=None, est_eps=True, changa_args=''):
         del a
         gc.collect()
         a = load_acc(acc_name, low_mem=True)
+        a = a[0:-1] # drop the star
         gc.collect()
         
         # Clean-up
@@ -210,6 +211,7 @@ max_particles=None, est_eps=True, changa_args=''):
     # Load accelerations
     acc_name = f_prefix + '.000000.acc2'
     a_total = load_acc(acc_name, low_mem=True)
+    a_total = a_total[0:-1] # Drop the star
     gc.collect()
     
     # Estimate the accelerations due to pressure gradients/gas dynamics
