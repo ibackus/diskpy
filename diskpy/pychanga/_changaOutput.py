@@ -72,13 +72,69 @@ def get_fnames(fprefix, directory=None):
     
     return fnames
 
+def _is_ascii_tipsy(f):
+    """
+    Checks if a tipsy auxiliary array is ascii
+    """
+    if isinstance(f, str):
+        with open(f, 'rb') as fstream:
+            return _is_ascii_tipsy(fstream)
+    
+    ascii = True
+    try:
+        l = int(f.readline())
+    except ValueError:
+        ascii = False
+    return ascii
+
+def _load_tipsyarray3d_ascii(filename, low_mem=False):
+    """
+    Load an ascii tipsy auxiliary array for a 3D quantity (e.g. acceleration)
+    
+    The quantity is returned without units and for all families.  It's up
+    to the user to figure out which elements correspond to which families
+    """
+    if not _is_ascii_tipsy(filename):
+        raise ValueError, '{} does not appear to be an ASCII array file'.format(filename)
+    if low_mem:
+        # Perform ASCII read
+        with open(filename, 'r') as f:
+            # First line in tipsy format is a header
+            n_particles = int(f.readline().strip())
+            # Pre-allocate for speed
+            acc = SimArray(np.zeros(3*n_particles, dtype=np.float32))
+            # Buffered read
+            i0 = 0
+            tmp_lines = f.readlines(BUF_SIZE)
+            while tmp_lines:
+                acc[i0:i0 + len(tmp_lines)] = tmp_lines
+                i0 += len(tmp_lines)
+                tmp_lines = f.readlines(BUF_SIZE)
+                
+        acc = acc.reshape([n_particles, 3], order='F')
+
+    else:
+
+        # Load acceleration file as numpy array
+        acc = np.genfromtxt(filename, skip_header=1).astype(np.float32)
+        n_particles = len(acc)/3
+        # Reshape and make it a SimArray with proper units
+        acc = SimArray(acc.reshape([n_particles, 3], order='F'))
+        
+    return acc
+
+def _load_tipsyarray3d_binary(filename, low_mem=False):
+    
+    pass
+
 def load_acc(filename, param_name = None, low_mem = False):
     """
     Loads accelerations from a ChaNGa acceleration file (.acc2), ignoring the
     star particle.  ASSUMES A SINGLE STAR PARTICLE
 
     IF param_name is None, a .param file is searched for, otherwise param_name
-    should be a string specifying a .param file name
+    should be a string specifying a .param file name.  this is used to 
+    specify units
 
     IF no param_file is found, the defaults are used:
         length unit: AU
@@ -87,7 +143,7 @@ def load_acc(filename, param_name = None, low_mem = False):
     Setting low_mem=True decreases memory usage by about 2x but also increases
     readtime by about 2x
     """
-
+    # Try to infer units
     if param_name is None:
 
         prefix = filename.split('.')[0]
@@ -127,33 +183,11 @@ def load_acc(filename, param_name = None, low_mem = False):
     m_unit = param['dMsolUnit']*pynbody.units.Msol
     t_unit = ((l_unit**3) * G**-1 * m_unit**-1)**(1,2)
     a_unit = l_unit * t_unit**-2
-
-    if low_mem:
-        # Perform ASCII read
-        with open(filename, 'r') as f:
-            # First line in tipsy format is a header
-            n_particles = int(f.readline().strip())
-            # Pre-allocate for speed
-            acc = SimArray(np.zeros(3*n_particles, dtype=np.float32), a_unit)
-            # Buffered read
-            i0 = 0
-            tmp_lines = f.readlines(BUF_SIZE)
-            while tmp_lines:
-                acc[i0:i0 + len(tmp_lines)] = tmp_lines
-                i0 += len(tmp_lines)
-                tmp_lines = f.readlines(BUF_SIZE)
-                
-        return acc.reshape([n_particles, 3], order='F')[0:-1]
-
-    else:
-
-        # Load acceleration file as numpy array
-        acc = np.genfromtxt(filename, skip_header=1).astype(np.float32)
-        n_particles = len(acc)/3
-        # Reshape and make it a SimArray with proper units
-        acc = SimArray(acc.reshape([n_particles, 3], order='F'), a_unit)
-
-        return acc[0:-1]
+    
+    # LOAD
+    acc = _load_tipsyarray3d_ascii(filename, low_mem=low_mem)
+    acc.units = a_unit
+    return acc
         
 def walltime(filename, verbose=True):
     """
