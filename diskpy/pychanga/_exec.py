@@ -10,8 +10,111 @@ import os
 import subprocess
 from subprocess import Popen, PIPE
 
+import diskpy
 from diskpy import global_settings
 from diskpy.utils import logPrinter
+
+def runZeroSteps(fname, paramname, overwrite_aux=False, overwrite_snap=False,
+                 extrapars={}, **kwargs):
+    """
+    Runs ChaNGa on a snapshot for zero steps.  This is useful for writing-out
+    extra arrays that normally don't get written.  This can also be used to
+    over-write the snapshot to calculate, e.g., 'rho'.
+    
+    Temporary files are generated in the simulation directory and copied over
+    to the same filename as the input filename
+    
+    This assumes outputs are in the tipsy format
+    
+    Parameters
+    ----------
+    fname : str
+        Path to snapshot to run for zero steps
+    paramname : str
+        Path to .param file for the simulation
+    overwrite_aux : bool
+        If True, existing auxiliary array files for the snapshot will be 
+        overwritten if generated
+    overwrite_snap : bool
+        If True, the existing snapshot will be overwritten
+    extrapars : dict
+        Extra run-time parameters to pass to ChaNGa
+    **kwargs : key-word arguments
+        Arguments to pass to diskpy.pychanga.changa_cmd
+    """
+    import glob
+    import shutil
+    
+    # Load stuff/init
+    if not os.path.exists(fname):
+        raise ValueError, 'Could not file {} to run'.format(fname)
+    directory = os.path.realpath(os.path.dirname(fname))
+    print 'directory:', directory
+    fname = os.path.split(fname)[-1]
+    param = diskpy.utils.configparser(paramname, 'param')
+    
+    # Set-up filenames
+    irand = np.random.randint(0, 10**10)
+    temp_prefix = '_temp_{}'.format(irand)
+    temp_filename = temp_prefix + '_' + fname
+    temp_param = temp_prefix + '.param'
+    # Setup param
+    param['bDoSoftOutput'] = 1
+    param['bDohOutput'] = 1
+    param['achInFile'] = fname
+    param['achOutName'] = temp_filename
+    
+    for key in ('dDumpFrameStep', 'dDumpFrameTime'):
+        if key in param:
+            param.pop(key, None)
+    param.update(extrapars)
+    
+    
+    # CD into sim dir
+    cwd = os.getcwd()
+    os.chdir(directory)
+    try:
+        # Run for zero steps
+        diskpy.utils.configsave(param, temp_param)
+        try:
+            # RUN
+            if 'changa_args' not in kwargs:    
+                kwargs['changa_args'] = ''
+            kwargs['changa_args'] += ' -n 0'
+            cmd = diskpy.pychanga.changa_command(temp_param, **kwargs)
+            print 'running with command:', cmd
+            diskpy.pychanga.changa_run(cmd, require_success=True)
+            
+            # Move generated files
+            outfile_prefix = temp_filename + '.000000'
+            n = len(outfile_prefix)
+            outfiles = glob.glob(outfile_prefix + '*')
+            for outfile in outfiles:
+                ext = outfile[n:]
+                dest = fname + ext
+                if (ext == '') and overwrite_snap:
+                    copyfile = True
+                elif (not os.path.exists(dest)) or overwrite_aux:
+                    copyfile = True
+                else:
+                    copyfile = False
+                if copyfile:
+                    print 'moving {} to {}'.format(outfile, dest)
+                    shutil.move(outfile, dest)
+                
+        
+        finally:
+            # Clean-up
+            print 'cleaning up'
+            tempfiles = glob.glob(temp_prefix + '*')
+            for f in tempfiles:
+                try:
+                    os.remove(f)
+                except OSError:
+                    shutil.rmtree(f)
+    finally:
+        os.chdir(cwd)
+    print 'done'
 
 def est_time_step(param_name, preset='default', dDelta0=100, changa_args='', runner_args=''):
     """
