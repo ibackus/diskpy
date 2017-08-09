@@ -14,6 +14,33 @@ import pynbody as pb
 SimArray = pb.array.SimArray
 import logging
 
+def snap_param(snapshot):
+    """
+    Converts the param dict in a pynbody SimSnap to a more useable format 
+    (same as configparser)
+    
+    Parameters
+    ----------
+    snapshot : SimSnap
+        SimSnap, should be loaded from disk, tipsy format assumed
+    
+    Returns
+    -------
+    param_dict : dict
+        Same format as output of configparser
+    """
+    if not hasattr(snapshot, '_paramfile'):
+        raise RuntimeError, "Snapshot does not have attribute _paramfile"
+    
+    pnew = {}
+    for k, v in snapshot._paramfile.iteritems():
+        pnew[k] = str2num(v)
+    
+    if 'filename' in pnew:
+        pnew.pop('filename', None)
+    
+    return pnew
+
 def as_simarray(x, assumed_units='1'):
     """
     Return x as a SimArray.  x can be a number, a numpy array, a SimArray, 
