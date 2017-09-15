@@ -783,31 +783,41 @@ def digitize_threshold(x, min_per_bin = 0, bins=10):
     return ind, bin_edges
     
 def binned_mean(x, y, bins=10, nbins=None, binedges = None, weights=None,\
-weighted_bins=False, ret_bin_edges=False):
+weighted_bins=False, ret_bin_edges=False, binind=None):
     """
     Bins y according to x and takes the average for each bin.
 
-    bins can either be an integer (the number of bins to use) or an array of
-    binedges.  bins will be overridden by nbins or binedges
-
-    Optionally (for compatibility reasons) if binedges is specified, the
-    x-bins are defined by binedges.  Otherwise the x-bins are determined by
-    nbins
-
-    If weights = None, equal weights are assumed for the average, otherwise
-    weights for each data point should be specified
-
-    y_err (error in y) is calculated as the standard deviation in y for each
-    bin, divided by sqrt(N), where N is the number of counts in each bin
-
-    IF weighted_bins is True, the bin centers are calculated as a center of
-    mass
-
-    NaNs are ignored for the input.  Empty bins are returned with nans
-
     RETURNS a tuple of (bin_centers, y_mean, y_err) if ret_bin_edges=False
     else, Returns (bin_edges, y_mean, y_err)
+    
+    Parameters
+    ----------
+    x, y : array-like
+        Bin and average y according to x
+    bins : int or arraylike
+        Either number of bins or an array of binedges
+    nbins : int
+        (optional) For backward compatibility, prefer using bins
+    binedges : array-like
+        (optional) For backward compatibility, prefer using bins
+    weights : array-like
+        Weights to use for data points.  Assume weights=1 (uniform)
+    weighted_bins : bool
+        If true, the bin centers will be calculated as weighted centers
+    ret_bin_edges : bool
+        Return bin centers instead of edges.  Default = False
+    binind : list of arrays
+        An optional list of arrays which specify which indices of x, y belong
+        to which bin.  This can be used for speed.  when using a pynbody profile,
+        pynbody will generate such a list:
+            >>> p = pynbody.analysis.profile.Profile(f)
+            >>> p.binind # binind
+        For the returned bins to be consistent, the user should supply the used
+        binedges.
+    
     """
+    x = np.asanyarray(x)
+    y = np.asanyarray(y)
     if (isinstance(bins, int)) and (nbins is None):
 
         nbins = bins
@@ -837,32 +847,41 @@ weighted_bins=False, ret_bin_edges=False):
     # Initialize
     y_mean = np.zeros(nbins)
     y_std = np.zeros(nbins)
-    # Find the index bins for each data point
-    ind = np.digitize(x, binedges) - 1
+    if binind is None:
+        # Find the index bins for each data point
+        ind = np.digitize(x, binedges) - 1
+        N = np.histogram(x, binedges)[0]
+    else:
+        N = np.array([ind.sum() for ind in binind])
     # Ignore nans
     nan_ind = np.isnan(y)
-    N = np.histogram(x, binedges)[0]
-
     # Initialize bin_centers (try to retain units)
     bin_centers = 0.0*binedges[1:]
 
     for i in range(nbins):
 
-        #Indices to use
-        mask = (ind==i) & (~nan_ind)
-        # Set up the weighting
-        w = weights[mask].copy()
+        if binind is None:
+            #Indices to use
+            mask = (ind==i) & (~nan_ind)
+            # Set up the weighting
+            w = weights[mask].copy()
+            yvals = y[mask]
+            xvals = x[mask]
+        else:
+            select_ind = binind[i]
+            w = weights[select_ind]
+            yvals = y[select_ind]
+            xvals = x[select_ind]
+            
         w /= w.sum()
         A = 1/(1 - (w**2).sum())
-        #y_mean[i] = np.nanmean(y[mask])
-        y_mean[i] = (w * y[mask]).sum()
-        var = A*(w*(y[mask] - y_mean[i])**2).sum()
+        y_mean[i] = (w * yvals).sum()
+        var = A*(w*(yvals - y_mean[i])**2).sum()
         y_std[i] = np.sqrt(var)
-        #y_std[i] = np.std(y[use_ind])
 
         if weighted_bins:
             # Center of mass of x positions
-            bin_centers[i] = (w*x[mask]).sum()
+            bin_centers[i] = (w*xvals).sum()
 
     y_mean = match_units(y_mean, y)[0]
     y_err = y_std/np.sqrt(N)
