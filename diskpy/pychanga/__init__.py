@@ -9,6 +9,7 @@ from _exec import runZeroSteps
 from _param import make_director, make_param, units_from_param, setup_param, \
 setup_units
 from _param import getpar
+from _param import find_param_names
 from _changaOutput import load_acc, walltime, get_fnames, snapshot_time, \
 read_rung_dist
 import hyak
@@ -21,3 +22,4 @@ __all__ += ['getpar']
 __all__ += ['est_time_step', 'changa_run', 'changa_command']
 __all__ += ['mox']
 __all__ += ['runZeroSteps']
+__all__ += ['find_param_names']

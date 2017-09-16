@@ -344,3 +344,50 @@ n_check=None):
     param['iCheckInterval'] = int(N/n_check)
 
     return param
+
+def find_param_names(simdir='.', paramfile=None, prefix=None):
+    """
+    Tries to find the .param and associated .log file for a simulation
+    
+    Returns paramfile, logfile
+    
+    If a filename is not found it will be returned as None
+    """
+    import path
+    
+    prefix = str(prefix)
+    with path.Path(simdir) as directory:
+        if paramfile is None:
+            paramfile = prefix + '.param'
+            if not os.path.isfile(paramfile):
+                import glob
+                names = glob.glob('*.param')
+                if len(names) != 1:
+                    print "could not find .param file"
+                    paramfile = None
+                else:
+                    paramfile = names[0]
+        
+        logfile = None
+        if paramfile is not None:
+            
+            try:
+                # Load the param file
+                param = configparser(paramfile, 'param')
+                # Try to load the log file
+                achOutName = getpar('achOutName', param)
+                
+                if os.path.isfile(achOutName + '.log'):
+                    logfile = achOutName + '.log'
+            except IOError:
+                paramfile = None
+        
+        if logfile is None:
+            if os.path.isfile(prefix + '.log'):
+                logfile = prefix + '.log'
+    
+    if paramfile is not None:
+        paramfile = os.path.join(simdir, paramfile)
+    if logfile is not None:
+        logfile = os.path.join(simdir, logfile)
+    return paramfile, logfile
