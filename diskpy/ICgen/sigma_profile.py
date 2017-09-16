@@ -217,7 +217,8 @@ def powerlaw(settings, T = None):
     Qmin = settings.sigma.Qmin
     n_points = settings.sigma.n_points
     m = settings.physical.m
-    power = settings.sigma.power    
+    power = settings.sigma.power
+    gamma = settings.physical.gamma_cs()
 
     if T is None:
         # If no callable object to calculate Temperature(R) is provided, 
@@ -243,8 +244,6 @@ def powerlaw(settings, T = None):
     
     # Initialize stuff
     A = SimArray(1.0,'Msol')/(2*np.pi*np.power(Rd,2))
-    #R = np.linspace(0,Rmax,n_points)
-    #r = np.array((R/Rd).in_units('1'))
     # dflemin3 Nov. 4, 2015
     # Made units more explicit via SimArrays
     r_units = Rd.units
@@ -253,7 +252,6 @@ def powerlaw(settings, T = None):
     
     # Calculate sigma
     # Powerlaw
-    #sigma = A/r
     #dflemin3 edit 06/10/2015: Try powerlaw of the form sigma ~ r^power
     sigma = A*np.power(r,power)
     sigma[0] = 0.0
@@ -263,18 +261,17 @@ def powerlaw(settings, T = None):
     sigma[r<rin] *= smoothstep(r[r<rin],degree=21,rescale=True)
     
     # Calculate Q
-    Q = np.sqrt(Mstar*kB*T(R)/(G*m*R**3))/(np.pi*sigma)
+    Q = np.sqrt(Mstar*gamma*kB*T(R)/(G*m*R**3))/(np.pi*sigma)
     Q.convert_units('1')
     
     # Rescale sigma to meet the minimum Q requirement
     sigma *= Q.min()/Qmin
     
     # Calculate Q
-    Q = np.sqrt(Mstar*kB*T(R)/(G*m*R**3))/(np.pi*sigma)
+    Q = np.sqrt(Mstar*gamma*kB*T(R)/(G*m*R**3))/(np.pi*sigma)
     Q.convert_units('1')
     return R, sigma
     
-#def MQWS(n_points=1000, rin=4.0, rout=20.0, rmax = None, m_disk=0.1):
 def MQWS(settings, T):
     """
     Generates a surface density profile as the per method used in Mayer, Quinn,
