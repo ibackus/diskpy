@@ -202,8 +202,9 @@ def Qest(ICobj, r=None):
     m = ICobj.settings.physical.m
     M = match_units(M, 'Msol')[0]
     m = match_units(m, 'm_p')[0]
+    gamma = ICobj.settings.physical.gamma_cs()
     
-    Q = np.sqrt(M*kB*T/(G*m*r**3))/(np.pi*sigma)
+    Q = np.sqrt(M*kB*T*gamma/(G*m*r**3))/(np.pi*sigma)
     Q.convert_units('1')
     
     return Q

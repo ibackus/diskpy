@@ -279,6 +279,19 @@ class physical(settingsBase):
         settingsBase.__init__(self, descr='General physical parameters:')
         self._set_defaults(**kwargs)
         
+    def gamma_cs(self):
+        """
+        ganma_cs is the effect adiabatic index used for e.g. sound speed
+        calculations.  gamma_cs = 1 for isothermal EOS or gamma otherwise.
+        """
+        # Gamma is needed for sound speed.
+        if self.eos.lower() == 'isothermal':
+            # Effective gamma = 1 for isothermal sound speed
+            gamma = 1.
+        else:
+            gamma = self.gamma
+        return gamma
+        
         
 class sigma(kindSettingsBase):
     """

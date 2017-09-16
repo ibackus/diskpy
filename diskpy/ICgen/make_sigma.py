@@ -82,9 +82,6 @@ class sigma_gen:
         r_bins = match_units(r_bins, 'au')[0]
         # Calculate spline interpolation
         sigspline = spline(r_bins, sigmaBinned, k=3, ext='zeros')
-#        print 'Calculating spline interpolation (slow for many data points)'
-#        sigspline = interp1d(r_bins,sigmaBinned,kind='cubic',fill_value=0.0,\
-#        bounds_error=False)
         
         def sigout(r):
             """

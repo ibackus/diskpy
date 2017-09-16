@@ -21,7 +21,10 @@ class IterativeSolver():
     r"""
     Calculates the vertical density profile for a thin, extended gaseous disk
     orbiting a central star by solving vertical hydrostatic equilibrium 
-    using an iterative method.
+    using an iterative method.  A uniform vertical temperature profile is 
+    assumed.  This solution is valid for both isothermal and adiabatic EOS's.
+    The solution assumes slowly varying surface density profile (i.e. density
+    only a function of z, not x,y).
     
     The generator equation used is:
         

@@ -13,7 +13,7 @@ from diskpy.utils import match_units
 from diskpy.pdmath import binned_mean
 
 def Q(snapshot, molecular_mass = 2.0, bins=100, use_velocity=False, \
-use_omega=True):
+use_omega=True, gamma=1.):
     """Calculates the Toomre Q as a function of r, assuming radial temperature
     profile and kappa ~= omega
     
@@ -31,6 +31,9 @@ use_omega=True):
         snapshot.
     use_omega : Bool
         Default=True.  Use omega as a proxy for kappa to reduce noise
+    gamma : float
+        'Effective' adiabatic index, used to calculate sound speed.  Use 
+        gamma = 1 for an isothermal EOS
 
     Returns
     -------
@@ -48,7 +51,7 @@ use_omega=True):
     sig, r_edges = sigma(snapshot, bins)
     # Calculate sound speed
     m = match_units(molecular_mass,'m_p')[0]
-    c_s_all = np.sqrt(kB*snapshot.g['temp']/m)
+    c_s_all = np.sqrt(kB*snapshot.g['temp']*gamma/m)
     # Bin/average sound speed
     dummy, c_s, dummy2 = binned_mean(snapshot.g['rxy'], c_s_all, binedges=r_edges)
 
@@ -81,7 +84,7 @@ use_omega=True):
     return (kappa_calc*c_s/(np.pi*G*sig)).in_units('1'), r_edges
 
 def Qeff(snapshot, molecular_mass = 2.0, bins=100, use_velocity=False, \
-use_omega=True, alpha=0.1766, beta=2.121):
+use_omega=True, alpha=0.1766, beta=2.121, gamma=1.):
     """Estimates the effective Toomre Q as a function of r, defined as:
     
     .. math:: Q_{eff} = \\beta Q (h/R)^{\\alpha}
@@ -109,6 +112,9 @@ use_omega=True, alpha=0.1766, beta=2.121):
         Powerlaw for height dependence
     beta : float
         Normalization such that disks fragment for Qeff = 1
+    gamma : float
+        'Effective' adiabatic index, used to calculate sound speed.  Use 
+        gamma = 1 for an isothermal EOS
     
     Returns
     -------
@@ -119,7 +125,8 @@ use_omega=True, alpha=0.1766, beta=2.121):
         Radial bin edges
     
     """
-    Qcalc, r_edges = Q(snapshot, molecular_mass, bins, use_velocity, use_omega)
+    Qcalc, r_edges = Q(snapshot, molecular_mass, bins, use_velocity, use_omega,
+                       gamma=gamma)
     dummy, h = height(snapshot, r_edges, center_on_star=False)
     r = (r_edges[1:] + r_edges[0:-1])/2.
     Qeff = Qcalc * beta * ((h/r).in_units('1'))**alpha
