@@ -152,7 +152,11 @@ def read_table(f):
             # handle strings
             column = [val.strip()[1:-1] for val in column]
         arrays[iArray][:, iCol] = column
-        
+    
+    # Default to 1D array for single-column arrays
+    for i, array in enumerate(arrays):
+        if array.shape[1] == 1:
+            arrays[i] = array.reshape(len(array))
     return dict(zip(array_names, arrays))
 
 def write_table(f, x, *args, **kwargs):
