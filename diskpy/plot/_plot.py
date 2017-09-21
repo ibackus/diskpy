@@ -250,7 +250,8 @@ def lineanimate(x, y, *args, **kwargs):
     # Initialization function for matplotlib animate.  Makes line empty
     def init():
         line.set_data([],[])
-        
+        return line,
+    
     # Frame drawing function
     def animate(i):
         
