@@ -390,7 +390,7 @@ class pos_gen(settingsBase):
     _defaults = [
     ('nParticles', 40411, 'Number of particles'),
     ('method', 'grid', \
-     'Method for generating (r, theta).  Can be "grid" or "random"')
+     'Method for generating (r, theta).  Can be "grid", "glass" or "random"')
     ]
     def __init__(self):
         

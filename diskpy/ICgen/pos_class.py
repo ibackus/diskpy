@@ -117,6 +117,66 @@ class pos:
         print 'Generating r positions'
         cdf_inv_r = self._parent.sigma.cdf_inv
         
+        if self.method == 'glass':
+            sn = pynbody.load("/home/wadsley/python/glass16.std")
+            #Need to get a cylinder radius 1 and from z=-1 to +1 with self.nParticles in it
+            #Note: final distribution very flat -- ideally need to know something about h/r ratio
+            #Make a cylinder a little bigger than needed, 
+            #get r of particles, sort and then keep nParticles with smallest r's 
+            #reset last few to be inside if needed
+            #calculate thetas
+            nParticles = self.nParticles
+            hratio = 0.05
+            rscale = 1./(nParticles/(2*np.pi*4096)/hratio)**.3333333333333333
+            zscale = rscale/hratio
+            print "h/R ",hratio," scaling ",rscale,zscale
+            nboxi = int(1./rscale+.6)
+            nboxj = int(1./rscale+.6)
+            nboxk = int(1./zscale+.6)
+            print "nbox",nboxi,nboxj,nboxk
+            npMax = 4096*(nboxi*2+1)*(nboxj*2+1)*(nboxk*2+1)
+            rp = np.zeros(npMax)+1e10
+            thetap = np.zeros(npMax)
+            zp = np.zeros(npMax)
+            nadd = 0
+            for i in range(-nboxi, nboxi+1):
+                for j in range(-nboxj, nboxj+1):
+                   for k in range(-nboxk, nboxk+1):
+                       xloc = (sn.g['x'] + i)*rscale
+                       yloc = (sn.g['y'] + j)*rscale
+                       zloc = (sn.g['z'] + k)*zscale
+                       iw = np.where((zloc > -1) & (zloc < 1))
+                       naddw = len(iw[0])
+#                       print "xloc", xloc[0], rp[nadd], nadd, naddw
+                       rp[nadd:nadd+naddw] = np.sqrt(xloc[iw]**2+yloc[iw]**2)+(k+nboxk+1)*1e-6
+                       thetap[nadd:nadd+naddw] = np.arctan2(yloc[iw],xloc[iw])
+                       zp[nadd:nadd+naddw] = zloc[iw]
+                       nadd += naddw
+                       
+            assert(nadd<=npMax)
+            assert(nadd>nParticles)
+            assert(np.amax(rp) > np.sqrt(2))
+            rsort = np.sort(rp[0:nadd])
+            rcut = 0.5*(rsort[nParticles-1]+rsort[nParticles])
+            #If all the scaling is done right, rcut should be nearly 1
+            print "rcut",rcut,rsort[nParticles-1],rsort[nParticles]
+            assert(np.abs(rcut-1) < 1e-2)
+            i=np.where((rp < rcut))
+#            print "filter on rcut",len(i[0]),nParticles
+            assert(len(i[0]) == nParticles)
+            self.r = rp[i]/rcut
+            self.theta = thetap[i]
+            self.z =  zp[i]
+#            # Generate linearly increasing values of m, using 2 more than
+#            # necessary to avoid boundary issues
+            m = np.linspace(0,1,self.nParticles + 2)
+            # Calculate r from inverse CDF
+            r = cdf_inv_r(self.r).astype(np.float32)
+#            rold = cdf_inv_r(m[1:-1]).astype(np.float32)
+            # Assign output
+            self.r = r
+#            assert(0)
+            
         if self.method == 'grid':
             
             # Generate linearly increasing values of m, using 2 more than
@@ -140,17 +200,28 @@ class pos:
         """
         
         print 'Generating z positions'
-        # The inverse CDF over z as a function of r
-        cdf_inv_z = self._parent.rho.cdf_inv
-        # Random numbers between 0 and 1
-        np.random.seed(self._seed)
-        m = np.random.rand(self.nParticles)
-        # Calculate z
-        z = cdf_inv_z(m, self.r)
-        # Randomly select sign of z
-        z = z * np.random.choice(np.array([-1,1]), self.nParticles)
-        # Assign output
-        self.xyz[:,2] = z
+        if self.method == 'glass':
+            # The inverse CDF over z as a function of r
+            cdf_inv_z = self._parent.rho.cdf_inv
+            # Glassy numbers between -1 and 1 already in self.z
+            # Calculate z
+            z = cdf_inv_z(np.abs(self.z), self.r)
+            z = z * np.sign(self.z)
+            # Assign output
+            self.xyz[:,2] = z
+
+        else:
+            # The inverse CDF over z as a function of r
+            cdf_inv_z = self._parent.rho.cdf_inv
+            # Random numbers between 0 and 1
+            np.random.seed(self._seed)
+            m = np.random.rand(self.nParticles)
+            # Calculate z
+            z = cdf_inv_z(m, self.r)
+            # Randomly select sign of z
+            z = z * np.random.choice(np.array([-1,1]), self.nParticles)
+            # Assign output
+            self.xyz[:,2] = z
         
     def _generate_theta(self):
         """
@@ -159,6 +230,11 @@ class pos:
         
         nParticles = self.nParticles
         
+        if self.method == 'glass':
+            
+            #already done in generate_r
+            assert(len(self.theta)==nParticles)
+            
         if self.method == 'grid':
             
             r = self.r
