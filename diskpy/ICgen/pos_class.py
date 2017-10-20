@@ -120,6 +120,7 @@ class pos:
         if self.method == 'glass':
             sn = pynbody.load("/home/wadsley/python/glass16.std")
             #Need to get a cylinder radius 1 and from z=-1 to +1 with self.nParticles in it
+            # Careful density in cylinder not uniform -- increases with radius (fix is to say r=x**2+y**2)
             #Note: final distribution very flat -- ideally need to know something about h/r ratio
             #Make a cylinder a little bigger than needed, 
             #get r of particles, sort and then keep nParticles with smallest r's 
