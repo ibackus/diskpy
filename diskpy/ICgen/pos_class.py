@@ -164,7 +164,7 @@ class pos:
             i=np.where((rp < rcut))
 #            print "filter on rcut",len(i[0]),nParticles
             assert(len(i[0]) == nParticles)
-            self.r = rp[i]/rcut
+            self.r = (rp[i]/rcut)**2
             self.theta = thetap[i]
             self.z =  zp[i]
 #            # Generate linearly increasing values of m, using 2 more than
