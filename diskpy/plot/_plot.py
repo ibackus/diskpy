@@ -16,6 +16,40 @@ from pynbody.plot.sph import image
 from diskpy.disk import powerspectrum_t
 from diskpy.utils import get_units
 
+def savefig(savename, exts=('pdf', 'png'), verbose=True, ext_kwargs=None, **kwargs):
+    """
+    A wrapper around matplotlib.pyplot.savefig to save a figure as multiple
+    file types (.png, .pdf, etc...)
+    
+    Parameters
+    ----------
+    savename : str
+        Filename WITHOUT extension
+    exts : iterable (list, tuple, etc...)
+        File extensions to save as.  Format is inferred from the extension.
+        default is ('pdf', 'png')
+    verbose : bool
+        verbosity flag
+    ext_kwargs : iterable, optional
+        A list (or tuple) of dicts, each specifying keyword arguments
+        to pass to matplotlib.pyplot.savefig for each format.  Should be
+        length of exts.  Overrides **kwargs
+    **kwargs : extra args
+        Extra args are passed to matplotlib.pyplot.savefig
+    """
+    if not hasattr(exts, '__iter__') or len(exts) < 1:
+        raise ValueError, 'Cannot iterate over provided extensions'
+    if ext_kwargs is None:
+        ext_kwargs = [{}] * len(exts)
+    
+    for ext, extra_args in zip(exts, ext_kwargs):
+        fullname = savename + '.' + ext
+        save_args = copy.deepcopy(kwargs)
+        save_args.update(extra_args)
+        plt.savefig(fullname, **save_args)
+        if verbose:
+            print "saved:", fullname
+
 def colorCodeArray(x1, x2, cmap='Reds'):
     """
     Get a color-coded array from x1 (brightess) and x2 (color).  x1 and x2 
