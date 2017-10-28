@@ -59,7 +59,7 @@ if __name__ == "__main__":
     
     # Set up the position generation
     IC.settings.pos_gen.nParticles = 50000
-    IC.settings.pos_gen.method = 'grid' # optional 'random'
+    IC.settings.pos_gen.method = 'glass' # optional 'random' or 'grid' too
     
     # Set up the temperature profile to use.
     # We'll use something of the form T = T0(r/r0)^Tpower

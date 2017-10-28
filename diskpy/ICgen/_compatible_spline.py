@@ -34,7 +34,8 @@ if version(scipy.__version__) < '0.16.0':
             xpts = np.asarray(xpts)
             yinterp = splobj(xpts)
             mask = (xpts < bbox[0]) | (xpts > bbox[1])
-            yinterp[mask] = ext
+            if np.any(mask):
+                yinterp[mask] = ext
             
             return yinterp
             
