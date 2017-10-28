@@ -22,6 +22,7 @@ import cPickle as pickle
 import os
 import socket
 from textwrap import TextWrapper
+import diskpy
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 _filename = os.path.join(_dir, 'global_settings.p')
@@ -60,9 +61,28 @@ changa_presets['mpi'] = ['mpirun', '--mca mtl mx --mca pml cm', 'ChaNGa_uw_mpi',
 changa_presets['default'] = 'local'
 defaults['changa_presets'] = changa_presets
 
+
+# Glass file for ICgen
+glassfile = 'glass16.std'
+defaults['misc']['icgen-glass-file'] = glassfile
+
 # --------------------------------------------------------------
 # Settings class
 # --------------------------------------------------------------
+
+def recursive_update(old, new):
+    """
+    Basically do dict update, but if the value is a dict, recursively apply
+    this update to that.
+    
+    Update old with the values in new
+    """
+    for k, v in new.iteritems():
+        
+        if isinstance(v, dict) and isinstance(old.get(k, None), dict):
+            recursive_update(old[k], v)
+        else:
+            old[k] = v
 
 class settings(dict):
     """
@@ -90,22 +110,13 @@ class settings(dict):
         
         # Load settings and compare to defaults. If the settings don't contain
         # an entry in defaults, add it to the settings
+        current_settings = defaults
         
         if os.path.isfile(self.filename):
             
             # Load up previous settings
-            current_settings = settings.loader(self.filename)
-            
-            # Compare to defaults
-            for key, value in defaults.iteritems():
-                
-                if key not in current_settings:
-                    
-                    current_settings[key] = value
-                    
-        else:
-            
-            current_settings = defaults
+            saved_settings = settings.loader(self.filename)
+            recursive_update(current_settings, saved_settings)
             
         for key, val in current_settings.iteritems():
             
@@ -202,6 +213,13 @@ class settings(dict):
             host_flag = ' --host ' + hosts
             mpi_largefiles[1] += host_flag
             self['changa_presets']['mpi_largefiles'] = mpi_largefiles
+            
+        # Diskpy file-names etc...
+        diskpy_dir = os.path.realpath(os.path.dirname(diskpy.__file__))
+        bin_dir = os.path.join(os.path.dirname(diskpy_dir), 'bin')
+        self['misc']['diskpy-dir'] = diskpy_dir
+        self['misc']['bin-dir'] = bin_dir
+
         
     def save(self):
         """
