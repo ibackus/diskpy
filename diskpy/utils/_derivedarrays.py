@@ -107,11 +107,11 @@ def u_dustGrainSize(f):
     the 'dustGrainSize' is returned with proper units.
     """
     l_unit = sutil.get_snap_unit(f, 'l_unit')
-    if 'dustGrainSize' in f.all_keys():
+    try:
         if not pynbody.units.has_units(f['dustGrainSize']):
             f['dustGrainSize'].units = l_unit
         grainSize = f['dustGrainSize']
-    else:
+    except KeyError:
         grainSize = sutil.get_snap_param(f, 'dDustSize')
         grainSize = SimArray(grainSize*np.ones(len(f)), l_unit)
     return grainSize
