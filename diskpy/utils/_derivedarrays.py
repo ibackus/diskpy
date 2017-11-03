@@ -95,6 +95,27 @@ def u_dustVel(f):
         "  This is problem with pynbody"
     return f[array_name]
 
+@pynbody.derived_array
+def u_dustGrainSize(f):
+    """
+    Returns the dust grain size with units for onefluid dust.
+    
+    If grain growth is not on, i.e. if there is not a variable dust size,
+    the dust size is found in the snapshot param
+    
+    If grain growth is turned on, i.e. if there is a variable grain size,
+    the 'dustGrainSize' is returned with proper units.
+    """
+    l_unit = sutil.get_snap_unit(f, 'l_unit')
+    if 'dustGrainSize' in f.all_keys():
+        if not pynbody.units.has_units(f['dustGrainSize']):
+            f['dustGrainSize'].units = l_unit
+        grainSize = f['dustGrainSize']
+    else:
+        grainSize = sutil.get_snap_param(f, 'dDustSize')
+        grainSize = SimArray(grainSize*np.ones(len(f)), l_unit)
+    return grainSize
+
 # -------------------------------------------------------------------
 # Derived arrays
 # -------------------------------------------------------------------
@@ -158,7 +179,7 @@ def tstop(f):
     Dust stopping time
     """
     units = sutil.get_all_units(f)
-    grainSize = SimArray(sutil.get_snap_param(f, 'dDustSize'), units['l_unit'])
+    grainSize = f['u_dustGrainSize']
     grainDensity = SimArray(sutil.get_snap_param(f, 'dDustGrainDensity'), units['rho_unit'])
     
     if sutil.is_isothermal(f):
