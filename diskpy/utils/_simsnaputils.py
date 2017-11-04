@@ -8,6 +8,41 @@ Created on Sat Sep 16 17:01:21 2017
 import pynbody
 SimArray = pynbody.array.SimArray
 import diskpy
+import numpy as np
+
+def list_to_SimArray(x):
+    """
+    Generates a SimArray from a list of numbers or arrays/SimArrays all of the
+    same shape.
+    
+    If the entries have units, they will all be converted to the same units
+    and therefore must be compatible.
+    """
+    units = None
+    
+    for xi in x:
+        if pynbody.units.has_units(xi):
+            units = xi.units
+            break
+    shape = [len(x)] + list(np.shape(x[0]))
+    dtype = x[0].dtype
+    if units is None:
+        # No units
+        x_out = SimArray(x)
+    else:
+        # Units
+        x_out = SimArray(np.zeros(shape, dtype=dtype), units)
+        for i, xi in enumerate(x):
+            try:
+                x_out[i] = xi.in_units(units)
+            except AttributeError:
+                if not pynbody.units.has_units(xi):
+                    raise ValueError, "Cannot place value without units "\
+                    "into array with units"
+                else:
+                    raise
+                    
+    return x_out
 
 # ----------------------------------------------------------------------
 # Utility function
