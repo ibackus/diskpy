@@ -116,6 +116,13 @@ def u_dustGrainSize(f):
         grainSize = SimArray(grainSize*np.ones(len(f)), l_unit)
     return grainSize
 
+@pynbody.derived_array
+def s(f):
+    """
+    An alias for u_dustGrainSize
+    """
+    return f['u_dustGrainSize']
+
 # -------------------------------------------------------------------
 # Derived arrays
 # -------------------------------------------------------------------
